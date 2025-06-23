@@ -61,4 +61,4 @@ apps/cow-fi/public/sitemap*
 .qodo
 
 # Misc
-.env
+config.bat
