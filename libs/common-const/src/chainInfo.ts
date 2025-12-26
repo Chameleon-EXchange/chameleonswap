@@ -8,7 +8,6 @@ import {
   lens,
   linea,
   mainnet,
-  plasma,
   polygon,
   sepolia,
   SupportedChainId,
@@ -22,7 +21,6 @@ import {
   LensLogo,
   LineaLogo,
   MainnetLogo,
-  PlasmaLogo,
   PolygonLogo,
   SepoliaLogo,
 } from '../../assets/src/index'
@@ -60,7 +58,6 @@ const CHAIN_IDS = {
   GNOSIS_CHAIN: 100,
   LENS: 232,
   LINEA: 59144,
-  PLASMA: 9745,
   SEPOLIA: 11155111,
 }
 
@@ -197,13 +194,7 @@ const FALLBACK_DATA: Record<number, Partial<BaseChainInfo>> = {
         color: '#000000',
         logo: { light: LineaLogo, dark: LineaLogo }
     },
-    [CHAIN_IDS.PLASMA]: {
-        docs: 'https://docs.plasma.to',
-        explorer: 'https://explorer.plasma.to',
-        label: 'Plasma',
-        color: '#000000',
-        logo: { light: PlasmaLogo, dark: PlasmaLogo }
-    }
+   
 }
 
 /**
@@ -267,12 +258,7 @@ export const CHAIN_INFO = {
     urlAlias: 'linea',
     nativeCurrency: NATIVE_CURRENCIES[CHAIN_IDS.LINEA as SupportedChainId],
   },
-  [CHAIN_IDS.PLASMA]: {
-    ...mapChainInfoToBaseChainInfo(plasma, FALLBACK_DATA[CHAIN_IDS.PLASMA as SupportedChainId]),
-    name: 'plasma',
-    urlAlias: 'plasma',
-    nativeCurrency: NATIVE_CURRENCIES[CHAIN_IDS.PLASMA as SupportedChainId],
-  },
+
   [CHAIN_IDS.SEPOLIA]: {
     ...mapChainInfoToBaseChainInfo(sepolia, FALLBACK_DATA[CHAIN_IDS.SEPOLIA as SupportedChainId]),
     name: 'sepolia',
@@ -292,7 +278,6 @@ export const SORTED_CHAIN_IDS: SupportedChainId[] = [
   CHAIN_IDS.POLYGON,
   CHAIN_IDS.AVALANCHE,
   CHAIN_IDS.LINEA,
-  CHAIN_IDS.PLASMA,
   CHAIN_IDS.GNOSIS_CHAIN,
   CHAIN_IDS.LENS,
   CHAIN_IDS.SEPOLIA,
