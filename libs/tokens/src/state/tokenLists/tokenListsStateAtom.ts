@@ -14,7 +14,7 @@ import {
 } from '../../types'
 import { environmentAtom } from '../environmentAtom'
 
-const UNISWAP_TOKEN_LIST_URL: Record<SupportedChainId, string> = {
+const UNISWAP_TOKEN_LIST_URL: Partial<Record<SupportedChainId, string>> = {
   [SupportedChainId.MAINNET]: UNISWAP_TOKENS_LIST,
   [SupportedChainId.GNOSIS_CHAIN]: 'https://files.cow.fi/token-lists/Uniswap.100.json',
   [SupportedChainId.ARBITRUM_ONE]: 'https://files.cow.fi/token-lists/Uniswap.42161.json',
@@ -25,14 +25,14 @@ const UNISWAP_TOKEN_LIST_URL: Record<SupportedChainId, string> = {
   [SupportedChainId.LENS]: 'https://files.cow.fi/token-lists/CoinGecko.232.json',
   [SupportedChainId.BNB]: 'https://files.cow.fi/token-lists/Uniswap.56.json',
   [SupportedChainId.LINEA]: 'https://files.cow.fi/token-lists/Uniswap.59144.json',
-  [SupportedChainId.PLASMA]: 'https://files.cow.fi/token-lists/Uniswap.9745.json',
 }
 
 const curatedListSourceAtom = atom((get) => {
+  const chainId = get(environmentAtom).chainId
   const UNISWAP_LIST_SOURCE: ListSourceConfig = {
     priority: 1,
     enabledByDefault: true,
-    source: UNISWAP_TOKEN_LIST_URL[get(environmentAtom).chainId],
+    source: UNISWAP_TOKEN_LIST_URL[chainId] || UNISWAP_TOKENS_LIST,
   }
 
   return UNISWAP_LIST_SOURCE
