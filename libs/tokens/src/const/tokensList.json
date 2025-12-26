@@ -97,5 +97,85 @@
       "priority": 5,
       "source": "https://static.optimism.io/optimism.tokenlist.json"
     }
+  ],
+  "56": [
+    {
+      "priority": 1,
+      "enabledByDefault": true,
+      "source": "https://files.cow.fi/tokens/CowSwap.json"
+    },
+    {
+      "priority": 2,
+      "enabledByDefault": true,
+      "source": "https://files.cow.fi/token-lists/Uniswap.56.json"
+    },
+    {
+      "priority": 3,
+      "enabledByDefault": true,
+      "source": "https://raw.githubusercontent.com/cowprotocol/token-lists/main/src/public/CoinGecko.56.json"
+    },
+    {
+      "priority": 4,
+      "enabledByDefault": true,
+      "source": "https://tokens.coingecko.com/binance-smart-chain/all.json"
+    },
+    {
+      "priority": 5,
+      "source": "https://tokens.pancakeswap.finance/pancakeswap-extended.json"
+    },
+    {
+      "priority": 6,
+      "source": "https://tokens.pancakeswap.finance/pancakeswap-top-100.json"
+    }
+  ],
+  "137": [
+    {
+      "priority": 1,
+      "enabledByDefault": true,
+      "source": "https://files.cow.fi/tokens/CowSwap.json"
+    },
+    {
+      "priority": 2,
+      "enabledByDefault": true,
+      "source": "https://files.cow.fi/token-lists/Uniswap.137.json"
+    },
+    {
+      "priority": 3,
+      "enabledByDefault": true,
+      "source": "https://raw.githubusercontent.com/cowprotocol/token-lists/main/src/public/CoinGecko.137.json"
+    },
+    {
+      "priority": 4,
+      "source": "https://curvefi.github.io/curve-assets/polygon.json"
+    }
+  ],
+  "43114": [
+    {
+      "priority": 1,
+      "enabledByDefault": true,
+      "source": "https://files.cow.fi/tokens/CowSwap.json"
+    },
+    {
+      "priority": 2,
+      "enabledByDefault": true,
+      "source": "https://files.cow.fi/token-lists/Uniswap.43114.json"
+    },
+    {
+      "priority": 3,
+      "enabledByDefault": true,
+      "source": "https://raw.githubusercontent.com/cowprotocol/token-lists/main/src/public/CoinGecko.43114.json"
+    }
+  ],
+  "232": [
+    {
+      "priority": 1,
+      "enabledByDefault": true,
+      "source": "https://files.cow.fi/tokens/CowSwap.json"
+    },
+    {
+      "priority": 2,
+      "enabledByDefault": true,
+      "source": "https://files.cow.fi/token-lists/CoinGecko.232.json"
+    }
   ]
 }
