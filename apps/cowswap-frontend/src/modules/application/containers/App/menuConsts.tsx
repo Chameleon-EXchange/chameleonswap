@@ -19,6 +19,15 @@ export const NAV_ITEMS: MenuItem[] = [
       },
     ],
   },
+  {
+    label: 'More',
+    children: [
+      {        
+        href: "https://mevblocker.io/",
+        label: 'MEV Blocker',      
+      }
+    ]
+  }
   // {
   //   label: 'Learn',
   //   children: [
