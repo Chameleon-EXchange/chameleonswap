@@ -1,7 +1,8 @@
 import { TokenInfo } from '@cowprotocol/types'
 import type { TokenList } from '@uniswap/token-lists'
 
-import type { Ajv, ValidateFunction } from 'ajv'
+import type Ajv from 'ajv'
+import type { ValidateFunction } from 'ajv'
 
 const SYMBOL_AND_NAME_VALIDATION = [
   {
@@ -49,8 +50,10 @@ enum ValidationSchema {
 }
 
 const validator = new Promise<Ajv>((resolve) => {
-  Promise.all([import('ajv'), import('@uniswap/token-lists/src/tokenlist.schema.json')]).then(([ajv, schema]) => {
+  Promise.all([import('ajv'), import('ajv-formats'), import('@uniswap/token-lists/src/tokenlist.schema.json')]).then(([ajv, ajvFormats, schema]) => {
     const validator = new ajv.default({ allErrors: true })
+    ajvFormats.default(validator)
+    validator
       .addSchema(patchValidationSchema(schema), ValidationSchema.LIST)
       // Adds a meta scheme of Pick<TokenList, 'tokens'>
       .addSchema(
@@ -67,7 +70,7 @@ const validator = new Promise<Ajv>((resolve) => {
 
 function getValidationErrors(validate: ValidateFunction | undefined): string {
   return (
-    validate?.errors?.map((error) => [error.dataPath, error.message].filter(Boolean).join(' ')).join('; ') ??
+    validate?.errors?.map((error) => [error.instancePath, error.message].filter(Boolean).join(' ')).join('; ') ??
     'unknown error'
   )
 }
