@@ -1,6 +1,6 @@
 /// <reference types="vitest" />
 import { lingui } from '@lingui/vite-plugin'
-import react from '@vitejs/plugin-react-swc'
+import react from '@vitejs/plugin-react'
 import stdLibBrowser from 'node-stdlib-browser'
 import { visualizer } from 'rollup-plugin-visualizer'
 import { defineConfig, PluginOption, searchForWorkspaceRoot } from 'vite'
@@ -35,7 +35,9 @@ export default defineConfig(async ({ mode }) => {
       protocolImports: true,
     }),
     react({
-      plugins: [['@lingui/swc-plugin', {}]],
+      babel: {
+        plugins: ['macros'],
+      },
     }),
     viteTsConfigPaths({
       root: '../../',

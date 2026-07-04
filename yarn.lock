@@ -20200,6 +20200,7 @@ __metadata:
     "@web3modal/ethers5": "npm:^4.1.9"
     axios: "npm:^1.8.4"
     babel-jest: "npm:^29.6.2"
+    babel-plugin-macros: "npm:^3.1.0"
     babel-plugin-styled-components: "npm:2.1.4"
     babel-plugin-transform-import-meta: "npm:^2.2.0"
     bcrypt: "npm:^5.1.1"
