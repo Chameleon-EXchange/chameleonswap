@@ -18,6 +18,5 @@
     "iframe-transport",
     "cowswap",
     "dex"
-  ],
-  "dependencies": {}
+  ]
 }

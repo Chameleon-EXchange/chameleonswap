@@ -31,8 +31,6 @@
       "last 1 safari version"
     ]
   },
-  "dependencies": {},
-  "devDependencies": {},
   "nx": {},
   "engines": {
     "node": "22.x"

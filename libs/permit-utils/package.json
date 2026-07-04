@@ -3,9 +3,9 @@
   "version": "0.6.0",
   "type": "module",
   "dependencies": {
-    "ethers": "^5.7.2",
     "@1inch/permit-signed-approvals-utils": "^1.4.10",
     "@cowprotocol/app-data": "^1.1.0",
+    "ethers": "^5.7.2",
     "tslib": "^2.6.1"
   },
   "module": "./index.js",

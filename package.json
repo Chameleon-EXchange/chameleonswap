@@ -5,6 +5,10 @@
   "main": "index.js",
   "author": "",
   "license": "ISC",
+  "workspaces": [
+    "apps/*",
+    "libs/*"
+  ],
   "config": {
     "enabledApps": "cowswap-frontend cowswap-frontend-e2e abis ui ui-utils widget-lib widget-react"
   },
@@ -42,8 +46,8 @@
     ]
   },
   "resolutions": {
-    "@safe-global/safe-apps-provider/**/@safe-global/safe-apps-sdk": "^9.1.0",
-    "@web3-react/gnosis-safe/**/@safe-global/safe-apps-sdk": "^9.1.0",
+    "@safe-global/safe-apps-provider/@safe-global/safe-apps-sdk": "^9.1.0",
+    "@web3-react/gnosis-safe/@safe-global/safe-apps-sdk": "^9.1.0",
     "@types/react": "18.2.22",
     "@types/react-dom": "npm:types-react-dom@19.0.0-rc.1"
   },
@@ -58,7 +62,6 @@
     "@cowprotocol/contracts": "^1.3.1",
     "@cowprotocol/cow-runner-game": "^0.2.9",
     "@cowprotocol/cow-sdk": "^7.1.5",
-    "@cowprotocol/ethflowcontract": "cowprotocol/ethflowcontract.git#main-artifacts",
     "@cowprotocol/sdk-cow-shed": "^0.2.3",
     "@davatar/react": "1.8.1",
     "@emotion/react": "^11.11.1",
@@ -167,7 +170,6 @@
     "html-react-parser": "^5.1.10",
     "immer": "^10.0.2",
     "inter-ui": "^3.19.3",
-    "ipfs-deploy": "^8.0.1",
     "ipfs-http-client": "^52.0.3",
     "jotai": "2.2.0",
     "jsbi": "^3.1.4",

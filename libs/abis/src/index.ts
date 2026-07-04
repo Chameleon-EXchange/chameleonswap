@@ -1,6 +1,6 @@
 // Custom
-import _ethFlowBarnJson from '@cowprotocol/ethflowcontract/networks.barn.json'
-import _ethFlowProdJson from '@cowprotocol/ethflowcontract/networks.prod.json'
+import _ethFlowBarnJson from './networks.barn.json'
+import _ethFlowProdJson from './networks.prod.json'
 import { Interface } from '@ethersproject/abi'
 
 import _AirdropAbi from './abis/Airdrop.json'
