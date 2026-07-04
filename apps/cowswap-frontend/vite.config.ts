@@ -83,7 +83,7 @@ export default defineConfig(async ({ mode }) => {
     cacheDir: '../../node_modules/.vite/cowswap-frontend',
 
     server: {
-      port: 3000,
+      port: process.env.PORT ? Number(process.env.PORT) : 3000,
       host: 'localhost',
       fs: {
         allow: [
@@ -105,7 +105,7 @@ export default defineConfig(async ({ mode }) => {
     },
 
     preview: {
-      port: 3000,
+      port: process.env.PORT ? Number(process.env.PORT) : 3000,
       host: 'localhost',
     },
 
