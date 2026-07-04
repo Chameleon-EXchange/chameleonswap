@@ -85,6 +85,7 @@ export default defineConfig(async ({ mode }) => {
     server: {
       port: process.env.PORT ? Number(process.env.PORT) : 3000,
       host: '0.0.0.0',
+      allowedHosts: true,
       fs: {
         allow: [
           // search up for workspace root
@@ -107,6 +108,7 @@ export default defineConfig(async ({ mode }) => {
     preview: {
       port: process.env.PORT ? Number(process.env.PORT) : 3000,
       host: '0.0.0.0',
+      allowedHosts: true,
     },
 
     resolve: {
