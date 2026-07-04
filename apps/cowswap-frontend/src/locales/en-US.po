@@ -171,8 +171,8 @@ msgid "{description}"
 msgstr "{description}"
 
 #: apps/cowswap-frontend/src/modules/tradeWidgetAddons/containers/TransactionSettings/index.tsx
-msgid "Chameleaon swap has dynamically selected this slippage amount to account for current gas prices and trade size. Changes may result in slower execution."
-msgstr "Chameleaon swap has dynamically selected this slippage amount to account for current gas prices and trade size. Changes may result in slower execution."
+msgid "Chameleon swap has dynamically selected this slippage amount to account for current gas prices and trade size. Changes may result in slower execution."
+msgstr "Chameleon swap has dynamically selected this slippage amount to account for current gas prices and trade size. Changes may result in slower execution."
 
 #: apps/cowswap-frontend/src/pages/Reward/index.tsx
 #: apps/cowswap-frontend/src/pages/Reward/index.tsx
@@ -196,8 +196,8 @@ msgid "This transaction will not succeed either due to price movement or fee on 
 msgstr "This transaction will not succeed either due to price movement or fee on transfer. Try increasing your slippage tolerance."
 
 #: apps/cowswap-frontend/src/common/pure/ApproveButton/index.tsx
-msgid "Allow Chameleaon swap to use your <0/>"
-msgstr "Allow Chameleaon swap to use your <0/>"
+msgid "Allow Chameleon swap to use your <0/>"
+msgstr "Allow Chameleon swap to use your <0/>"
 
 #: apps/cowswap-frontend/src/modules/ordersTable/pure/OrdersTableContainer/index.tsx
 msgid "Time to create a new one!"

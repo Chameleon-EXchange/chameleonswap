@@ -1,25 +1,25 @@
 [![Tests](https://github.com/cowprotocol/cowswap/workflows/CI/badge.svg)](https://github.com/cowprotocol/cowswap/actions/workflows/ci.yml?query=workflow%3ACI)
 
-Chameleaon swap is the first trading interface built on top of CoW Protocol.
+Chameleon swap is the first trading interface built on top of CoW Protocol.
 
 It allows you to buy and sell tokens using gasless orders that are settled
 peer-to-peer among its users or into any on-chain liquidity source while
 providing MEV protection.
 
-| **Platform**          | **Link**                                                                                                      |
-| --------------------- | ------------------------------------------------------------------------------------------------------------- |
-| 🐮 **Chameleaon swap** 🐮    | [swap.cow.fi](https://chameleon.exchange/)                                                                           |
-| Chameleaon swap (IPFS)       | Every release is deployed automatically to IPFS ([Releases](https://github.com/cowprotocol/cowswap/releases)) |
-| Chameleaon swap (ENS)        | [ens://cowswap.eth](ens://cowswap.eth) or ([cowswap.eth.limo](https://cowswap.eth.limo))                      |
-| CoW Protocol          | [cow.fi](https://cow.fi)                                                                                      |
-| Docs                  | [docs.cow.fi](https://docs.cow.fi)                                                                            |
-| Governance (Snapshot) | [snapshot.org/#/cow.eth](https://snapshot.org/#/cow.eth)                                                      |
-| Stats                 | [dune.com/cowprotocol/cowswap](https://dune.com/cowprotocol/cowswap)                                          |
-| X/Twitter             | [@CoWSwap](https://twitter.com/CoWSwap)                                                                       |
-| Discord               | [discord.com/invite/cowprotocol](https://discord.com/invite/cowprotocol)                                      |
-| Forum                 | [forum.cow.fi](https://forum.cow.fi)                                                                          |
+| **Platform**             | **Link**                                                                                                      |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| 🐮 **Chameleon swap** 🐮 | [swap.cow.fi](https://chameleon.exchange/)                                                                    |
+| Chameleon swap (IPFS)    | Every release is deployed automatically to IPFS ([Releases](https://github.com/cowprotocol/cowswap/releases)) |
+| Chameleon swap (ENS)     | [ens://cowswap.eth](ens://cowswap.eth) or ([cowswap.eth.limo](https://cowswap.eth.limo))                      |
+| CoW Protocol             | [cow.fi](https://cow.fi)                                                                                      |
+| Docs                     | [docs.cow.fi](https://docs.cow.fi)                                                                            |
+| Governance (Snapshot)    | [snapshot.org/#/cow.eth](https://snapshot.org/#/cow.eth)                                                      |
+| Stats                    | [dune.com/cowprotocol/cowswap](https://dune.com/cowprotocol/cowswap)                                          |
+| X/Twitter                | [@CoWSwap](https://twitter.com/CoWSwap)                                                                       |
+| Discord                  | [discord.com/invite/cowprotocol](https://discord.com/invite/cowprotocol)                                      |
+| Forum                    | [forum.cow.fi](https://forum.cow.fi)                                                                          |
 
-# 🐮 Run Chameleaon swap
+# 🐮 Run Chameleon swap
 
 First install Dependencies:
 
@@ -29,7 +29,7 @@ yarn
 
 ## Run
 
-Start Chameleaon swap on `http://localhost:3000`
+Start Chameleon swap on `http://localhost:3000`
 
 ```bash
 yarn start
@@ -137,7 +137,7 @@ yarn cypress
 
 ## Build/test UI Library
 
-Chameleaon swap has a library of reusable components.
+Chameleon swap has a library of reusable components.
 
 ```bash
 yarn ui:build
@@ -150,7 +150,7 @@ yarn ui:test
 yarn build
 ```
 
-Analyze Chameleaon swap bundle:
+Analyze Chameleon swap bundle:
 
 ```bash
 # Use one of the following templates: "sunburst" | "treemap" | "network" | "raw-data" | "list";
@@ -203,7 +203,7 @@ REACT_APP_ORDER_BOOK_URLS='{"1":"https://YOUR_HOST","100":"https://YOUR_HOST","5
 
 The BFF API is a helper API that provides some additional data to the frontend.
 It is a API that is used to enhance the frontend experience enabling some
-features. It is not consider a required API for Chameleaon swap core functionality, the
+features. It is not consider a required API for Chameleon swap core functionality, the
 app will still allow the user to place order and will have some fallback logics
 in case this API is not available.
 
@@ -221,7 +221,7 @@ REACT_APP_BFF_BASE_URL=https://bff.cow.fi
 
 The CMS API is a helper API that provides some additional content to the frontend.
 
-It is not considered a required API for Chameleaon swap core functionality, the
+It is not considered a required API for Chameleon swap core functionality, the
 app will still allow the user to place orders and will have some fallback logic
 in case this API is not available.
 
@@ -237,7 +237,7 @@ REACT_APP_CMS_BASE_URL=https://cms.cow.fi/api
 
 ## Price feeds
 
-Chameleaon swap tries to find the best price available on-chain using some price feeds.
+Chameleon swap tries to find the best price available on-chain using some price feeds.
 
 All price feeds are enabled by default, but they can be individually disabled by
 using an environment variable:
@@ -292,11 +292,13 @@ Since this repo includes multiple apps, we do not want to build all of them on e
 Some apps (see the list bellow) are not required to be built on each PR so we run them only a PR is labeled with a specific label.  
 This label is defined in the project settings on Vercel in `Settings`/`Git`/`Ignored Build Step` script.  
 For example, the label for the widget-configurator is `preview-widget-cfg`:
+
 ```
 node tools/scripts/ignore-build-step.js --app=preview-widget-cfg
 ```
 
 List of applications and their labels:
+
 - widget-configurator: `preview-widget-cfg`
 - cosmos: `preview-cosmos`
 - sdk-tools: `preview-sdk-tools`

@@ -79,8 +79,8 @@ export function RateImpactWarning({
         </div>
         <div>
           Your limit price is {Math.abs(rateImpact)}% lower than current market price. You could be selling your{' '}
-          <TokenSymbol token={inputCurrency} /> at a loss (although Chameleaon swap will always try to give you the best price
-          regardless).
+          <TokenSymbol token={inputCurrency} /> at a loss (although Chameleon swap will always try to give you the best
+          price regardless).
           <ReadMoreLink target="_blank" href="https://www.investopedia.com/terms/l/limitorder.asp">
             Read more about limit orders
           </ReadMoreLink>

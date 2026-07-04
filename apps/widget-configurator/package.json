@@ -1,7 +1,7 @@
 {
   "name": "@cowprotocol/widget-configurator",
   "version": "1.12.0",
-  "description": "Chameleaon swap widget configurator",
+  "description": "Chameleon swap widget configurator",
   "main": "src/main.tsx",
   "author": "",
   "license": "ISC",

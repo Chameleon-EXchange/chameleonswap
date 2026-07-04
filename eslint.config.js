@@ -137,7 +137,7 @@ module.exports = [
     },
   },
 
-  // Chameleaon swap's rules
+  // Chameleon swap's rules
   {
     files: ['apps/cowswap-frontend/**/*.{ts,tsx,js,jsx}'],
     rules: {

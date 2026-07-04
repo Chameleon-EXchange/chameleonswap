@@ -8,7 +8,7 @@ import http from 'utils/http'
 // import VITE_SYSTEM_BEARER_TOKEN
 const SYSTEM_BEARER_TOKEN = import.meta.env.VITE_SYSTEM_BEARER_TOKEN
 
-const DEFAULT_FULL_APP_DATA = '{"version":"1.3.0","appCode":"Chameleaon swap","metadata":{}}'
+const DEFAULT_FULL_APP_DATA = '{"version":"1.3.0","appCode":"Chameleon swap","metadata":{}}'
 
 let appData: any = (async () => {
   const objAppData = JSON.parse(DEFAULT_FULL_APP_DATA)

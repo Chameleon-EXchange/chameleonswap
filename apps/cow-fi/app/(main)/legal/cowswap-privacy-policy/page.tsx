@@ -20,7 +20,7 @@ const Wrapper = styled.div`
 `
 
 export default function Page() {
-  const title = 'Chameleaon swap Privacy policy'
+  const title = 'Chameleon swap Privacy policy'
 
   return (
     <Wrapper>

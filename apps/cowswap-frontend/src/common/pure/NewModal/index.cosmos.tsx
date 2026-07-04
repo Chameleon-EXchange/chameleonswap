@@ -31,7 +31,7 @@ const ModalFixtures = {
         <NewModalContentTop paddingTop={90}>
           <IconSpinner currency={MOCK_TOKEN} size={84} />
           <h3>
-            Approve spending AAVE <br /> on Chameleaon swap
+            Approve spending AAVE <br /> on Chameleon swap
           </h3>
         </NewModalContentTop>
 

@@ -47,8 +47,8 @@ export const getNonNativeSlippageTooltip = (params?: { isDynamic?: boolean; isSe
   <Trans>
     {params?.isDynamic ? (
       <>
-        Chameleaon swap dynamically adjusts your slippage tolerance to ensure your trade executes quickly while still getting
-        the best price.{' '}
+        Chameleon swap dynamically adjusts your slippage tolerance to ensure your trade executes quickly while still
+        getting the best price.{' '}
         {params?.isSettingsModal ? (
           <>
             To override this, enter your desired slippage amount.
@@ -65,7 +65,7 @@ export const getNonNativeSlippageTooltip = (params?: { isDynamic?: boolean; isSe
         )}
       </>
     ) : (
-      <>Chameleaon swap trades are protected from MEV, so your slippage can't be exploited!</>
+      <>Chameleon swap trades are protected from MEV, so your slippage can't be exploited!</>
     )}
   </Trans>
 )

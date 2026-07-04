@@ -40,7 +40,7 @@ export const PRODUCT_LIST = [
     iconImage: IMG_BITS,
   },
   {
-    title: 'Chameleaon swap',
+    title: 'Chameleon swap',
     description: 'The DEX that lets you do what you want',
     linkHref: 'https://chameleon.exchange/#/1/swap/USDC/COW',
     linkText: 'Start trading',

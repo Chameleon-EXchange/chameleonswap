@@ -71,13 +71,14 @@ export default function Page() {
     <PageWrapper>
       <HeroContainer variant="secondary">
         <HeroContent variant="secondary">
-          <HeroSubtitle color={'#012F7A'}>Chameleaon swap</HeroSubtitle>
+          <HeroSubtitle color={'#012F7A'}>Chameleon swap</HeroSubtitle>
           <HeroTitle>
             Don't worry,
             <br /> trade happy
           </HeroTitle>
           <HeroDescription>
-            Chameleaon swap protects traders from the dangers of DeFi, so you can do what you want without needing to worry
+            Chameleon swap protects traders from the dangers of DeFi, so you can do what you want without needing to
+            worry
           </HeroDescription>
           <Link
             bgColor={'#012F7A'}
@@ -134,10 +135,10 @@ export default function Page() {
               <LazySVG src={IMG_ICON_UNICORN} className="image-reverse" />
             </SectionTitleIcon>
 
-            <SectionTitleText>Chameleaon swap is different</SectionTitleText>
+            <SectionTitleText>Chameleon swap is different</SectionTitleText>
             <SectionTitleDescription maxWidth={900} color={Color.neutral50}>
-              Unlike other exchanges, Chameleaon swap is built around frequent batch auctions, which are designed to find the
-              best liquidity at any point in time and protect you from MEV
+              Unlike other exchanges, Chameleon swap is built around frequent batch auctions, which are designed to find
+              the best liquidity at any point in time and protect you from MEV
             </SectionTitleDescription>
           </SectionTitleWrapper>
 
@@ -170,7 +171,7 @@ export default function Page() {
             <SectionTitleIcon size={126}>
               <LazySVG src={ICON_BULB} />
             </SectionTitleIcon>
-            <SectionTitleText>Chameleaon swap is the first user interface built on top of CoW Protocol</SectionTitleText>
+            <SectionTitleText>Chameleon swap is the first user interface built on top of CoW Protocol</SectionTitleText>
             <SectionTitleDescription color={Color.neutral50}>
               A powerful, open-source, and permissionless DEX aggregation protocol that anyone can integrate for a
               variety of DeFi purposes
@@ -196,7 +197,7 @@ export default function Page() {
             </SectionTitleIcon>
             <SectionTitleText>S-moooo-th trading</SectionTitleText>
             <SectionTitleDescription color={Color.neutral60}>
-              Chameleaon swap features the smoothest trading experiences in DeFi, allowing you to worry less and do more.
+              Chameleon swap features the smoothest trading experiences in DeFi, allowing you to worry less and do more.
             </SectionTitleDescription>
           </SectionTitleWrapper>
 

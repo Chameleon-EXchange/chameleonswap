@@ -36,7 +36,7 @@ export function PermitModal(props: PermitModalProps) {
       },
       { stepState: step === 'submit' ? 'loading' : 'active', stepNumber: 2, label: 'Submit' },
     ],
-    [step]
+    [step],
   )
   const icon = useMemo(
     () =>
@@ -45,7 +45,7 @@ export function PermitModal(props: PermitModalProps) {
       ) : (
         <IconSpinner size={84}>{inputIcon}</IconSpinner>
       ),
-    [inputAmount?.currency, inputIcon, step]
+    [inputAmount?.currency, inputIcon, step],
   )
 
   const title = useMemo(
@@ -53,12 +53,12 @@ export function PermitModal(props: PermitModalProps) {
       step === 'approve' ? (
         <>
           Approve spending <TokenSymbol token={inputAmount?.currency} /> <br />
-          on Chameleaon swap
+          on Chameleon swap
         </>
       ) : (
         `Confirm ${orderType}`
       ),
-    [inputAmount?.currency, orderType, step]
+    [inputAmount?.currency, orderType, step],
   )
 
   const body = useMemo(
@@ -69,7 +69,7 @@ export function PermitModal(props: PermitModalProps) {
           <TokenAmount amount={outputAmount} tokenSymbol={outputAmount?.currency} />
         </p>
       ),
-    [inputAmount, outputAmount, step]
+    [inputAmount, outputAmount, step],
   )
 
   return (

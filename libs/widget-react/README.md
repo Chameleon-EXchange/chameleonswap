@@ -1,6 +1,6 @@
-# Chameleaon swap React widget
+# Chameleon swap React widget
 
-React component that creates a Chameleaon swap widget. It is based on [https://npmjs.com/package/@cowprotocol/widget-lib](https://npmjs.com/package/@cowprotocol/widget-lib)
+React component that creates a Chameleon swap widget. It is based on [https://npmjs.com/package/@cowprotocol/widget-lib](https://npmjs.com/package/@cowprotocol/widget-lib)
 
 ## Use it
 

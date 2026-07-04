@@ -183,7 +183,7 @@ export function SurplusModal(props: SurplusModalProps) {
           href={`https://twitter.com/intent/tweet?text=${getTwitterText(
             surplusAmount.toSignificant(),
             surplusToken.symbol || 'Unknown token',
-            order.kind
+            order.kind,
           )}`}
         >
           <SVG src={twitterImage} description="Twitter" />
@@ -191,7 +191,7 @@ export function SurplusModal(props: SurplusModalProps) {
         </StyledExternalLink>
       )}
       <p>
-        Chameleaon swap is the only token exchange that gets you extra tokens.{' '}
+        Chameleon swap is the only token exchange that gets you extra tokens.{' '}
         <ExternalLink href={'https://blog.cow.fi/announcing-cow-swap-surplus-notifications-f679c77702ea'}>
           Learn how ↗
         </ExternalLink>
@@ -204,6 +204,6 @@ function getTwitterText(surplusAmount: string, surplusToken: string, orderKind: 
   const actionWord = isSellOrder(orderKind) ? SELL_SURPLUS_WORD : BUY_SURPLUS_WORD
   const surplus = `${surplusAmount} ${surplusToken}`
   return encodeURIComponent(
-    `Hey, I just ${actionWord} an extra ${surplus} on @CoWSwap! 🐮💸\n\nStart swapping on swap.cow.fi`
+    `Hey, I just ${actionWord} an extra ${surplus} on @CoWSwap! 🐮💸\n\nStart swapping on swap.cow.fi`,
   )
 }

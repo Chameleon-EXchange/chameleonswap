@@ -281,8 +281,8 @@ export function TransactionSettings({ deadlineState }: TransactionSettingsProps)
                 <HelpTooltip
                   text={
                     <Trans>
-                      Chameleaon swap has dynamically selected this slippage amount to account for current gas prices and trade
-                      size. Changes may result in slower execution.
+                      Chameleon swap has dynamically selected this slippage amount to account for current gas prices and
+                      trade size. Changes may result in slower execution.
                     </Trans>
                   }
                 />

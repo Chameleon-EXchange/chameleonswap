@@ -16,7 +16,7 @@
 
   "portsAttributes": {
     "3000": {
-      "label": "Chameleaon swap",
+      "label": "Chameleon swap",
       "onAutoForward": "notify"
     },
     "5000": {

@@ -42,7 +42,7 @@ export function ApproveButton(props: ApproveButtonProps) {
           {/* we need to shorten this string on mobile */}
           <span>
             <Trans>
-              Allow Chameleaon swap to use your <TokenSymbol token={currency} />
+              Allow Chameleon swap to use your <TokenSymbol token={currency} />
             </Trans>
           </span>
           <HoverTooltip

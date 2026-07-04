@@ -6,7 +6,6 @@ import { TokenInfo } from '@cowprotocol/types'
 import { virtualListsStateAtom } from '../../state/tokenLists/tokenListsStateAtom'
 import { ListState } from '../../types'
 
-
 const VIRTUAL_LIST_SOURCE = 'widgetCustomTokens'
 const VIRTUAL_LIST_NAME = 'Widget custom tokens'
 
@@ -17,7 +16,7 @@ export interface WidgetVirtualListUpdaterProps {
 
 /**
  * The updater converts custom tokens provided by widget integrator to a virtual list
- * This list will be used by Chameleaon swap as a regular list, but it will not be displayed in the token lists settings
+ * This list will be used by Chameleon swap as a regular list, but it will not be displayed in the token lists settings
  */
 export function WidgetVirtualListUpdater({ customTokens, appCode }: WidgetVirtualListUpdaterProps) {
   const setVirtualListsState = useSetAtom(virtualListsStateAtom)

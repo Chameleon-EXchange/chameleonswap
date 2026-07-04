@@ -2,7 +2,7 @@
   "name": "@cowprotocol/types",
   "version": "1.5.1",
   "type": "commonjs",
-  "description": "Chameleaon swap events",
+  "description": "Chameleon swap events",
   "main": "index.js",
   "exports": {
     "import": "./index.js",

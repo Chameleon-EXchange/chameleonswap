@@ -532,7 +532,7 @@ function RenderProgressTopSection({
                     height={19}
                     logoIconOnly
                   />
-                  <b>Chameleaon swap</b>
+                  <b>Chameleon swap</b>
                 </styledEl.FinishedLogo>
               </styledEl.FinishedImageContent>
             </styledEl.ProgressImageWrapper>
@@ -598,7 +598,7 @@ function InitialStep(props: OrderProgressBarV2Props) {
         currentStep={0}
         extraContent={
           <styledEl.Description>
-            On Chameleaon swap, orders placed at the same time are{' '}
+            On Chameleon swap, orders placed at the same time are{' '}
             <styledEl.Link
               href="https://cow.fi/learn/understanding-batch-auctions"
               target="_blank"
@@ -633,24 +633,24 @@ function ExecutingStep(props: OrderProgressBarV2Props) {
 }
 
 const COW_SWAP_BENEFITS = [
-  'Chameleaon swap solvers search Uniswap, 1inch, Matcha, Sushi and more to find you the best price.',
-  'Chameleaon swap sets the standard for protecting against MEV attacks such as frontrunning and sandwiching.',
-  'Chameleaon swap was the first DEX to offer intent-based trading, gasless swaps, coincidences of wants, and many other DeFi innovations.',
-  'Chameleaon swap is the only exchange that matches Coincidences of Wants (CoWs): peer-to-peer swaps that save on settlement costs.',
-  'You can avoid price impact on large trades by using TWAP orders on Chameleaon swap.',
-  "Limit orders on Chameleaon swap capture surplus - so if the price moves in your favor, you're likely to get more than you asked for.",
-  "On Chameleaon swap, you can set limit orders for balances you don't have yet.",
-  "Limit orders on Chameleaon swap are free to place and cancel. That's unique in DeFi!",
-  'You can protect all your Ethereum transactions from MEV - not just trades on Chameleaon swap - by installing MEV Blocker.',
+  'Chameleon swap solvers search Uniswap, 1inch, Matcha, Sushi and more to find you the best price.',
+  'Chameleon swap sets the standard for protecting against MEV attacks such as frontrunning and sandwiching.',
+  'Chameleon swap was the first DEX to offer intent-based trading, gasless swaps, coincidences of wants, and many other DeFi innovations.',
+  'Chameleon swap is the only exchange that matches Coincidences of Wants (CoWs): peer-to-peer swaps that save on settlement costs.',
+  'You can avoid price impact on large trades by using TWAP orders on Chameleon swap.',
+  "Limit orders on Chameleon swap capture surplus - so if the price moves in your favor, you're likely to get more than you asked for.",
+  "On Chameleon swap, you can set limit orders for balances you don't have yet.",
+  "Limit orders on Chameleon swap are free to place and cancel. That's unique in DeFi!",
+  'You can protect all your Ethereum transactions from MEV - not just trades on Chameleon swap - by installing MEV Blocker.',
   "Liquidity pools on CoW AMM grow faster than on other AMMs because they don't lose money to arbitrage bots.",
-  'Chameleaon swap has over 20 active solvers - more than any other exchange.',
-  "Chameleaon swap's robust solver competition protects your slippage from being exploited by MEV bots.",
+  'Chameleon swap has over 20 active solvers - more than any other exchange.',
+  "Chameleon swap's robust solver competition protects your slippage from being exploited by MEV bots.",
   'Advanced users can create complex, conditional orders directly through CoW Protocol. Read the docs for more info.',
-  "Unlike most other exchanges, Chameleaon swap doesn't charge you any fees if your trade fails.",
+  "Unlike most other exchanges, Chameleon swap doesn't charge you any fees if your trade fails.",
 ]
 
 const TRADE_ON_NEW_CHAINS_BENEFIT =
-  'Chameleaon swap is now live on Arbitrum and Base. Switch the network toggle in the nav bar for quick, cheap transactions.'
+  'Chameleon swap is now live on Arbitrum and Base. Switch the network toggle in the nav bar for quick, cheap transactions.'
 
 const CHAIN_SPECIFIC_BENEFITS: Record<SupportedChainId, string[]> = {
   [SupportedChainId.MAINNET]: [TRADE_ON_NEW_CHAINS_BENEFIT, ...COW_SWAP_BENEFITS],
@@ -1016,13 +1016,13 @@ function SolvingStep(props: OrderProgressBarV2Props) {
                   target="_blank"
                   onClick={() => trackLearnMoreClick('Submission Failed')}
                 >
-                  Chameleaon swap solvers
+                  Chameleon swap solvers
                 </styledEl.Link>{' '}
                 are searching again for the best price for you.
               </>
             ) : isSolved ? (
               <>
-                Something went wrong and your order couldn't be executed with this batch. But don't worry! Chameleaon
+                Something went wrong and your order couldn't be executed with this batch. But don't worry! Chameleon
                 swap is already holding another competition for your order.
               </>
             ) : (
@@ -1032,7 +1032,7 @@ function SolvingStep(props: OrderProgressBarV2Props) {
                   target="_blank"
                   onClick={() => trackLearnMoreClick('Solving')}
                 >
-                  Chameleaon swap solvers
+                  Chameleon swap solvers
                 </styledEl.Link>{' '}
                 are scanning liquidity sources across DeFi. The one that finds you the best price wins!
               </>

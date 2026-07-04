@@ -82,12 +82,12 @@ const tooltips: { [key: string]: string | JSX.Element } = {
   CREATED: 'Your order was created on this date & time. It will remain open until it expires or is filled.',
   RECEIVER: 'The account address which will/did receive the bought amount.',
   EXPIRY:
-    "If your order has not been filled by this date & time, it will expire. Don't worry - expirations and order placement are free on Chameleaon swap!",
+    "If your order has not been filled by this date & time, it will expire. Don't worry - expirations and order placement are free on Chameleon swap!",
   TOTAL_FEE: 'This fee helps pay for maintenance & improvements to the trade experience',
   ORDER_TYPE: (
     <span>
-      Orders on Chameleaon swap can either be market orders (which fill at the market price within the slippage tolerance you
-      set) or limit orders (which fill at a price you specify).
+      Orders on Chameleon swap can either be market orders (which fill at the market price within the slippage tolerance
+      you set) or limit orders (which fill at a price you specify).
       <br />
       <br />
       Market orders are always <i>Fill or kill</i>, while limit orders are by default <i>Partially fillable</i>, but can

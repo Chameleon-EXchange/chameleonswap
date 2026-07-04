@@ -3,8 +3,8 @@ import { getPageMetadata } from '@/util/getPageMetadata'
 
 export const metadata: Metadata = {
   ...getPageMetadata({
-    absoluteTitle: 'DAOs - Savvy DAOs Choose Chameleaon swap',
-    description: 'The smartest DAOs trust Chameleaon swap with their most-important trades',
+    absoluteTitle: 'DAOs - Savvy DAOs Choose Chameleon swap',
+    description: 'The smartest DAOs trust Chameleon swap with their most-important trades',
   }),
 }
 

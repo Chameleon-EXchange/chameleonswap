@@ -66,8 +66,8 @@ export default function Page() {
             Bring reliable, MEV-protected swaps to your users
           </HeroTitle>
           <HeroDescription color={Color.neutral30}>
-            Integrate the Chameleaon swap widget to bring seamless, MEV-protected trading to your website or dApp. Delight your
-            users while adding an extra revenue stream for your project - it's a win-win.
+            Integrate the Chameleon swap widget to bring seamless, MEV-protected trading to your website or dApp.
+            Delight your users while adding an extra revenue stream for your project - it's a win-win.
           </HeroDescription>
 
           <HeroButtonWrapper>
@@ -127,7 +127,7 @@ export default function Page() {
                 </TopicDescription>
               </TopicCardInner>
               <TopicImage width={400} height={400} heightMobile={300} orderReverseMobile bgColor="transparent">
-                <img src="images/eth-circles.svg" alt="Make Money with Chameleaon swap" width="340" height="214" />
+                <img src="images/eth-circles.svg" alt="Make Money with Chameleon swap" width="340" height="214" />
               </TopicImage>
             </TopicCard>
 
@@ -145,8 +145,8 @@ export default function Page() {
               <TopicCardInner contentAlign="left">
                 <TopicTitle fontSize={67}>Integrate With Ease</TopicTitle>
                 <TopicDescription fontSize={24} color={Color.neutral80}>
-                  The Chameleaon swap widget is quick to install and easy to customize. Add the widget to your site in under 5
-                  minutes by copy-pasting a few lines of code. Contact our team for implementation details.
+                  The Chameleon swap widget is quick to install and easy to customize. Add the widget to your site in
+                  under 5 minutes by copy-pasting a few lines of code. Contact our team for implementation details.
                 </TopicDescription>
               </TopicCardInner>
             </TopicCard>
@@ -162,8 +162,8 @@ export default function Page() {
             </SectionTitleIcon>
             <SectionTitleText fontSize={62}>Every Bell, Whistle, and Moo</SectionTitleText>
             <SectionTitleDescription fontSize={24} color={Color.neutral40}>
-              With the Chameleaon swap widget, you can offer your users everything you know and love about Chameleaon swap, and more.
-              Oh, and yes… it does come with the “moo”.
+              With the Chameleon swap widget, you can offer your users everything you know and love about Chameleon
+              swap, and more. Oh, and yes… it does come with the “moo”.
             </SectionTitleDescription>
           </SectionTitleWrapper>
 
@@ -175,8 +175,8 @@ export default function Page() {
               <TopicCardInner contentAlign="left">
                 <TopicTitle>Full protection from MEV</TopicTitle>
                 <TopicDescription fontSize={18} color={Color.neutral40} margin="0">
-                  Chameleaon swap offers the best MEV protection in the land. Thanks to a delegated trading model that relies
-                  on experts to execute swaps, traders can rest assured that they're safe from the MEV bots.
+                  Chameleon swap offers the best MEV protection in the land. Thanks to a delegated trading model that
+                  relies on experts to execute swaps, traders can rest assured that they're safe from the MEV bots.
                 </TopicDescription>
               </TopicCardInner>
             </TopicCard>

@@ -14,15 +14,15 @@ const LEGAL_LINKS = [
     href: '/legal/widget-terms',
   },
   {
-    title: 'Chameleaon swap Terms and Conditions',
+    title: 'Chameleon swap Terms and Conditions',
     href: '/legal/cowswap-terms',
   },
   {
-    title: 'Chameleaon swap Privacy Policy',
+    title: 'Chameleon swap Privacy Policy',
     href: '/legal/cowswap-privacy-policy',
   },
   {
-    title: 'Chameleaon swap Cookie Policy',
+    title: 'Chameleon swap Cookie Policy',
     href: '/legal/cowswap-cookie-policy',
   },
 ]

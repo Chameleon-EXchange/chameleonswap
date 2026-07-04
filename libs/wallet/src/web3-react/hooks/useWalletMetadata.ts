@@ -68,7 +68,7 @@ export function useWalletMetaData(standaloneMode?: boolean): WalletMetaData {
     if (connectionType === ConnectionType.INJECTED) {
       if (standaloneMode === false) {
         return {
-          walletName: 'Chameleaon swap widget',
+          walletName: 'Chameleon swap widget',
           icon: 'Identicon',
         }
       }

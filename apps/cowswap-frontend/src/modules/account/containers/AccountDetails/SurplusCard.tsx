@@ -23,16 +23,13 @@ const DEFAULT_START_DATE = 'March 2023'
 const ARBITRUM_ONE_START_DATE = 'May 2024'
 const BASE_START_DATE = 'December 2024'
 
-
-
 const START_DATE: Record<SupportedChainId, string> = {
   [SupportedChainId.MAINNET]: DEFAULT_START_DATE,
   [SupportedChainId.GNOSIS_CHAIN]: DEFAULT_START_DATE,
   [SupportedChainId.ARBITRUM_ONE]: ARBITRUM_ONE_START_DATE,
   [SupportedChainId.BASE]: BASE_START_DATE,
-  [SupportedChainId.SEPOLIA]: DEFAULT_START_DATE
+  [SupportedChainId.SEPOLIA]: DEFAULT_START_DATE,
 }
-
 
 export function SurplusCard() {
   const { surplusAmount, isLoading } = useTotalSurplus()
@@ -170,7 +167,7 @@ export function SurplusCard() {
             <i>
               Your total surplus{' '}
               <HelpTooltip
-                text={`The total surplus Chameleaon swap has generated for you in ${nativeSymbol} across all your trades since ${startDate}`}
+                text={`The total surplus Chameleon swap has generated for you in ${nativeSymbol} across all your trades since ${startDate}`}
               />
             </i>
           </span>
@@ -189,7 +186,7 @@ export function SurplusCard() {
         </div>
         <div>
           <ExternalLink href={'https://blog.cow.fi/announcing-cow-swap-surplus-notifications-f679c77702ea'}>
-            Learn about surplus on Chameleaon swap ↗
+            Learn about surplus on Chameleon swap ↗
           </ExternalLink>
         </div>
       </InfoCard>

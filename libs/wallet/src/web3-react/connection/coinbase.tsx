@@ -29,16 +29,16 @@ const [web3CoinbaseWallet, web3CoinbaseWalletHooks] = initializeConnector<AsyncC
               actions,
               options: {
                 url: RPC_URLS[SupportedChainId.MAINNET],
-                appName: 'Chameleaon swap',
+                appName: 'Chameleon swap',
                 appLogoUrl: CowImage,
                 reloadOnDisconnect: false,
               },
               onError,
-            })
+            }),
         ),
       actions,
-      onError
-    )
+      onError,
+    ),
 )
 
 export const coinbaseWalletConnection: Web3ReactConnection = {

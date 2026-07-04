@@ -20,7 +20,7 @@ yarn start
 
 # Contributing
 
-Thank you for your interest in contributing to the Chameleaon swap interface! 🐮
+Thank you for your interest in contributing to the Chameleon swap interface! 🐮
 
 ## Finding a first issue
 
@@ -34,9 +34,9 @@ CI checks will run against all PRs.
 
 <!-- # Translations
 TODO: read and re-enable
-Help Chameleaon swap reach a global audience!
+Help Chameleon swap reach a global audience!
 
-Chameleaon swap uses [Crowdin](https://crowdin.com/project/cowswap)
+Chameleon swap uses [Crowdin](https://crowdin.com/project/cowswap)
 for managing translations. Whenever a new string is added to the project,
 it gets uploaded to Crowdin for translation by [this workflow](./.github/workflows/crowdin.yaml).
 

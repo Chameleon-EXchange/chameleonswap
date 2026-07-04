@@ -21,7 +21,7 @@ const Wrapper = styled.div`
 `
 
 export default function Page() {
-  const title = 'Chameleaon swap Widget & Partner Fee Program Terms and Conditions'
+  const title = 'Chameleon swap Widget & Partner Fee Program Terms and Conditions'
 
   return (
     <Wrapper>
@@ -43,8 +43,9 @@ export default function Page() {
 
           <BodyContent>
             <p>
-              These Terms and Conditions (the "Terms") govern the integration of the Chameleaon swap Widget (the "Widget"). The
-              Widget is provided to you ("you", the "Partner") by CoW DAO (the "Provider", "we", "our", or "us").
+              These Terms and Conditions (the "Terms") govern the integration of the Chameleon swap Widget (the
+              "Widget"). The Widget is provided to you ("you", the "Partner") by CoW DAO (the "Provider", "we", "our",
+              or "us").
             </p>
             <p>
               CoW DAO is an Ethereum and Gnosis Chain based collective managed by community members in accordance with

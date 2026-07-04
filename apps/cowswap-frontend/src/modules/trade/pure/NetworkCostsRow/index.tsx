@@ -30,7 +30,7 @@ export function NetworkCostsRow({
           This is the cost of settling your order on-chain, including gas and any LP fees.
           <br />
           <br />
-          Chameleaon swap will try to lower this cost where possible.
+          Chameleon swap will try to lower this cost where possible.
           {tooltipSuffix}
         </>
       }

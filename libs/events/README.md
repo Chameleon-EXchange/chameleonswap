@@ -1,3 +1,3 @@
 # Events
 
-Typescript events used in Chameleaon swap.
+Typescript events used in Chameleon swap.
