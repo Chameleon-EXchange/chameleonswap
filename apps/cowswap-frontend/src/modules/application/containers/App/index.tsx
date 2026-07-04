@@ -85,6 +85,10 @@ export function App() {
         href: Routes.HOME,
       },
       {
+        label: 'Defi',
+        href: 'https://defi.chameleon.exchange'
+      },
+      {
         label: 'Trade',
         children: menuItems.map((item) => {
           const href = parameterizeTradeRoute(tradeContext, item.route, true)
