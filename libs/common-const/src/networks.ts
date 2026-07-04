@@ -60,6 +60,9 @@ function getRpcUrl(chainId: SupportedChainId): string {
   }
 
   const defaultRpc = DEFAULT_RPC_URL[chainId]
+  if (!defaultRpc) {
+    return ''
+  }
   if (defaultRpc.usesInfura && !INFURA_KEY) {
     throw new Error(`Either ${envKey} or REACT_APP_INFURA_KEY environment variable are required`)
   }
