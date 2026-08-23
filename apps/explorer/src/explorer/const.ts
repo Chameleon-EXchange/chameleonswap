@@ -28,7 +28,7 @@ export enum Routes {
 const GITHUB_REPOSITORY = 'cowprotocol/explorer'
 export const CODE_LINK = 'https://github.com/' + GITHUB_REPOSITORY
 export const RAW_CODE_LINK = 'https://raw.githubusercontent.com/' + GITHUB_REPOSITORY
-export const DOCS_LINK = 'https://docs.cow.fi'
+export const DOCS_LINK = 'https://docs.chameleon.exchange'
 export const PROTOCOL_LINK = 'https://cow.fi/cow-protocol'
 export const CONTRACTS_CODE_LINK = 'https://github.com/cowprotocol/contracts'
 export const DISCORD_LINK = 'https://discord.gg/cowprotocol'

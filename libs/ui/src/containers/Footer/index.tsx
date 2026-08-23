@@ -157,7 +157,7 @@ const GLOBAL_FOOTER_NAV_ITEMS: MenuItem[] = [
   {
     label: 'Help',
     children: [
-      { label: 'Docs', href: '#', external: true, utmContent: 'footer-help-docs' },
+      { label: 'Docs', href: 'https://docs.chameleon.exchange', external: true, utmContent: 'footer-help-docs' },
       { label: 'Knowledge Base', href: '#', external: true, utmContent: 'footer-help-knowledge-base' },
       { label: 'Report Scams', href: '#', external: true, utmContent: 'footer-help-report-scams' },
     ],

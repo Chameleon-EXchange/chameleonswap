@@ -19,7 +19,7 @@ export const CONFIG = {
   url: {
     root: 'https://cow.fi',
     swap: 'https://chameleon.exchange/#/1/swap/DAI/COW?sellAmount=500',
-    docs: 'https://docs.cow.fi',
+    docs: 'https://docs.chameleon.exchange',
     api: API_BASE_URL + '/mainnet',
     apiDocs: API_BASE_URL + '/docs',
     daos: '/daos',

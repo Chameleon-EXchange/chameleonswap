@@ -71,7 +71,7 @@ export const NAV_ITEMS: MenuItem[] = [
         label: 'Knowledge Base',
       },
       {
-        href: 'https://docs.cow.fi/',
+        href: 'https://docs.chameleon.exchange/',
         label: 'Docs',
         external: true,
         utmContent: 'menubar-nav-item-docs',
