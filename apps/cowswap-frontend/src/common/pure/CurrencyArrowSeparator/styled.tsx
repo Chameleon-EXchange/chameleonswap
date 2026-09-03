@@ -74,8 +74,37 @@ export const ArrowDownIcon = styled(ArrowDown)<{ disabled: boolean }>`
   color: inherit;
 `
 
-export const CowImg = styled.img`
+export const ChameleonLoader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  border-radius: 10px;
-  background-color: ${({ theme }) => theme.paperCustom};
+  height: 100%;
+  padding: 2px;
+  border-radius: 8px;
+  background-color: ${({ theme }) => theme.paperCustom || 'transparent'};
+
+  svg,
+  img {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+    animation: chameleonPulse 1.4s ease-in-out infinite alternate;
+  }
+
+  @keyframes chameleonPulse {
+    0% {
+      transform: scale(0.88) rotate(-6deg);
+      filter: drop-shadow(0 0 2px rgba(193, 101, 255, 0.4));
+    }
+    50% {
+      transform: scale(1.06) rotate(0deg);
+      filter: drop-shadow(0 0 5px rgba(118, 0, 147, 0.7));
+    }
+    100% {
+      transform: scale(0.94) rotate(6deg);
+      filter: drop-shadow(0 0 2px rgba(193, 101, 255, 0.4));
+    }
+  }
 `
+

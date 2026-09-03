@@ -10,7 +10,7 @@ export const loadingAnimationMixin = css`
   overflow: visible;
   padding: 0;
   border: transparent;
-  transform: translateX(-100%) rotateY(-180deg);
+  transform: translateY(-2px);
 
   &::before,
   &::after {

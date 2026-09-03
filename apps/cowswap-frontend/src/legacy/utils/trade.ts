@@ -19,7 +19,7 @@ import {
 import { Signer } from '@ethersproject/abstract-signer'
 import { Currency, CurrencyAmount, Token } from '@uniswap/sdk-core'
 
-import { orderBookApi } from 'cowSdk'
+import { globalAdapter, orderBookApi } from 'cowSdk'
 
 import { ChangeOrderStatusParams, Order, OrderStatus } from 'legacy/state/orders/actions'
 import { AddUnserialisedPendingOrderParams } from 'legacy/state/orders/hooks'
@@ -224,6 +224,14 @@ export async function signAndPostOrder(params: PostOrderParams): Promise<AddUnse
   let signature = ''
 
   if (allowsOffchainSigning) {
+    try {
+      if ((signer as any).provider) {
+        globalAdapter.setProvider((signer as any).provider)
+      }
+      globalAdapter.setSigner(signer as any)
+    } catch (e) {
+      console.debug('Failed to configure globalAdapter signer:', e)
+    }
     const signedOrderInfo = await OrderSigningUtils.signOrder(unsignedOrder, chainId, signer)
     signingScheme =
       signedOrderInfo.signingScheme === EcdsaSigningScheme.ETHSIGN ? SigningScheme.ETHSIGN : SigningScheme.EIP712
@@ -276,6 +284,15 @@ type OrderCancellationParams = {
 
 export async function sendOrderCancellation(params: OrderCancellationParams): Promise<void> {
   const { orderId, chainId, signer, cancelPendingOrder } = params
+
+  try {
+    if ((signer as any).provider) {
+      globalAdapter.setProvider((signer as any).provider)
+    }
+    globalAdapter.setSigner(signer as any)
+  } catch (e) {
+    console.debug('Failed to configure globalAdapter signer:', e)
+  }
 
   const { signature, signingScheme } = await OrderSigningUtils.signOrderCancellation(orderId, chainId, signer)
 
