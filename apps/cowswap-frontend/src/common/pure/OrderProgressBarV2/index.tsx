@@ -7,10 +7,10 @@ import PROGRESSBAR_COW_SURPLUS_3 from '@cowprotocol/assets/cow-swap/progressbar-
 import PROGRESSBAR_COW_SURPLUS_4 from '@cowprotocol/assets/cow-swap/progressbar-finished-image-4.svg'
 import PROGRESS_BAR_GOOD_NEWS from '@cowprotocol/assets/cow-swap/progressbar-good-news.svg'
 import STEP_IMAGE_CANCELLED from '@cowprotocol/assets/cow-swap/progressbar-step-cancelled.svg'
-import STEP_IMAGE_EXPIRED from '@cowprotocol/assets/cow-swap/progressbar-step-expired.svg'
 import STEP_IMAGE_SOLVING from '@cowprotocol/assets/cow-swap/progressbar-step-solving.svg'
 import STEP_IMAGE_UNFILLABLE from '@cowprotocol/assets/cow-swap/progressbar-step-unfillable.svg'
 import ICON_SOCIAL_X from '@cowprotocol/assets/images/icon-social-x.svg'
+import LOGO_ICON_CHAMELEON from '@cowprotocol/assets/images/logo_icon_chameleonswap.svg'
 import LOTTIE_GREEN_CHECKMARK_DARK from '@cowprotocol/assets/lottie/green-checkmark-dark.json'
 import LOTTIE_GREEN_CHECKMARK from '@cowprotocol/assets/lottie/green-checkmark.json'
 import STEP_LOTTIE_EXECUTING from '@cowprotocol/assets/lottie/progressbar-step-executing.json'
@@ -397,10 +397,12 @@ function RenderProgressTopSection({
   const hideIntent = stepName === 'finished' || stepName === 'cancellationFailed'
 
   const { randomImage, randomBenefit } = useMemo(() => {
-    const benefits = CHAIN_SPECIFIC_BENEFITS[chainId]
+    const chainBenefits = (CHAIN_SPECIFIC_BENEFITS as Record<number, string[]>)[chainId]
+    const benefits = (chainBenefits && chainBenefits.length > 0) ? chainBenefits : COW_SWAP_BENEFITS
+    const safeImages = (SURPLUS_IMAGES && SURPLUS_IMAGES.length > 0) ? SURPLUS_IMAGES : [LOGO_ICON_CHAMELEON]
 
     return {
-      randomImage: SURPLUS_IMAGES[getRandomInt(0, SURPLUS_IMAGES.length - 1)],
+      randomImage: safeImages[getRandomInt(0, safeImages.length - 1)],
       randomBenefit: benefits[getRandomInt(0, benefits.length - 1)],
     }
   }, [chainId])
@@ -650,12 +652,17 @@ const COW_SWAP_BENEFITS = [
 ]
 
 const TRADE_ON_NEW_CHAINS_BENEFIT =
-  'Chameleon swap is now live on Arbitrum and Base. Switch the network toggle in the nav bar for quick, cheap transactions.'
+  'Chameleon swap is live across BNB Chain, Base, Arbitrum, Ethereum, Polygon, Avalanche, and more.'
 
-const CHAIN_SPECIFIC_BENEFITS: Record<SupportedChainId, string[]> = {
+const CHAIN_SPECIFIC_BENEFITS: Partial<Record<SupportedChainId, string[]>> = {
   [SupportedChainId.MAINNET]: [TRADE_ON_NEW_CHAINS_BENEFIT, ...COW_SWAP_BENEFITS],
+  [SupportedChainId.BNB]: ['Trade on BNB Chain with sub-second finality, lower fees, and zero MEV exploitation on Chameleon Swap.', ...COW_SWAP_BENEFITS],
   [SupportedChainId.ARBITRUM_ONE]: COW_SWAP_BENEFITS,
   [SupportedChainId.BASE]: COW_SWAP_BENEFITS,
+  [SupportedChainId.POLYGON]: COW_SWAP_BENEFITS,
+  [SupportedChainId.AVALANCHE]: COW_SWAP_BENEFITS,
+  [SupportedChainId.LINEA]: COW_SWAP_BENEFITS,
+  [SupportedChainId.LENS]: COW_SWAP_BENEFITS,
   [SupportedChainId.GNOSIS_CHAIN]: [TRADE_ON_NEW_CHAINS_BENEFIT, ...COW_SWAP_BENEFITS],
   [SupportedChainId.SEPOLIA]: [TRADE_ON_NEW_CHAINS_BENEFIT, ...COW_SWAP_BENEFITS],
 }
@@ -669,7 +676,7 @@ function getTwitterText(surplusAmount: string, surplusToken: string, orderKind: 
   const actionWord = isSellOrder(orderKind) ? 'got' : 'saved'
   const surplus = `${surplusAmount} ${surplusToken}`
   return encodeURIComponent(
-    `Hey, I just ${actionWord} an extra ${surplus} on @CoWSwap! 🐮💸\n\nStart swapping on swap.cow.fi`,
+    `Hey, I just ${actionWord} an extra ${surplus} on @ChameleonSwap! 🦎💸\n\nStart swapping on chameleon.exchange`,
   )
 }
 
@@ -683,7 +690,7 @@ function getTwitterShareUrl(surplusData: SurplusData | undefined, order: Order |
 }
 
 function getTwitterTextForBenefit(benefit: string): string {
-  return encodeURIComponent(`Did you know? ${benefit}\n\nStart swapping on swap.cow.fi #CoWSwap @CoWSwap 🐮`)
+  return encodeURIComponent(`Did you know? ${benefit}\n\nStart swapping on chameleon.exchange #ChameleonSwap @ChameleonSwap 🦎`)
 }
 
 function getTwitterShareUrlForBenefit(benefit: string): string {
@@ -692,10 +699,10 @@ function getTwitterShareUrlForBenefit(benefit: string): string {
 }
 
 const SURPLUS_IMAGES = [
+  LOGO_ICON_CHAMELEON,
+  LOGO_ICON_CHAMELEON,
   PROGRESSBAR_COW_SURPLUS_1,
   PROGRESSBAR_COW_SURPLUS_2,
-  PROGRESSBAR_COW_SURPLUS_3,
-  PROGRESSBAR_COW_SURPLUS_4,
 ]
 
 function FinishedStep(props: OrderProgressBarV2Props) {

@@ -1,4 +1,4 @@
-import cow404IMG from '@cowprotocol/assets/cow-swap/cow-404.png'
+import chameleon404IMG from '@cowprotocol/assets/images/Chameleon-2.png'
 import { ButtonPrimary, Media } from '@cowprotocol/ui'
 
 import { Link } from 'react-router-dom'
@@ -68,7 +68,7 @@ export default function NotFound() {
       <Title>Page not found!</Title>
       <Content>
         <Container>
-          <img src={cow404IMG} alt="CowSwap 404 not found" />
+          <img src={chameleon404IMG} alt="Chameleon Swap 404 not found" style={{ borderRadius: '16px', maxHeight: '300px', objectFit: 'contain' }} />
           <h2>The page you are looking for does not exist. </h2>
           <ButtonPrimary as={Link} to={'/'}>
             Back home

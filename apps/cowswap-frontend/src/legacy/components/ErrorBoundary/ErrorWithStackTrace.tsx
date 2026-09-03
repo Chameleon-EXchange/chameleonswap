@@ -1,9 +1,9 @@
 import React from 'react'
 
-import CowError from '@cowprotocol/assets/cow-swap/CowError.png'
+import ChameleonErrorImg from '@cowprotocol/assets/images/Chameleon-1.png'
 import { CODE_LINK, DISCORD_LINK } from '@cowprotocol/common-const'
 import { userAgent } from '@cowprotocol/common-utils'
-import { AutoRow, MEDIA_WIDTHS, ExternalLink, UI, Media } from '@cowprotocol/ui'
+import { AutoRow, ButtonPrimary, ExternalLink, Media, MEDIA_WIDTHS, UI } from '@cowprotocol/ui'
 
 import { Trans } from '@lingui/macro'
 import styled from 'styled-components/macro'
@@ -52,9 +52,49 @@ const CodeBlockWrapper = styled.div`
   }
 `
 
+const ActionButtonsRow = styled.div`
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  align-items: center;
+`
+
+const RecoveryButton = styled.button`
+  background: linear-gradient(135deg, #760093 0%, #c165ff 100%);
+  color: #ffffff;
+  border: none;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+
+  &:hover {
+    opacity: 0.9;
+  }
+`
+
+const SecondaryRecoveryButton = styled.button`
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.14);
+  }
+`
+
 const LinkWrapper = styled.div`
   color: ${({ theme }) => theme.blue1};
-  padding: 6px 24px;
+  padding: 6px 12px;
 `
 
 function truncate(value?: string): string | undefined {
@@ -70,9 +110,22 @@ export const ErrorWithStackTrace = ({ error }: { error: Error }) => {
         <StyledTitle>
           <Trans>Something went wrong</Trans>
         </StyledTitle>
-        <img src={CowError} alt="CowSwap Error" height="125" />
+        <img
+          src={ChameleonErrorImg}
+          alt="Chameleon Swap Error"
+          height="120"
+          style={{ objectFit: 'contain', borderRadius: '12px' }}
+        />
       </FlexContainer>
       <AutoColumn gap={'md'}>
+        <ActionButtonsRow>
+          <RecoveryButton onClick={() => window.location.reload()}>
+            <Trans>Reload Application</Trans>
+          </RecoveryButton>
+          <SecondaryRecoveryButton onClick={() => (window.location.href = '/')}>
+            <Trans>Back to Home</Trans>
+          </SecondaryRecoveryButton>
+        </ActionButtonsRow>
         <CodeBlockWrapper>
           <code>
             <ThemedText.Main fontSize={10}>
@@ -91,7 +144,7 @@ export const ErrorWithStackTrace = ({ error }: { error: Error }) => {
                 )}`
               }
             >
-              <ThemedText.Link fontSize={16}>
+              <ThemedText.Link fontSize={14}>
                 <Trans>Create an issue on GitHub</Trans>
                 <span>↗</span>
               </ThemedText.Link>
@@ -99,7 +152,7 @@ export const ErrorWithStackTrace = ({ error }: { error: Error }) => {
           </LinkWrapper>
           <LinkWrapper>
             <ExternalLink id="get-support-on-discord" href={DISCORD_LINK}>
-              <ThemedText.Link fontSize={16}>
+              <ThemedText.Link fontSize={14}>
                 <Trans>Get support on Discord</Trans>
                 <span>↗</span>
               </ThemedText.Link>

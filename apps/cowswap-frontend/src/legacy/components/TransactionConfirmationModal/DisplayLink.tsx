@@ -1,4 +1,5 @@
-import { getBlockExplorerUrl, getEtherscanLink, getExplorerLabel } from '@cowprotocol/common-utils'
+import { CHAIN_INFO } from '@cowprotocol/common-const'
+import { getBlockExplorerUrl, getEtherscanLink } from '@cowprotocol/common-utils'
 import { Command } from '@cowprotocol/types'
 
 import { OrderStatus } from 'legacy/state/orders/actions'
@@ -12,21 +13,30 @@ type DisplayLinkProps = {
   onClick?: Command
 }
 
-export function DisplayLink({ id, chainId }: DisplayLinkProps) {
-  const { orderCreationHash, status } = useOrder({ id, chainId }) || {}
+export function DisplayLink({ id, chainId, onClick }: DisplayLinkProps) {
+  const order = useOrder({ id, chainId })
+  const { orderCreationHash, status, owner } = order || {}
 
   if (!id || !chainId) {
     return null
   }
 
-  const ethFlowHash =
-    orderCreationHash && (status === OrderStatus.CREATING || status === OrderStatus.FAILED)
+  const txHash =
+    (orderCreationHash && (status === OrderStatus.CREATING || status === OrderStatus.FAILED)
       ? orderCreationHash
-      : undefined
-  const href = ethFlowHash
-    ? getBlockExplorerUrl(chainId, 'transaction', ethFlowHash)
-    : getEtherscanLink(chainId, 'transaction', id)
-  const label = getExplorerLabel(chainId, 'transaction', ethFlowHash || id)
+      : undefined) ||
+    (order as any)?.txHash ||
+    (order as any)?.executionTxHash ||
+    (id.length === 66 ? id : undefined)
 
-  return <ExternalLinkCustom href={href}>{label} ↗</ExternalLinkCustom>
+  const href = txHash
+    ? getBlockExplorerUrl(chainId, 'transaction', txHash)
+    : owner
+    ? getBlockExplorerUrl(chainId, 'address', owner)
+    : getEtherscanLink(chainId, 'transaction', id)
+
+  const explorerTitle = (CHAIN_INFO as any)[chainId]?.explorerTitle || 'Explorer'
+  const label = `View on ${explorerTitle}`
+
+  return <ExternalLinkCustom href={href} onClick={onClick}>{label} ↗</ExternalLinkCustom>
 }
