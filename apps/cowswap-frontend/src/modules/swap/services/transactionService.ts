@@ -243,10 +243,15 @@ export class TransactionService {
   private getChainName(chainId: number): string {
     const chainMap: Record<number, string> = {
       1: 'ethereum',
-      11155111: 'sepolia',
-      42161: 'arbitrum-one',
-      100: 'genosis',
+      56: 'bnb',
+      100: 'gnosis_chain',
+      137: 'polygon',
+      232: 'lens',
       8453: 'base',
+      42161: 'arbitrum-one',
+      43114: 'avalanche',
+      59144: 'linea',
+      11155111: 'sepolia',
     }
     return chainMap[chainId] || 'ethereum'
   }

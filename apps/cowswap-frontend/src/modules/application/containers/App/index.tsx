@@ -13,6 +13,7 @@ import { ThemeProvider } from 'theme'
 import ErrorBoundary from 'legacy/components/ErrorBoundary'
 import { AccountElement } from 'legacy/components/Header/AccountElement'
 import { NetworkSelector } from 'legacy/components/Header/NetworkSelector'
+import { ReferButton } from 'legacy/components/Header/ReferButton'
 import { HeaderControls, HeaderElement } from 'legacy/components/Header/styled'
 import { URLWarning } from 'legacy/components/Header/URLWarning'
 import TopLevelModals from 'legacy/components/TopLevelModals'
@@ -138,6 +139,7 @@ export function App() {
   const persistentAdditionalContent = (
     <HeaderControls>
       {!hideNetworkSelector && <NetworkSelector />}
+      <ReferButton />
       <HeaderElement>
         
         <AccountElement pendingActivities={pendingActivity} />

@@ -102,6 +102,11 @@ export function RoutesApp() {
         <Route path={RoutesEnum.ADMIN} element={<AdminPage />} />
         <Route path={RoutesEnum.BUY} element={<BuyPage />} />
         <Route path={RoutesEnum.REWARD} element={<RewardPage />} />
+        <Route path="/:chainId/rewardpage" element={<RewardPage />} />
+        <Route path="/refer" element={<Navigate to={RoutesEnum.REWARD} />} />
+        <Route path="/:chainId/refer" element={<Navigate to={RoutesEnum.REWARD} />} />
+        <Route path="/rewards" element={<Navigate to={RoutesEnum.REWARD} />} />
+        <Route path="/:chainId/rewards" element={<Navigate to={RoutesEnum.REWARD} />} />
         <Route path={RoutesEnum.SWAP} element={<SwapPage />} />
         <Route path={RoutesEnum.HOOKS} element={<HooksPage />} />
         <Route path={RoutesEnum.COW_SHED} element={<CowShed />} />
