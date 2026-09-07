@@ -27,6 +27,7 @@ import { mapUnsignedOrderToOrder, wrapErrorInOperatorError } from 'legacy/utils/
 import { WidgetHookDeclineError } from 'modules/injectedWidget'
 import { emitPostedOrderEvent } from 'modules/orders'
 import { callDataContainsPermitSigner, handlePermit } from 'modules/permit'
+import { TransactionService } from 'modules/swap/services/transactionService'
 import { addPendingOrderStep } from 'modules/trade/utils/addPendingOrderStep'
 import { logTradeFlow } from 'modules/trade/utils/logger'
 import { TradeFlowAnalytics } from 'modules/trade/utils/tradeFlowAnalytics'
@@ -257,6 +258,18 @@ export async function swapFlow(
       owner: account,
       uiOrderType: UiOrderType.SWAP,
     })
+
+    // Record the transaction for Chameleon tracking
+    try {
+      const transactionService = TransactionService.getInstance()
+      void transactionService
+        .recordSwapTransaction(orderId, account, chainId, inputAmount, outputAmount, kind, orderId)
+        .catch((err) => {
+          console.error('[swapFlow] Error recording swap transaction:', err)
+        })
+    } catch (err) {
+      console.error('[swapFlow] Failed to initiate transaction recording:', err)
+    }
 
     logTradeFlow('SWAP FLOW', 'STEP 6: unhide SC order (optional)')
     if (presignTxHash) {

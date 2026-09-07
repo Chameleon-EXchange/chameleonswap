@@ -101,7 +101,7 @@ const FOOTER_NAV_GROUP_PRODUCTS = {
 const FOOTER_NAV_GROUP_HELP = {
   label: 'Help',
   children: [
-    { label: 'Docs', href: 'https://docs.cow.fi/', external: true, utmContent: 'footer-help-docs' },
+    { label: 'Docs', href: 'https://docs.chameleon.exchange', external: true, utmContent: 'footer-help-docs' },
     {
       label: 'Knowledge Base',
       href: 'https://cow.fi/learn',

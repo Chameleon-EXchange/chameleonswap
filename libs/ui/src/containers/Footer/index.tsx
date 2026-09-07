@@ -134,7 +134,7 @@ export const Footer = ({
             <FooterDescriptionSection>
               <FooterLogo>
                 <ProductLogo
-                  variant={ProductVariant.CowDao}
+                  variant={ProductVariant.ChameleonSwap}
                   height={32}
                   overrideColor={!theme.darkMode ? `var(${UI.COLOR_NEUTRAL_100})` : `var(${UI.COLOR_NEUTRAL_90})`}
                   overrideHoverColor={!theme.darkMode ? `var(${UI.COLOR_NEUTRAL_98})` : `var(${UI.COLOR_NEUTRAL_95})`}
@@ -177,7 +177,7 @@ export const Footer = ({
         </>
       )}
       <FooterBottom maxWidth={maxWidth}>
-        <BottomText>&copy; CoW DAO - {new Date().getFullYear()}</BottomText>
+        <BottomText>&copy; Chameleon Swap - {new Date().getFullYear()}</BottomText>
         <FooterBottomLogos>
           {PRODUCT_LOGO_LINKS.map((product, index) => (
             <ProductLogo

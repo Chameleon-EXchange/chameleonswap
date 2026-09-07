@@ -20,15 +20,25 @@ import { useCustomTheme } from 'common/hooks/useCustomTheme'
 import { useMenuItems } from 'common/hooks/useMenuItems'
 import { parameterizeTradeRoute } from 'common/modules/tradeNavigation'
 
+import { Routes } from 'common/constants/routes'
 import { HideMobile, isMobileQuery } from './styled'
 
 import { NAV_ITEMS, PRODUCT_VARIANT } from '../App/menuConsts'
 
-const LinkComponent = ({ href, children }: PropsWithChildren<{ href: string }>): ReactNode => {
-  const external = href.startsWith('http')
+const LinkComponent = ({ href, children, ...rest }: PropsWithChildren<{ href: string; [key: string]: any }>): ReactNode => {
+  const isDefi = href.includes('defi.chameleon.exchange')
+  const external = href.startsWith('http') && !isDefi
+
+  if (isDefi) {
+    return (
+      <a href={href} target="_self" {...rest}>
+        {children}
+      </a>
+    )
+  }
 
   return (
-    <NavLink to={href} target={external ? '_blank' : '_self'} rel={external ? 'noopener noreferrer' : undefined}>
+    <NavLink to={href} target={external ? '_blank' : '_self'} rel={external ? 'noopener noreferrer' : undefined} {...rest}>
       {children}
     </NavLink>
   )
@@ -74,6 +84,14 @@ export function AppMenu({ children, customTheme: overriddenCustomTheme }: AppMen
   const navItems = useMemo(() => {
     return [
       {
+        label: t`Home`,
+        href: Routes.HOME,
+      },
+      {
+        label: t`Defi`,
+        href: 'https://defi.chameleon.exchange',
+      },
+      {
         label: t`Trade`,
         children: menuItems.map((item) => {
           const href = parameterizeTradeRoute(getTradeUrlParams(item), item.route, true)
@@ -90,6 +108,14 @@ export function AppMenu({ children, customTheme: overriddenCustomTheme }: AppMen
             badgeType: item.badgeType,
           }
         }),
+      },
+      {
+        label: t`Reward`,
+        href: Routes.REWARD,
+      },
+      {
+        label: t`Buy`,
+        href: Routes.BUY,
       },
       ...NAV_ITEMS(chainId, !!isSolversEnabled),
     ]

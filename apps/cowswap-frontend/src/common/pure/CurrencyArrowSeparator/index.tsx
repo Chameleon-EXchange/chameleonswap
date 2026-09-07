@@ -1,7 +1,8 @@
 import { ReactNode } from 'react'
 
+import LOGO_ICON_CHAMELEON from '@cowprotocol/assets/images/logo_icon_chameleonswap.svg'
 import { isInjectedWidget } from '@cowprotocol/common-utils'
-import { CowLoadingIcon } from '@cowprotocol/ui'
+import SVG from 'react-inlinesvg'
 
 import * as styledEl from './styled'
 
@@ -20,7 +21,6 @@ export function CurrencyArrowSeparator({
   isCollapsed = true,
   hasSeparatorLine,
   disabled = false,
-  isDarkMode = false,
 }: CurrencyArrowSeparatorProps): ReactNode {
   const isInjectedWidgetMode = isInjectedWidget()
 
@@ -33,7 +33,9 @@ export function CurrencyArrowSeparator({
     >
       <styledEl.LoadingWrapper type="button" $isLoading={isLoading} disabled={disabled} onClick={onSwitchTokens}>
         {!isInjectedWidgetMode && isLoading ? (
-          <CowLoadingIcon size={26} isDarkMode={isDarkMode} />
+          <styledEl.ChameleonLoader>
+            <SVG src={LOGO_ICON_CHAMELEON} title="Loading..." />
+          </styledEl.ChameleonLoader>
         ) : (
           <styledEl.ArrowDownIcon disabled={disabled} />
         )}

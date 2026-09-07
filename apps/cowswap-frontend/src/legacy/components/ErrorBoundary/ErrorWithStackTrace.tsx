@@ -1,6 +1,6 @@
 import { ReactNode } from 'react'
 
-import imgCowErrorSrc from '@cowprotocol/assets/cow-swap/CowError.png'
+import ChameleonErrorImg from '@cowprotocol/assets/images/Chameleon-1.png'
 import { CODE_LINK, DISCORD_LINK } from '@cowprotocol/common-const'
 import { userAgent } from '@cowprotocol/common-utils'
 import { AutoRow, MEDIA_WIDTHS, ExternalLink, UI, Media } from '@cowprotocol/ui'
@@ -31,6 +31,46 @@ const FlexContainer = styled.div`
 const StyledTitle = styled(Title)`
   @media screen and (max-width: ${MEDIA_WIDTHS.upToSmall}px) {
     text-align: center;
+  }
+`
+
+const ActionButtonsRow = styled.div`
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  align-items: center;
+`
+
+const RecoveryButton = styled.button`
+  background: linear-gradient(135deg, #760093 0%, #c165ff 100%);
+  color: #ffffff;
+  border: none;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+
+  &:hover {
+    opacity: 0.9;
+  }
+`
+
+const SecondaryRecoveryButton = styled.button`
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.16);
   }
 `
 
@@ -91,9 +131,22 @@ export const ErrorWithStackTrace = ({ error, eventId }: ErrorWithStackTraceProps
         <StyledTitle>
           <Trans>Something went wrong</Trans>
         </StyledTitle>
-        <img src={imgCowErrorSrc} alt={t`CowSwap Error`} height="125" />
+        <img
+          src={ChameleonErrorImg}
+          alt="Chameleon Swap Error"
+          height="120"
+          style={{ objectFit: 'contain', borderRadius: '12px' }}
+        />
       </FlexContainer>
       <AutoColumn gap={'md'}>
+        <ActionButtonsRow>
+          <RecoveryButton onClick={() => window.location.reload()}>
+            <Trans>Reload Application</Trans>
+          </RecoveryButton>
+          <SecondaryRecoveryButton onClick={() => (window.location.href = '/')}>
+            <Trans>Back to Home</Trans>
+          </SecondaryRecoveryButton>
+        </ActionButtonsRow>
         {eventId && (
           <IdRow>
             <IdText fontSize={14}>Event ID:</IdText>

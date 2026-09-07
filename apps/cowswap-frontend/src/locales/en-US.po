@@ -765,6 +765,10 @@ msgstr "h"
 msgid "EthFlow contract ({actualContractAddress}) address don't match the expected address for chain {chainId} ({expectedContractAddress}). Please refresh the page and try again."
 msgstr "EthFlow contract ({actualContractAddress}) address don't match the expected address for chain {chainId} ({expectedContractAddress}). Please refresh the page and try again."
 
+#: apps/cowswap-frontend/src/legacy/components/ErrorBoundary/ErrorWithStackTrace.tsx
+msgid "Reload Application"
+msgstr "Reload Application"
+
 #: apps/cowswap-frontend/src/modules/affiliate/containers/AffiliateTraderCodeInfo.tsx
 msgid "Active referral code"
 msgstr "Active referral code"
@@ -3608,6 +3612,10 @@ msgstr "You can now trade <0/>"
 msgid "How much of the order has been filled."
 msgstr "How much of the order has been filled."
 
+#: apps/cowswap-frontend/src/modules/application/containers/AppMenu/index.tsx
+msgid "Defi"
+msgstr "Defi"
+
 #: apps/cowswap-frontend/src/modules/bridge/pure/contents/QuoteBridgeContent/index.tsx
 msgid "Bridge costs <0/>"
 msgstr "Bridge costs <0/>"
@@ -3961,6 +3969,10 @@ msgstr "Status: {label}"
 #: apps/cowswap-frontend/src/modules/hooksStore/pure/AddCustomHookForm/constants.tsx
 msgid "This app/hook doesn't support the current network:"
 msgstr "This app/hook doesn't support the current network:"
+
+#: apps/cowswap-frontend/src/legacy/components/ErrorBoundary/ErrorWithStackTrace.tsx
+msgid "Back to Home"
+msgstr "Back to Home"
 
 #: apps/cowswap-frontend/src/modules/tokensList/pure/ImportTokenModal/index.tsx
 msgid "Import token"
@@ -6296,6 +6308,10 @@ msgstr "Order Expired"
 #~ msgid "Selected token:"
 #~ msgstr "Selected token:"
 
+#: apps/cowswap-frontend/src/modules/application/containers/AppMenu/index.tsx
+msgid "Home"
+msgstr "Home"
+
 #: apps/cowswap-frontend/src/legacy/components/Badge/RangeBadge.tsx
 msgid "Out of range"
 msgstr "Out of range"
@@ -7337,6 +7353,7 @@ msgid "<0><1/> Experimental:</0> Add DeFi interactions before and after your tra
 msgstr "<0><1/> Experimental:</0> Add DeFi interactions before and after your trade."
 
 #: apps/cowswap-frontend/src/common/pure/OrderSummary/summaryTemplates.tsx
+#: apps/cowswap-frontend/src/modules/application/containers/AppMenu/index.tsx
 #: apps/cowswap-frontend/src/modules/twap/containers/TwapConfirmModal/TwapConfirmDetails.tsx
 msgid "Buy"
 msgstr "Buy"
@@ -7900,6 +7917,10 @@ msgstr "Minimum sell size"
 msgid "Min. to deposit"
 msgstr "Min. to deposit"
 
+#: apps/cowswap-frontend/src/modules/application/containers/AppMenu/index.tsx
+msgid "Reward"
+msgstr "Reward"
+
 #: apps/cowswap-frontend/src/pages/games/CowRunner/index.tsx
 msgid "MEV is lethal these days!"
 msgstr "MEV is lethal these days!"
@@ -8399,8 +8420,8 @@ msgid "Safe App License Fee"
 msgstr "Safe App License Fee"
 
 #: apps/cowswap-frontend/src/legacy/components/ErrorBoundary/ErrorWithStackTrace.tsx
-msgid "CowSwap Error"
-msgstr "CowSwap Error"
+#~ msgid "CowSwap Error"
+#~ msgstr "CowSwap Error"
 
 #: apps/cowswap-frontend/src/modules/advancedOrders/containers/AdvancedOrdersWidget/index.tsx
 msgid "Customize your order size, expiration, and number of parts"

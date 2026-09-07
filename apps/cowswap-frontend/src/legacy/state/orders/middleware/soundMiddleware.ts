@@ -29,51 +29,8 @@ const isFulfillOrderAction = isAnyOf(OrderActions.addPendingOrder, OrderActions.
 
 // TODO: Reduce function complexity by extracting logic
 // eslint-disable-next-line complexity
-export const soundMiddleware: Middleware<Record<string, unknown>, AppState> = (store) => (next) => (action) => {
-  const result = next(action)
-
-  if (isBatchOrderAction(action)) {
-    const { chainId } = action.payload
-    const orders = store.getState().orders[chainId]
-
-    // no orders were executed/expired
-    if (!orders) {
-      return result
-    }
-
-    const updatedElements = isBatchFulfillOrderAction(action)
-      ? action.payload.orders.map(({ uid }) => uid)
-      : action.payload.ids
-    // no orders were executed/expired
-    if (updatedElements.length === 0) {
-      return result
-    }
-  }
-
-  let cowSound
-  if (isPendingOrderAction(action)) {
-    if (_shouldPlayPendingOrderSound(action.payload)) {
-      cowSound = getCowSoundSend()
-    }
-  } else if (isFulfillOrderAction(action)) {
-    cowSound = getCowSoundSuccess()
-  } else if (isBatchExpireOrderAction(action)) {
-    if (_shouldPlayExpiredOrderSound(action.payload, store)) {
-      cowSound = getCowSoundError()
-    }
-  } else if (isBatchCancelOrderAction(action)) {
-    cowSound = getCowSoundError()
-  } else if (isUpdateOrderAction(action)) {
-    cowSound = _getUpdatedOrderSound(action.payload)
-  }
-
-  if (cowSound) {
-    cowSound.play().catch((e) => {
-      console.error('🐮 Moooooo sound cannot be played', e)
-    })
-  }
-
-  return result
+export const soundMiddleware: Middleware<Record<string, unknown>, AppState> = () => (next) => (action) => {
+  return next(action)
 }
 
 // TODO: Add proper return type annotation

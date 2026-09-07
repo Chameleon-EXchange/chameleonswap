@@ -126,36 +126,16 @@ function createAudioOrEmpty(src: string): HTMLAudioElement {
   return typeof Audio !== 'undefined' ? new Audio(src) : getEmptySound()
 }
 
-function getAudio(type: SoundType): HTMLAudioElement {
-  const widgetSound = getWidgetSoundUrl(type)
-  const isWidgetMode = isInjectedWidget()
+const SILENT_SOUND: HTMLAudioElement = {
+  play: () => Promise.resolve(),
+  pause: () => {},
+  load: () => {},
+  addEventListener: () => {},
+  removeEventListener: () => {},
+} as unknown as HTMLAudioElement
 
-  if (isWidgetMode) {
-    if (widgetSound === null) {
-      return getEmptySound()
-    }
-    // If in widget mode, use widget sound if provided, otherwise use default sound
-    const soundPath = widgetSound || DEFAULT_COW_SOUNDS[type]
-    let sound = SOUND_CACHE[soundPath]
-
-    if (!sound) {
-      sound = createAudioOrEmpty(soundPath)
-      SOUND_CACHE[soundPath] = sound
-    }
-
-    return sound
-  }
-
-  // If not in widget mode, use theme-based sound
-  const soundPath = getThemeBasedSound(type)
-  let sound = SOUND_CACHE[soundPath]
-
-  if (!sound) {
-    sound = createAudioOrEmpty(soundPath)
-    SOUND_CACHE[soundPath] = sound
-  }
-
-  return sound
+function getAudio(_type: SoundType): HTMLAudioElement {
+  return SILENT_SOUND
 }
 
 function getEmptySound(): HTMLAudioElement {

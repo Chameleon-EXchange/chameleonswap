@@ -1,12 +1,13 @@
-import { ReactNode } from 'react'
+import { ReactNode, useEffect, useState } from 'react'
 
 import { PAGE_TITLES, WRAPPED_NATIVE_CURRENCIES as WETH } from '@cowprotocol/common-const'
 import { useWalletInfo } from '@cowprotocol/wallet'
 
 import { useLingui } from '@lingui/react/macro'
-import { useParams } from 'react-router'
+import { useLocation, useParams } from 'react-router'
 
 import { PageTitle } from 'modules/application'
+import { ReferralPopup } from 'modules/referral/components/ReferralPopup'
 import { swapDerivedStateAtom, SwapUpdaters, SwapWidget, useSwapDerivedStateToFill } from 'modules/swap'
 import { PageWrapper, PrimaryWrapper, TradeRouteRedirect } from 'modules/trade'
 
@@ -17,9 +18,22 @@ const TRADE_PAGE_MAX_WIDTH = '1800px'
 
 export function SwapPage(): ReactNode {
   const params = useParams()
+  const location = useLocation()
   const { i18n } = useLingui()
   const { chainId } = useWalletInfo()
   const swapDerivedStateToFill = useSwapDerivedStateToFill()
+
+  const [showReferralPopup, setShowReferralPopup] = useState(false)
+  const [referralCode, setReferralCode] = useState<string | null>(null)
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search)
+    const refCode = searchParams.get('ref')
+    if (refCode) {
+      setReferralCode(refCode)
+      setShowReferralPopup(true)
+    }
+  }, [location.search])
 
   if (!params.chainId) {
     return (
@@ -37,6 +51,10 @@ export function SwapPage(): ReactNode {
           <SwapWidget />
         </PrimaryWrapper>
       </PageWrapper>
+      {showReferralPopup && referralCode && (
+        <ReferralPopup referralCode={referralCode} onClose={() => setShowReferralPopup(false)} />
+      )}
     </HydrateAtom>
   )
 }
+

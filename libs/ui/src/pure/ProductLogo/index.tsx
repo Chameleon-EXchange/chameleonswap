@@ -1,5 +1,7 @@
 import { ReactNode } from 'react'
 
+import LOGO_CHAMELEONSWAP from '@cowprotocol/assets/images/Chameleon Swap header.svg'
+import LOGO_ICON_CHAMELEON from '@cowprotocol/assets/images/logo_icon_chameleonswap.svg'
 import svgCowammSrc from '@cowprotocol/assets/images/logo-cowamm.svg'
 import svgCowdaoSrc from '@cowprotocol/assets/images/logo-cowdao.svg'
 import svgCowexplorerSrc from '@cowprotocol/assets/images/logo-cowexplorer.svg'
@@ -31,6 +33,7 @@ export type ThemedLogo = Partial<Record<CowSwapTheme, { default: LogoInfo; logoI
 }
 
 export enum ProductVariant {
+  ChameleonSwap = 'chameleonSwap',
   CowSwap = 'cowSwap',
   CowWidget = 'cowWidget',
   CowExplorer = 'cowExplorer',
@@ -49,61 +52,63 @@ interface LogoInfo {
   preserveOriginalColors?: boolean // If true, original SVG colors will be preserved
 }
 
-const LOGOS: Record<ProductVariant, ThemedLogo> = {
-  // CoW Swap
-  [ProductVariant.CowSwap]: {
-    light: {
-      default: {
-        src: svgCowswapSrc,
-        alt: 'CoW Swap',
-        color: '#004293',
-      },
-      logoIconOnly: {
-        src: iconCowSrc,
-        alt: 'CoW Swap',
-        color: '#004293',
-      },
+const CHAMELEON_SWAP_LOGO: ThemedLogo = {
+  light: {
+    default: {
+      src: LOGO_CHAMELEONSWAP,
+      alt: 'Chameleon swap',
+      color: '#760093',
     },
-    dark: {
-      default: {
-        src: svgCowswapSrc,
-        alt: 'CoW Swap',
-        color: Color.blue300Primary,
-      },
-      logoIconOnly: {
-        src: iconCowSrc,
-        alt: 'CoW Swap',
-        color: Color.blue300Primary,
-      },
-    },
-    darkHalloween: {
-      default: {
-        src: svgCowswapHalloweenSrc,
-        alt: 'CoW Swap',
-        preserveOriginalColors: true,
-      },
-    },
-    darkChristmas: {
-      default: {
-        src: svgCowswapChristmasDarkSrc,
-        alt: 'CoW Swap',
-        color: Color.blue300Primary,
-        height: '56px',
-        heightMobile: '50px',
-        preserveOriginalColors: true,
-      },
-    },
-    lightChristmas: {
-      default: {
-        src: svgCowswapChristmasLightSrc,
-        alt: 'CoW Swap',
-        color: '#004293',
-        height: '56px',
-        heightMobile: '50px',
-        preserveOriginalColors: true,
-      },
+    logoIconOnly: {
+      src: LOGO_ICON_CHAMELEON,
+      alt: 'Chameleon swap',
+      color: '#760093',
     },
   },
+  dark: {
+    default: {
+      src: LOGO_CHAMELEONSWAP,
+      alt: 'Chameleon swap',
+      color: '#c165ff',
+    },
+    logoIconOnly: {
+      src: LOGO_ICON_CHAMELEON,
+      alt: 'Chameleon swap',
+      color: '#c165ff',
+    },
+  },
+  darkHalloween: {
+    default: {
+      src: svgCowswapHalloweenSrc,
+      alt: 'Chameleon swap',
+      preserveOriginalColors: true,
+    },
+  },
+  darkChristmas: {
+    default: {
+      src: svgCowswapChristmasDarkSrc,
+      alt: 'Chameleon swap',
+      color: '#ff65ff',
+      height: '56px',
+      heightMobile: '50px',
+      preserveOriginalColors: true,
+    },
+  },
+  lightChristmas: {
+    default: {
+      src: svgCowswapChristmasLightSrc,
+      alt: 'Chameleon swap',
+      color: '#7a0093',
+      height: '56px',
+      heightMobile: '50px',
+      preserveOriginalColors: true,
+    },
+  },
+}
+
+const LOGOS: Record<ProductVariant, ThemedLogo> = {
+  [ProductVariant.ChameleonSwap]: CHAMELEON_SWAP_LOGO,
+  [ProductVariant.CowSwap]: CHAMELEON_SWAP_LOGO,
 
   // CoW Widget
   [ProductVariant.CowWidget]: {
@@ -355,8 +360,12 @@ export const ProductLogo = ({
 }: LogoProps): ReactNode => {
   const themeMode = useTheme()
   const selectedTheme = customThemeMode || (themeMode.darkMode ? 'dark' : 'light')
-  const logoForTheme = LOGOS[variant][selectedTheme] || LOGOS[variant]['light'] // Fallback to light theme if selected theme is not available
-  const logoInfo = logoIconOnly && logoForTheme.logoIconOnly ? logoForTheme.logoIconOnly : logoForTheme.default
+  const logoForTheme =
+    LOGOS[variant]?.[selectedTheme] ||
+    LOGOS[variant]?.['light'] ||
+    LOGOS[ProductVariant.ChameleonSwap]?.['light'] ||
+    LOGOS[ProductVariant.CowSwap]?.['light']
+  const logoInfo = logoIconOnly && logoForTheme?.logoIconOnly ? logoForTheme.logoIconOnly : logoForTheme?.default
 
   const initialColor = logoInfo.preserveOriginalColors ? undefined : overrideColor || logoInfo.color
 

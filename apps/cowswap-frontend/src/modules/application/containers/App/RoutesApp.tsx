@@ -25,10 +25,15 @@ import {
 
 import { Routes as RoutesEnum, RoutesValues } from 'common/constants/routes'
 import Account, { AccountOverview } from 'pages/Account'
+import AdminPage from 'pages/Admin'
 import { AdvancedOrdersPage } from 'pages/AdvancedOrders/AdvancedOrders.page'
+import { BuyPage } from 'pages/Buy'
 import AnySwapAffectedUsers from 'pages/error/AnySwapAffectedUsers'
 import { HooksPage } from 'pages/Hooks'
+import { LandingPage } from 'pages/Landing'
 import { LimitOrdersPage } from 'pages/LimitOrders/LimitOrders.page'
+import ReferralConfirmation from 'pages/ReferralConfirmation'
+import { RewardPage } from 'pages/Reward'
 import { SwapPage } from 'pages/Swap'
 import YieldPage from 'pages/Yield'
 
@@ -63,6 +68,10 @@ function LazyRoute({ route, element, key }: LazyRouteProps): ReactNode {
 }
 
 const lazyRoutes: LazyRouteProps[] = [
+  { route: RoutesEnum.LANDING, element: <LandingPage /> },
+  { route: RoutesEnum.REWARD, element: <RewardPage /> },
+  { route: RoutesEnum.BUY, element: <BuyPage /> },
+  { route: RoutesEnum.ADMIN, element: <AdminPage /> },
   { route: RoutesEnum.YIELD, element: <YieldPage /> },
   { route: RoutesEnum.LONG_LIMIT_ORDER, element: <RedirectToPath path={'/limit'} /> },
   { route: RoutesEnum.LONG_ADVANCED_ORDERS, element: <RedirectToPath path={'/advanced'} /> },
@@ -83,6 +92,22 @@ const lazyRoutes: LazyRouteProps[] = [
 export function RoutesApp(): ReactNode {
   return (
     <Routes>
+      {/* Referral */}
+      <Route path="referral" element={<ReferralConfirmation />} />
+      <Route path="referral/:code" element={<ReferralConfirmation />} />
+
+      {/* Chameleon Custom Routes */}
+      <Route path={RoutesEnum.ADMIN} element={<AdminPage />} />
+      <Route path={RoutesEnum.BUY} element={<BuyPage />} />
+      <Route path={RoutesEnum.REWARD} element={<RewardPage />} />
+      <Route path="/:chainId/rewardpage" element={<RewardPage />} />
+      <Route path="/refer" element={<Navigate to={RoutesEnum.REWARD} />} />
+      <Route path="/:chainId/refer" element={<Navigate to={RoutesEnum.REWARD} />} />
+      <Route path="/rewards" element={<Navigate to={RoutesEnum.REWARD} />} />
+      <Route path="/:chainId/rewards" element={<Navigate to={RoutesEnum.REWARD} />} />
+      <Route path="/defi" element={<ExternalRedirect url="https://defi.chameleon.exchange" />} />
+      <Route path="/:chainId/defi" element={<ExternalRedirect url="https://defi.chameleon.exchange" />} />
+
       {/*Account*/}
       <Route path={RoutesEnum.ACCOUNT} element={<Account />}>
         <Route path={RoutesEnum.ACCOUNT} element={<AccountOverview />} />
@@ -118,12 +143,12 @@ export function RoutesApp(): ReactNode {
       <Route path={RoutesEnum.STATS} element={<ExternalRedirect url={DUNE_DASHBOARD_LINK} />} />
       <Route path={RoutesEnum.TWITTER} element={<ExternalRedirect url={TWITTER_LINK} />} />
 
-      <Route path={RoutesEnum.HOME} element={<RedirectPathToSwapOnly />} />
+      <Route path={RoutesEnum.HOME} element={<LandingPage />} />
       <Route
         path="*"
         element={
           <Suspense fallback={<Loading />}>
-            <NotFound />
+            <LandingPage />
           </Suspense>
         }
       />

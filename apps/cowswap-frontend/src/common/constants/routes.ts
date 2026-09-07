@@ -20,6 +20,11 @@ export const TRADE_WIDGET_PREFIX = isInjectedWidget() ? '/widget' : ''
 
 export const Routes = {
   HOME: '/',
+  LANDING: '/landingpage',
+  REWARD: '/rewardpage',
+  BUY: '/buypage',
+  ADMIN: '/adminpage',
+  REFERRAL_CONFIRMATION: '/referral',
   SWAP: `/:chainId?${TRADE_WIDGET_PREFIX}/swap/:inputCurrencyId?/:outputCurrencyId?`,
   HOOKS: `/:chainId?${TRADE_WIDGET_PREFIX}/swap/hooks/:inputCurrencyId?/:outputCurrencyId?`,
   LIMIT_ORDERS: `/:chainId?${TRADE_WIDGET_PREFIX}/limit/:inputCurrencyId?/:outputCurrencyId?`,
