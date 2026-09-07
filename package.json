@@ -11,7 +11,7 @@
   },
   "scripts": {
     "start": "pnpm run start:cowswap",
-    "start:cowswap": "cross-env NODE_ENV=development nx run cowswap-frontend:serve",
+    "start:cowswap": "pnpm --filter @cowprotocol/cowswap preview",
     "start:widget": "nx run widget-configurator:serve",
     "start:omnibridge-hook": "nx run hook-dapp-omnibridge:serve",
     "start:cosmos": "nx run cowswap-frontend:cosmos:run",

@@ -7,6 +7,8 @@
   "author": "",
   "license": "ISC",
   "scripts": {
+    "start": "vite preview",
+    "preview": "vite preview",
     "patch-package": "npx patch-package",
     "cosmos:clear": "rm -rf ./public/cosmos",
     "cosmos:run": "pnpm run _cosmos:run",

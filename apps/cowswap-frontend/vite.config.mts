@@ -181,8 +181,9 @@ export default defineConfig(({ mode, isPreview }) => {
     cacheDir: '../../node_modules/.vite/cowswap-frontend',
 
     server: {
-      port: 3000,
-      host: 'localhost',
+      port: process.env.PORT ? Number(process.env.PORT) : 3000,
+      host: '0.0.0.0',
+      allowedHosts: true,
       fs: {
         allow: [
           // search up for workspace root
@@ -201,8 +202,9 @@ export default defineConfig(({ mode, isPreview }) => {
     },
 
     preview: {
-      port: 3000,
-      host: 'localhost',
+      port: process.env.PORT ? Number(process.env.PORT) : 3000,
+      host: '0.0.0.0',
+      allowedHosts: true,
     },
 
     optimizeDeps: {
