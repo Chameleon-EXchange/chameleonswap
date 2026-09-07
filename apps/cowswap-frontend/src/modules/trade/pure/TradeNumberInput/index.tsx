@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 
-import carretDown from '@cowprotocol/assets/cow-swap/carret-down.svg'
+import svgCarretDownSrc from '@cowprotocol/assets/cow-swap/carret-down.svg'
 import { Command } from '@cowprotocol/types'
 
+import { t } from '@lingui/core/macro'
 import BigNumberJs from 'bignumber.js'
 import SVG from 'react-inlinesvg'
 
@@ -38,24 +39,30 @@ type InputArrowsProps = {
   onClickDown: Command
 }
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function InputArrows({ onClickUp, onClickDown }: InputArrowsProps) {
   return (
     <ArrowsWrapper>
-      <span role="button" aria-label="Increase Value" aria-disabled="false" onClick={onClickUp}>
-        <span role="img" aria-label="up">
-          <SVG src={carretDown} />
+      <span role="button" aria-label={t`Increase Value`} aria-disabled="false" onClick={onClickUp}>
+        <span role="img" aria-label={t`up`}>
+          <SVG src={svgCarretDownSrc} />
         </span>
       </span>
 
-      <span role="button" aria-label="Decrease Value" aria-disabled="false" onClick={onClickDown}>
-        <span role="img" aria-label="down">
-          <SVG src={carretDown} />
+      <span role="button" aria-label={t`Decrease Value`} aria-disabled="false" onClick={onClickDown}>
+        <span role="img" aria-label={t`down`}>
+          <SVG src={svgCarretDownSrc} />
         </span>
       </span>
     </ArrowsWrapper>
   )
 }
 
+// TODO: Break down this large function into smaller functions
+// TODO: Add proper return type annotation
+// TODO: Reduce function complexity by extracting logic
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function TradeNumberInput(props: TradeNumberInputProps) {
   const {
     value,
@@ -77,6 +84,7 @@ export function TradeNumberInput(props: TradeNumberInputProps) {
   const [isFocused, setIsFocused] = useState(false)
 
   const validateInput = useCallback(
+    // TODO: Reduce function complexity by extracting logic
     (newValue: string) => {
       const hasDot = newValue.includes('.')
       const [quotient, decimals] = (newValue || '').split('.')
@@ -102,7 +110,7 @@ export function TradeNumberInput(props: TradeNumberInputProps) {
         onUserInput(parsedValue)
       }
     },
-    [onUserInput, value, min, max, decimalsPlaces]
+    [onUserInput, value, min, max, decimalsPlaces],
   )
 
   // Initial setup of value
@@ -128,7 +136,7 @@ export function TradeNumberInput(props: TradeNumberInputProps) {
         onClickDown()
       }
     },
-    [onClickDown, onClickUp]
+    [onClickDown, onClickUp],
   )
 
   return (
@@ -159,6 +167,26 @@ export function TradeNumberInput(props: TradeNumberInputProps) {
 }
 
 /**
+ * Decrease `value` by `step`
+ *
+ * If no `value`, use `min`
+ * If no `min`, use `step`
+
+ * Uses BigNumberJS for avoiding JS finicky float point math
+ */
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+function decreaseValue(value: string, step: number, min: number | undefined) {
+  const n = new BigNumberJs(value)
+
+  if (!n.isNaN()) {
+    return n.minus(step).toString()
+  }
+
+  return min?.toString() || step.toString()
+}
+
+/**
  * Increase `value` by `step`
  *
  * If no `value`, use `min`
@@ -171,24 +199,6 @@ function increaseValue(value: string, step: number, min: number | undefined): st
 
   if (!n.isNaN()) {
     return n.plus(step).toString()
-  }
-
-  return min?.toString() || step.toString()
-}
-
-/**
- * Decrease `value` by `step`
- *
- * If no `value`, use `min`
- * If no `min`, use `step`
-
- * Uses BigNumberJS for avoiding JS finicky float point math
- */
-function decreaseValue(value: string, step: number, min: number | undefined) {
-  const n = new BigNumberJs(value)
-
-  if (!n.isNaN()) {
-    return n.minus(step).toString()
   }
 
   return min?.toString() || step.toString()

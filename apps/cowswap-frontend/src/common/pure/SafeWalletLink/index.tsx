@@ -1,11 +1,15 @@
+import { ReactElement } from 'react'
+
 import { getSafeWebUrl } from '@cowprotocol/core'
-import { ExternalLink, ButtonPrimary } from '@cowprotocol/ui'
+import { ButtonPrimary, ExternalLink } from '@cowprotocol/ui'
+
+import { Trans } from '@lingui/react/macro'
 
 export function SafeWalletLink(props: {
   chainId: number
   safeTransaction?: { safe: string; safeTxHash: string }
   asButton?: boolean
-}): JSX.Element | null {
+}): ReactElement | null {
   const { chainId, safeTransaction, asButton } = props
 
   if (!safeTransaction) {
@@ -29,7 +33,7 @@ export function SafeWalletLink(props: {
 
   return (
     <LinkComponent as={asButton ? 'a' : undefined} {...linkProps}>
-      View on Safe ↗
+      <Trans>View on Safe</Trans> ↗
     </LinkComponent>
   )
 }

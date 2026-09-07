@@ -1,25 +1,48 @@
-import { EIP6963AnnounceProviderEvent, EIP6963ProviderDetail } from '@cowprotocol/types'
+import type { EIP6963AnnounceProviderEvent, EIP6963ProviderDetail } from '@cowprotocol/types'
 
 import {
   IframeRpcProviderEvents,
   iframeRpcProviderTransport,
-  ProviderRpcResponsePayload,
   ProviderRpcRequestPayload,
+  ProviderRpcResponsePayload,
 } from './iframeRpcProviderEvents'
 import { getEip6963ProviderInfo, getProviderWcMetadata } from './utils'
 
-import { EthereumProvider, JsonRpcRequestMessage } from '../types'
-
-const EVENTS_TO_FORWARD_TO_IFRAME = ['connect', 'disconnect', 'close', 'chainChanged', 'accountsChanged']
-const eip6963Providers: EIP6963ProviderDetail[] = []
-
-window.addEventListener('eip6963:announceProvider', (event: Event) => {
-  const providerEvent = event as EIP6963AnnounceProviderEvent
-  eip6963Providers.push(providerEvent.detail)
-})
+import type { EthereumProvider, JsonRpcRequestMessage } from '../types'
 
 /**
- * Handles JSON-RPC request comming from an iFrame by delegating to a given Ethereum provider.
+ * An {@link EthereumProvider} that may also expose `removeListener` for
+ * subscription cleanup.
+ *
+ * EIP-1193 standardizes `on(event, handler)` for subscribing to provider
+ * events but does not formally specify the removal counterpart. Most wallet
+ * providers (MetaMask, Rabby, Coinbase Wallet, WalletConnect) implement
+ * `removeListener` to match Node's `EventEmitter` API, but it is not
+ * guaranteed. Use this type — or a `typeof provider.removeListener ===
+ * 'function'` runtime check — to narrow before calling it.
+ *
+ * Within this library it is used by {@link IframeRpcProviderBridge.disconnect}
+ * to detach the forwarded `connect` / `disconnect` / `chainChanged` /
+ * `accountsChanged` listeners before dropping the provider reference,
+ * preventing stale handlers from firing against the parent dapp.
+ */
+export type EthereumProviderWithRemoveListener = EthereumProvider & {
+  removeListener?(event: string, handler: (...args: unknown[]) => void): void
+}
+
+const EVENTS_TO_FORWARD_TO_IFRAME = ['connect', 'disconnect', 'close', 'chainChanged', 'accountsChanged']
+
+const eip6963Providers: EIP6963ProviderDetail[] = []
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('eip6963:announceProvider', (event: Event) => {
+    const providerEvent = event as EIP6963AnnounceProviderEvent
+    eip6963Providers.push(providerEvent.detail)
+  })
+}
+
+/**
+ * Handles JSON-RPC request coming from an iFrame by delegating to a given Ethereum provider.
  * The result will be passed back to the iFrame.
  *
  * Additionally, it will forward some special events from the wallet, to the iFrame window, for example connect/disconnect/chainChanged
@@ -34,17 +57,36 @@ export class IframeRpcProviderBridge {
   /** Stored JSON-RPC requests, to queue them when disconnected. */
   private requestWaitingForConnection: { [key: string]: JsonRpcRequestMessage } = {}
 
+  /** Bound event-forwarding listeners so they can be removed on disconnect. */
+  private providerEventListeners: Array<{ event: string; handler: (params: unknown) => void }> = []
+
   /**
    * Creates an instance of IframeRpcProviderBridge.
-   * @param iframeWidow - The iFrame window that will post up general RPC messages and to which the IframeRpcProviderBridge will forward the RPC result.
+   * @param iframeWindow - The iFrame window that will post up general RPC messages and to which the IframeRpcProviderBridge will forward the RPC result.
    *  Also it will receive some special RPC events coming from the wallet, like connect/chainChanged,accountChanged
    */
-  constructor(private iframeWidow: Window) {}
+  constructor(
+    private iframeWindow: Window,
+    private iframeOrigin?: string,
+  ) {}
 
   /**
    * Disconnects the JSON-RPC bridge from the Ethereum provider.
    */
-  disconnect() {
+  disconnect(): void {
+    if (typeof window === 'undefined') return
+
+    // Remove event-forwarding listeners from the provider before dropping the reference.
+    if (this.ethereumProvider) {
+      const provider = this.ethereumProvider as EthereumProviderWithRemoveListener
+      if (typeof provider.removeListener === 'function') {
+        for (const { event, handler } of this.providerEventListeners) {
+          provider.removeListener(event, handler)
+        }
+      }
+    }
+    this.providerEventListeners = []
+
     // Disconnect provider
     this.ethereumProvider = null
     iframeRpcProviderTransport.stopListeningToMessageFromWindow(
@@ -64,7 +106,9 @@ export class IframeRpcProviderBridge {
    * Handles the 'connect' event and sets up event listeners for Ethereum provider events.
    * @param newProvider - The Ethereum provider to connect.
    */
-  onConnect(newProvider: EthereumProvider) {
+  onConnect(newProvider: EthereumProvider): void {
+    if (typeof window === 'undefined') return
+
     // Disconnect the previous provider
     if (this.ethereumProvider) {
       this.disconnect()
@@ -72,8 +116,10 @@ export class IframeRpcProviderBridge {
       // Listen for messages coming to the main window (from the iFrame window)
       iframeRpcProviderTransport.listenToMessageFromWindow(
         window,
+        this.iframeWindow,
         IframeRpcProviderEvents.PROVIDER_RPC_REQUEST,
         this.processRpcCallFromWindow,
+        this.iframeOrigin,
       )
     }
 
@@ -83,19 +129,26 @@ export class IframeRpcProviderBridge {
     // Process pending requests
     this.processPendingRequests()
 
-    // Register in the provider, the events that needs to be forwarded to the iFrame window
+    // Register in the provider, the events that needs to be forwarded to the iFrame window.
+    // Store references so they can be removed on disconnect().
     EVENTS_TO_FORWARD_TO_IFRAME.forEach((event) => {
-      newProvider.on(event, (params: unknown) => this.onProviderEvent(event, params))
+      const handler = (params: unknown): void => this.onProviderEvent(event, params)
+      this.providerEventListeners.push({ event, handler })
+      newProvider.on(event, handler)
     })
 
     // Listen for provider meta info request
     iframeRpcProviderTransport.listenToMessageFromWindow(
       window,
+      this.iframeWindow,
       IframeRpcProviderEvents.REQUEST_PROVIDER_META_INFO,
       this.processProviderMetaInfoRequest,
+      this.iframeOrigin,
     )
   }
 
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   private processPendingRequests() {
     // Process pending requests
     Object.keys(this.requestWaitingForConnection).forEach((key) => {
@@ -110,13 +163,18 @@ export class IframeRpcProviderBridge {
    * Processes a JSON-RPC request and sends appropriate response or error via the content window.
    * @param request - The JSON-RPC request to be processed.
    */
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   processRpcRequest(request: JsonRpcRequestMessage) {
     const { id, jsonrpc, method } = request
     if (!this.ethereumProvider || !id) {
       return
     }
     const requestPromise =
-      method === 'enable' ? this.ethereumProvider.enable() : this.ethereumProvider.request({ ...request, id })
+      // Keep the legacy "enable" method for backward compatibility
+      method === 'enable'
+        ? this.ethereumProvider.request({ method: 'eth_requestAccounts', id })
+        : this.ethereumProvider.request({ ...request, id })
 
     // Do request, and forward the result or error to the iFrame window
     requestPromise
@@ -151,27 +209,34 @@ export class IframeRpcProviderBridge {
     const providerWcMetadata = getProviderWcMetadata(this.ethereumProvider)
 
     // Send the provider meta info to the iFrame window
-    iframeRpcProviderTransport.postMessageToWindow(this.iframeWidow, IframeRpcProviderEvents.SEND_PROVIDER_META_INFO, {
-      providerEip6963Info,
-      providerWcMetadata,
-    })
+    iframeRpcProviderTransport.postMessageToWindow(
+      this.iframeWindow,
+      IframeRpcProviderEvents.SEND_PROVIDER_META_INFO,
+      { providerEip6963Info, providerWcMetadata },
+      this.iframeOrigin,
+    )
   }
 
   private onProviderEvent(event: string, params: unknown): void {
-    iframeRpcProviderTransport.postMessageToWindow(this.iframeWidow, IframeRpcProviderEvents.PROVIDER_ON_EVENT, {
-      event,
-      params,
-    })
+    iframeRpcProviderTransport.postMessageToWindow(
+      this.iframeWindow,
+      IframeRpcProviderEvents.PROVIDER_ON_EVENT,
+      { event, params },
+      this.iframeOrigin,
+    )
   }
 
   /**
    * Forward a JSON-RPC message to the content window.
    */
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   private forwardRpcResponseToIframe(params: ProviderRpcResponsePayload) {
     iframeRpcProviderTransport.postMessageToWindow(
-      this.iframeWidow,
+      this.iframeWindow,
       IframeRpcProviderEvents.PROVIDER_RPC_RESPONSE,
       params,
+      this.iframeOrigin,
     )
   }
 }

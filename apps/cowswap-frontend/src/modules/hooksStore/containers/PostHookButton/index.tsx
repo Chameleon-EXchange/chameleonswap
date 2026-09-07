@@ -1,10 +1,11 @@
-import PLUS_ICON from '@cowprotocol/assets/cow-swap/plus.svg'
+import svgPlusSrc from '@cowprotocol/assets/cow-swap/plus.svg'
 import { useWalletInfo } from '@cowprotocol/wallet'
 
+import { Trans } from '@lingui/react/macro'
+import { useHooks } from 'entities/orderHooks/useHooks'
 import SVG from 'react-inlinesvg'
 
 import { useAllHookDapps } from '../../hooks/useAllHookDapps'
-import { useHooks } from '../../hooks/useHooks'
 import { useRemoveHook } from '../../hooks/useRemoveHook'
 import { useReorderHooks } from '../../hooks/useReorderHooks'
 import { AppliedHookList } from '../../pure/AppliedHookList'
@@ -12,6 +13,7 @@ import { HookTooltip } from '../../pure/HookTooltip'
 import * as styledEl from '../PreHookButton/styled'
 
 export interface PostHookButtonProps {
+  disabled?: boolean
   onOpen(): void
   onEditHook(uuid: string): void
   hideTooltip?: boolean
@@ -19,7 +21,9 @@ export interface PostHookButtonProps {
 
 const isPreHook = false
 
-export function PostHookButton({ onOpen, onEditHook, hideTooltip }: PostHookButtonProps) {
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export function PostHookButton({ disabled = false, onOpen, onEditHook, hideTooltip }: PostHookButtonProps) {
   const { account } = useWalletInfo()
   const { postHooks } = useHooks()
   const removeHook = useRemoveHook(isPreHook)
@@ -30,6 +34,7 @@ export function PostHookButton({ onOpen, onEditHook, hideTooltip }: PostHookButt
     <>
       {postHooks.length > 0 && (
         <AppliedHookList
+          disabled={disabled}
           dapps={dapps}
           account={account}
           hooks={postHooks}
@@ -40,8 +45,9 @@ export function PostHookButton({ onOpen, onEditHook, hideTooltip }: PostHookButt
         />
       )}
       <styledEl.Wrapper>
-        <styledEl.AddHookButton onClick={onOpen}>
-          <SVG src={PLUS_ICON} /> Add Post-Hook Action {!hideTooltip && <HookTooltip isPreHook={false} />}
+        <styledEl.AddHookButton disabled={disabled} onClick={disabled ? undefined : onOpen}>
+          <SVG src={svgPlusSrc} /> <Trans>Add Post-Hook Action</Trans>{' '}
+          {!hideTooltip && <HookTooltip isPreHook={false} />}
         </styledEl.AddHookButton>
       </styledEl.Wrapper>
     </>

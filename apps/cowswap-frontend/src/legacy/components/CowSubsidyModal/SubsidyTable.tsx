@@ -1,8 +1,9 @@
 import { V_COW } from '@cowprotocol/common-const'
 import { SupportedChainId } from '@cowprotocol/cow-sdk'
+import { CurrencyAmount } from '@cowprotocol/currency'
 import { TokenAmount, UI } from '@cowprotocol/ui'
-import { CurrencyAmount } from '@uniswap/sdk-core'
 
+import { Trans } from '@lingui/react/macro'
 import { lighten, transparentize } from 'color2k'
 import styled from 'styled-components/macro'
 
@@ -74,9 +75,12 @@ const SubsidyTr = styled.tr<{ selected?: boolean; darkMode?: boolean }>`
     text-align: center;
   }
 
-  ${({ selected, theme }) =>
-    selected &&
-    `
+  ${
+    /* TODO: Break down this large function into smaller functions */
+
+    ({ selected, theme }) =>
+      selected &&
+      `
     background: ${theme.bg2};
     color: ${theme.white};
     transition: background var(${UI.ANIMATION_DURATION}) ease-in-out;
@@ -141,7 +145,8 @@ const SubsidyTr = styled.tr<{ selected?: boolean; darkMode?: boolean }>`
           color: ${theme.white};
         }
     }
-  `}
+  `
+  }
 
   ${({ theme }) =>
     `
@@ -159,6 +164,9 @@ const SubsidyTr = styled.tr<{ selected?: boolean; darkMode?: boolean }>`
 
 const vCowToken = V_COW[SupportedChainId.MAINNET]
 
+// TODO: Add proper return type annotation
+// TODO: Break down this large function into smaller functions
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 function SubsidyTable({ discount }: CowSubsidy) {
   const darkMode = useIsDarkMode()
 
@@ -168,8 +176,12 @@ function SubsidyTable({ discount }: CowSubsidy) {
     <StyledSubsidyTable>
       <thead>
         <SubsidyTr>
-          <th>(v)COW balance</th>
-          <th>Fee discount</th>
+          <th>
+            <Trans>(v)COW balance</Trans>
+          </th>
+          <th>
+            <Trans>Fee discount</Trans>
+          </th>
         </SubsidyTr>
       </thead>
       <tbody>

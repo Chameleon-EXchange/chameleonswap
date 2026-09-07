@@ -1,26 +1,29 @@
 {
   "name": "@cowprotocol/hook-dapp-lib",
-  "version": "1.6.0",
-  "type": "commonjs",
-  "description": "Chameleon swap Hook Dapp Library. Allows you to develop pre/post hooks dapps for CoW Protocol.",
-  "main": "index.js",
-  "exports": {
-    "import": "./index.js",
-    "require": "./index.mjs"
-  },
-  "license": "ISC",
+  "version": "2.2.13",
+  "description": "CoW Swap Hook Dapp Library. Allows you to develop pre/post hooks dapps for CoW Protocol.",
   "repository": {
     "type": "git",
-    "url": "https://github.com/cowprotocol/cowswap"
+    "url": "https://github.com/cowprotocol/cowswap.git",
+    "directory": "libs/hook-dapp-lib"
   },
-  "keywords": [
-    "cowprotocol",
-    "hooks",
-    "cowswap",
-    "dex",
-    "hook-dapp-lib"
-  ],
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.d.ts",
+  "license": "ISC",
+  "publishConfig": {
+    "access": "public",
+    "main": "./index.js",
+    "types": "./index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./index.d.ts",
+        "import": "./index.js",
+        "require": "./index.cjs"
+      }
+    }
+  },
   "dependencies": {
-    "@cowprotocol/iframe-transport": "^1.0.0"
+    "@cowprotocol/iframe-transport": "workspace:*"
   }
 }

@@ -1,12 +1,11 @@
-import React from 'react'
+import React, { ReactNode } from 'react'
 
-import { InlineBanner } from '@cowprotocol/ui'
-
-import { TradeFormValidation, useGetTradeFormValidation } from 'modules/tradeFormValidation'
+import { CaptchaWidget } from 'modules/captcha'
+import { TradeFormValidation, useGetTradeFormValidations } from 'modules/tradeFormValidation'
 import { HighSuggestedSlippageWarning } from 'modules/tradeSlippage'
-import { useShouldZeroApprove } from 'modules/zeroApproval'
 
-import { useReceiveAmountInfo } from '../../hooks/useReceiveAmountInfo'
+import { useGetReceiveAmountInfo } from '../../hooks/useGetReceiveAmountInfo'
+import { useShouldShowZeroApproveWarning } from '../../hooks/useShouldShowZeroApproveWarning'
 import { ZeroApprovalWarning } from '../../pure/ZeroApprovalWarning'
 import { NoImpactWarning } from '../NoImpactWarning'
 
@@ -15,32 +14,21 @@ interface TradeWarningsProps {
   enableSmartSlippage?: boolean
 }
 
-export function TradeWarnings({ isTradePriceUpdating, enableSmartSlippage }: TradeWarningsProps) {
-  const primaryFormValidation = useGetTradeFormValidation()
-  const receiveAmountInfo = useReceiveAmountInfo()
-  const inputAmountWithSlippage = receiveAmountInfo?.afterSlippage.sellAmount
-  const shouldZeroApprove = useShouldZeroApprove(inputAmountWithSlippage)
-
-  const showBundleTxApprovalBanner = primaryFormValidation === TradeFormValidation.ApproveAndSwap
+export function TradeWarnings({ isTradePriceUpdating, enableSmartSlippage }: TradeWarningsProps): ReactNode {
+  const receiveAmountInfo = useGetReceiveAmountInfo()
+  const inputAmountWithSlippage = receiveAmountInfo?.amountsToSign.sellAmount
+  const shouldZeroApprove = useShouldShowZeroApproveWarning(inputAmountWithSlippage)
+  const validations = useGetTradeFormValidations()
+  const hasInsufficientBalance = !!validations?.includes(TradeFormValidation.BalanceInsufficient)
 
   return (
     <>
-      {shouldZeroApprove && <ZeroApprovalWarning currency={inputAmountWithSlippage?.currency} />}
+      {shouldZeroApprove && !hasInsufficientBalance && (
+        <ZeroApprovalWarning currency={inputAmountWithSlippage?.currency} />
+      )}
       <NoImpactWarning />
-      {showBundleTxApprovalBanner && <BundleTxApprovalBanner />}
       {enableSmartSlippage && <HighSuggestedSlippageWarning isTradePriceUpdating={isTradePriceUpdating} />}
+      <CaptchaWidget />
     </>
-  )
-}
-
-function BundleTxApprovalBanner() {
-  return (
-    <InlineBanner bannerType="information" iconSize={32}>
-      <strong>Token approval bundling</strong>
-      <p>
-        For your convenience, token approval and order placement will be bundled into a single transaction, streamlining
-        your experience!
-      </p>
-    </InlineBanner>
   )
 }

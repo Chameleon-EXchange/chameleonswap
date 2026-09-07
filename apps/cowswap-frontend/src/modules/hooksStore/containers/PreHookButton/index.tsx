@@ -1,18 +1,20 @@
-import PLUS_ICON from '@cowprotocol/assets/cow-swap/plus.svg'
+import svgPlusSrc from '@cowprotocol/assets/cow-swap/plus.svg'
 import { useWalletInfo } from '@cowprotocol/wallet'
 
+import { Trans } from '@lingui/react/macro'
+import { useHooks } from 'entities/orderHooks/useHooks'
 import SVG from 'react-inlinesvg'
 
 import * as styledEl from './styled'
 
 import { useAllHookDapps } from '../../hooks/useAllHookDapps'
-import { useHooks } from '../../hooks/useHooks'
 import { useRemoveHook } from '../../hooks/useRemoveHook'
 import { useReorderHooks } from '../../hooks/useReorderHooks'
 import { AppliedHookList } from '../../pure/AppliedHookList'
 import { HookTooltip } from '../../pure/HookTooltip'
 
 export interface PreHookButtonProps {
+  disabled?: boolean
   onOpen(): void
   onEditHook(uuid: string): void
   hideTooltip?: boolean
@@ -20,7 +22,9 @@ export interface PreHookButtonProps {
 
 const isPreHook = true
 
-export function PreHookButton({ onOpen, onEditHook, hideTooltip }: PreHookButtonProps) {
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export function PreHookButton({ disabled = false, onOpen, onEditHook, hideTooltip }: PreHookButtonProps) {
   const { account } = useWalletInfo()
   const { preHooks } = useHooks()
   const removeHook = useRemoveHook(isPreHook)
@@ -31,6 +35,7 @@ export function PreHookButton({ onOpen, onEditHook, hideTooltip }: PreHookButton
     <>
       {preHooks.length > 0 && (
         <AppliedHookList
+          disabled={disabled}
           dapps={dapps}
           account={account}
           hooks={preHooks}
@@ -42,8 +47,8 @@ export function PreHookButton({ onOpen, onEditHook, hideTooltip }: PreHookButton
       )}
 
       <styledEl.Wrapper>
-        <styledEl.AddHookButton onClick={onOpen}>
-          <SVG src={PLUS_ICON} /> Add Pre-Hook Action {!hideTooltip && <HookTooltip isPreHook />}
+        <styledEl.AddHookButton disabled={disabled} onClick={disabled ? undefined : onOpen}>
+          <SVG src={svgPlusSrc} /> <Trans>Add Pre-Hook Action</Trans> {!hideTooltip && <HookTooltip isPreHook />}
         </styledEl.AddHookButton>
       </styledEl.Wrapper>
     </>

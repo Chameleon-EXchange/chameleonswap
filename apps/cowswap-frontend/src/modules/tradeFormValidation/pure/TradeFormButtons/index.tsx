@@ -1,6 +1,4 @@
-import React from 'react'
-
-import { Trans } from '@lingui/macro'
+import React, { ReactNode } from 'react'
 
 import { tradeButtonsMap } from './tradeButtonsMap'
 
@@ -15,7 +13,7 @@ export interface TradeFormButtonsProps {
   isDisabled?: boolean
 }
 
-export function TradeFormButtons(props: TradeFormButtonsProps) {
+export function TradeFormButtons(props: TradeFormButtonsProps): ReactNode {
   const { validation, context, isDisabled, confirmText, className } = props
 
   // When there are no validation errors
@@ -26,21 +24,22 @@ export function TradeFormButtons(props: TradeFormButtonsProps) {
         className={className}
         disabled={isDisabled}
         onClick={() => context.confirmTrade()}
+        clickEvent={context.confirmClickEvent}
       >
         {confirmText}
       </TradeFormBlankButton>
     )
   }
 
-  const buttonFactory = tradeButtonsMap[validation]
+  const TradeButtonComponent = tradeButtonsMap[validation]
 
-  if (typeof buttonFactory === 'function') {
-    return buttonFactory(context, isDisabled)
+  if (typeof TradeButtonComponent === 'function') {
+    return <TradeButtonComponent {...context} isDisabled={isDisabled} />
   }
 
   return (
-    <TradeFormBlankButton id={buttonFactory.id} className={className} disabled={true}>
-      <Trans>{buttonFactory.text}</Trans>
+    <TradeFormBlankButton id={TradeButtonComponent.id} className={className} disabled={true}>
+      <>{TradeButtonComponent.text}</>
     </TradeFormBlankButton>
   )
 }

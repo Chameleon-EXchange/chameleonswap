@@ -1,39 +1,45 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
-import { ComposableCoW } from '@cowprotocol/abis'
+import { SupportedChainId } from '@cowprotocol/cow-sdk'
 
 import ms from 'ms.macro'
 
-import { useSafeApiKit } from 'common/hooks/useSafeApiKit'
+import { ComposableCowContractData } from 'modules/advancedOrders/hooks/useComposableCowContract'
 
-import { fetchTwapOrdersFromSafe } from '../services/fetchTwapOrdersFromSafe'
+import { fetchCachedTwapOrdersFromSafe } from '../services/fetchCachedTwapOrdersFromSafe'
 import { TwapOrdersSafeData } from '../types'
 
-const PENDING_TWAP_UPDATE_INTERVAL = ms`15s`
+const TWAP_SAFE_ORDERS_UPDATE_INTERVAL = ms`1m`
 
 export function useFetchTwapOrdersFromSafe({
+  chainId,
   safeAddress,
   composableCowContract,
 }: {
+  chainId: SupportedChainId
   safeAddress: string
-  composableCowContract: ComposableCoW
+  composableCowContract: ComposableCowContractData
 }): TwapOrdersSafeData[] {
-  const safeApiKit = useSafeApiKit()
   const [ordersSafeData, setOrdersSafeData] = useState<TwapOrdersSafeData[]>([])
+  const updateInProgressRef = useRef(false)
 
   useEffect(() => {
-    if (!safeApiKit) return
+    const persistOrders = (): void => {
+      if (updateInProgressRef.current) return
 
-    const persistOrders = () => {
-      fetchTwapOrdersFromSafe(safeAddress, safeApiKit, composableCowContract).then(setOrdersSafeData)
+      updateInProgressRef.current = true
+
+      fetchCachedTwapOrdersFromSafe(chainId, safeAddress, composableCowContract, setOrdersSafeData).finally(() => {
+        updateInProgressRef.current = false
+      })
     }
 
-    const interval = setInterval(persistOrders, PENDING_TWAP_UPDATE_INTERVAL)
+    const interval = setInterval(persistOrders, TWAP_SAFE_ORDERS_UPDATE_INTERVAL)
 
     persistOrders()
 
     return () => clearInterval(interval)
-  }, [safeAddress, safeApiKit, composableCowContract])
+  }, [chainId, safeAddress, composableCowContract])
 
   return ordersSafeData
 }

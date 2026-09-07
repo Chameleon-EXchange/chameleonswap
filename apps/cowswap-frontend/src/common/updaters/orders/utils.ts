@@ -1,79 +1,29 @@
-import { formatSymbol, formatTokenAmount, isSellOrder, shortenAddress } from '@cowprotocol/common-utils'
 import { EnrichedOrder, SupportedChainId as ChainId } from '@cowprotocol/cow-sdk'
+import { Currency, CurrencyAmount } from '@cowprotocol/currency'
+import { UiOrderType } from '@cowprotocol/types'
 
 import { Order, OrderStatus } from 'legacy/state/orders/actions'
 import { classifyOrder, OrderTransitionStatus } from 'legacy/state/orders/utils'
-import { stringToCurrency } from 'legacy/state/swap/extension'
 
 import { getOrder } from 'api/cowProtocol'
 import { getIsComposableCowChildOrder } from 'utils/orderUtils/getIsComposableCowChildOrder'
-import { getUiOrderType, ORDER_UI_TYPE_TITLES, UiOrderTypeParams } from 'utils/orderUtils/getUiOrderType'
+import { getUiOrderType } from 'utils/orderUtils/getUiOrderType'
 
-export function computeOrderSummary({
-  orderFromStore,
-  orderFromApi,
-}: {
-  orderFromStore?: Order
-  orderFromApi: EnrichedOrder | null
-}) {
-  if (!orderFromStore && !orderFromApi) return undefined
+import { UltimateOrderData } from '../../hooks/useUltimateOrder'
+import { TradeAmounts } from '../../types'
 
-  const buyToken = orderFromApi?.buyToken || orderFromStore?.buyToken
-  const sellToken = orderFromApi?.sellToken || orderFromStore?.sellToken
-  const sellAmount = (orderFromApi?.sellAmount || orderFromStore?.sellAmount) as string
-  const feeAmount = (orderFromApi?.feeAmount || orderFromStore?.feeAmount) as string
-  const buyAmount = (orderFromApi?.buyAmount || orderFromStore?.buyAmount) as string
-  const executedBuyAmount = (orderFromApi?.executedBuyAmount ||
-    orderFromStore?.apiAdditionalInfo?.executedBuyAmount) as string
-  const executedSellAmount = (orderFromApi?.executedSellAmount ||
-    orderFromStore?.apiAdditionalInfo?.executedSellAmount) as string
-  const owner = orderFromApi?.owner || orderFromStore?.owner
-  const receiver = orderFromApi?.receiver || orderFromStore?.receiver
-
-  const uiOrderType = getUiOrderType((orderFromStore || orderFromApi) as UiOrderTypeParams)
-  const orderTitle = ORDER_UI_TYPE_TITLES[uiOrderType]
-
-  let summary: string | undefined = undefined
-
-  if (orderFromStore) {
-    const { inputToken, outputToken, status, kind } = orderFromStore
-    const isFulfilled = status === OrderStatus.FULFILLED
-
-    if (!inputToken || !outputToken) return undefined
-
-    // don't show amounts in atoms
-    const inputAmount = isFulfilled
-      ? stringToCurrency(executedSellAmount, inputToken)
-      : // sellAmount doesn't include the fee, so we add it back to not show a different value when the order is traded
-        stringToCurrency(sellAmount, inputToken).add(stringToCurrency(feeAmount, inputToken))
-    const outputAmount = stringToCurrency(isFulfilled ? executedBuyAmount : buyAmount, outputToken)
-
-    const isSell = isSellOrder(kind)
-
-    const inputPrefix = !isFulfilled && !isSell ? 'at most ' : ''
-    const outputPrefix = !isFulfilled && isSell ? 'at least ' : ''
-
-    summary = `${orderTitle} ${inputPrefix}${formatTokenAmount(inputAmount)} ${formatSymbol(
-      inputAmount.currency.symbol,
-    )} for ${outputPrefix}${formatTokenAmount(outputAmount)} ${formatSymbol(outputAmount.currency.symbol)}`
-  } else {
-    // We only have the API order info, let's at least use that
-    summary = `${orderTitle} ${sellToken} for ${buyToken}`
-  }
-
-  if (owner && receiver && receiver !== owner) {
-    summary += ` to ${shortenAddress(receiver)}`
-  }
-
-  return summary
-}
-
-type PopupData = {
+export type OrderTransitionData = {
   status: OrderTransitionStatus
   order: EnrichedOrder
+  orderType: UiOrderType
 }
 
-export async function fetchAndClassifyOrder(orderFromStore: Order, chainId: ChainId): Promise<PopupData | null> {
+export type OrderTypesByUid = Record<string, UiOrderType>
+
+export async function fetchAndClassifyOrder(
+  orderFromStore: Order,
+  chainId: ChainId,
+): Promise<OrderTransitionData | null> {
   // Skip EthFlow creating orders
   if (orderFromStore.status === OrderStatus.CREATING) {
     return null
@@ -87,12 +37,79 @@ export async function fetchAndClassifyOrder(orderFromStore: Order, chainId: Chai
     if (!order) return null
 
     const status = classifyOrder(order)
+    const orderType = getUiOrderType(orderFromStore)
 
-    return { status, order }
+    return { status, order, orderType }
   } catch {
     console.debug(
       `[PendingOrdersUpdater] Failed to fetch order popup data on chain ${chainId} for order ${orderFromStore.id}`,
     )
     return null
   }
+}
+
+export function getOrdersFromTransitionData(orderData: OrderTransitionData[]): EnrichedOrder[] {
+  return orderData.map(({ order }) => order)
+}
+
+export function getOrderTypesByUid(orderData: OrderTransitionData[]): OrderTypesByUid {
+  return orderData.reduce<OrderTypesByUid>((acc, { order, orderType }) => {
+    acc[order.uid] = orderType
+    return acc
+  }, {})
+}
+
+export function getUltimateOrderTradeAmounts({
+  orderFromStore,
+  bridgeOrderFromStore,
+  bridgeOrderFromApi,
+}: UltimateOrderData): TradeAmounts {
+  const genericOrder = orderFromStore.apiAdditionalInfo ?? orderFromStore
+  const { status } = genericOrder
+
+  const { inputToken, outputToken } = orderFromStore
+  const executedBuyAmount = orderFromStore.apiAdditionalInfo?.executedBuyAmount
+  const executedSellAmount = orderFromStore.apiAdditionalInfo?.executedSellAmount
+  const isFulfilled = status === OrderStatus.FULFILLED && executedBuyAmount && executedSellAmount
+
+  // Bridge order
+  if (bridgeOrderFromStore) {
+    // Executed order
+    if (bridgeOrderFromApi?.bridgingParams.outputAmount) {
+      return {
+        inputAmount: bridgeOrderFromStore.quoteAmounts.swapSellAmount,
+        outputAmount: CurrencyAmount.fromRawAmount(
+          bridgeOrderFromStore.quoteAmounts.bridgeMinReceiveAmount.currency,
+          bridgeOrderFromApi.bridgingParams.outputAmount.toString(),
+        ),
+      }
+    }
+
+    return {
+      inputAmount: bridgeOrderFromStore.quoteAmounts.swapSellAmount,
+      outputAmount: bridgeOrderFromStore.quoteAmounts.bridgeMinReceiveAmount,
+    }
+  }
+
+  // Executed swap order
+  if (isFulfilled) {
+    return {
+      inputAmount: stringToCurrency(executedSellAmount, inputToken),
+      outputAmount: stringToCurrency(executedBuyAmount, outputToken),
+    }
+  }
+
+  const sellAmount = genericOrder.sellAmount
+  const feeAmount = genericOrder.feeAmount
+  const buyAmount = genericOrder.buyAmount
+
+  // Any other swap orders
+  return {
+    inputAmount: stringToCurrency(sellAmount, inputToken).add(stringToCurrency(feeAmount, inputToken)),
+    outputAmount: stringToCurrency(buyAmount, outputToken),
+  }
+}
+
+function stringToCurrency(amount: string, currency: Currency): CurrencyAmount<Currency> {
+  return CurrencyAmount.fromRawAmount(currency, amount)
 }

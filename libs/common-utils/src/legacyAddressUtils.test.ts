@@ -1,4 +1,4 @@
-import { isAddress, shortenAddress } from './legacyAddressUtils'
+import { getBlockExplorerUrl, isAddress, safeShortenAddress, shortenAddress } from './legacyAddressUtils'
 
 describe('utils', () => {
   describe('#isAddress', () => {
@@ -29,12 +29,24 @@ describe('utils', () => {
       expect(shortenAddress('0xf164fc0ec4e93095b804a4795bbe1e041497b92a')).toBe('0xf164...b92a')
     })
 
-    it('truncates middle characters even without prefix', () => {
-      expect(shortenAddress('f164fc0ec4e93095b804a4795bbe1e041497b92a')).toBe('0xf164...b92a')
-    })
-
     it('renders checksummed address', () => {
       expect(shortenAddress('0x2E1b342132A67Ea578e4E3B814bae2107dc254CC'.toLowerCase())).toBe('0x2E1b...54CC')
+    })
+  })
+
+  describe('#safeShortenAddress', () => {
+    it('truncates middle characters', () => {
+      expect(safeShortenAddress('0xf164fc0ec4e93095b804a4795bbe1e041497b92a')).toBe('0xf164...b92a')
+    })
+
+    it('returns the original value when it is not an address', () => {
+      expect(safeShortenAddress('abc')).toBe('abc')
+    })
+  })
+
+  describe('#getBlockExplorerUrl', () => {
+    it('does not introduce double slashes for bare explorer origins', () => {
+      expect(getBlockExplorerUrl(1, 'transaction', 'abc', 'https://etherscan.io')).toBe('https://etherscan.io/tx/abc')
     })
   })
 })

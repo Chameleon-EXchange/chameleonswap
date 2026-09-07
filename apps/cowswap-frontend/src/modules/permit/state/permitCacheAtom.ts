@@ -1,6 +1,8 @@
 import { atom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
 
+import { getAddressKey } from '@cowprotocol/cow-sdk'
+
 import {
   CachedPermitData,
   GetPermitCacheParams,
@@ -14,14 +16,18 @@ import {
  * Should never change once it has been created.
  * Used exclusively for quote requests
  */
-export const staticPermitCacheAtom = atomWithStorage<PermitCache>('staticPermitCache:v3', {})
+export const staticPermitCacheAtom = atomWithStorage<PermitCache>('staticPermitCache:v3', {}, undefined, {
+  getOnInit: true,
+})
 
 /**
  * Atom that stores permit data for user permit requests.
  * Should be updated whenever the permit nonce is updated.
  * Used exclusively for order requests
  */
-export const userPermitCacheAtom = atomWithStorage<PermitCache>('userPermitCache:v1', {})
+export const userPermitCacheAtom = atomWithStorage<PermitCache>('userPermitCache:v1', {}, undefined, {
+  getOnInit: true,
+})
 
 /**
  * Atom to add/update permit cache data
@@ -91,10 +97,11 @@ export const getPermitCacheAtom = atom(null, (get, set, params: GetPermitCachePa
   }
 })
 
-function buildKey({ chainId, tokenAddress, account, spender }: PermitCacheKeyParams) {
-  const base = `${chainId}-${tokenAddress.toLowerCase()}-${spender.toLowerCase()}`
+function buildKey({ chainId, tokenAddress, account, spender, amount }: PermitCacheKeyParams): string {
+  const base = `${chainId}-${getAddressKey(tokenAddress)}-${getAddressKey(spender)}`
+  const withAmount = amount ? `${base}-${amount.toString()}` : base
 
-  return account ? `${base}-${account.toLowerCase()}` : base
+  return account ? `${withAmount}-${getAddressKey(account)}` : withAmount
 }
 
 const removePermitCacheBuilder = (key: string) => (permitCache: PermitCache) => {

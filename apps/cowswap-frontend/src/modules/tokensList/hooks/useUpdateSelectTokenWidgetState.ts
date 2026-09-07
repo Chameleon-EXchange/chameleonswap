@@ -1,7 +1,7 @@
-import { useSetAtom } from 'jotai/index'
+import { useSetAtom } from 'jotai'
 
-import { updateSelectTokenWidgetAtom } from '../state/selectTokenWidgetAtom'
+import { SelectTokenWidgetState, updateSelectTokenWidgetAtom } from '../state/selectTokenWidgetAtom'
 
-export function useUpdateSelectTokenWidgetState() {
+export function useUpdateSelectTokenWidgetState(): (update: Partial<SelectTokenWidgetState>) => void {
   return useSetAtom(updateSelectTokenWidgetAtom)
 }

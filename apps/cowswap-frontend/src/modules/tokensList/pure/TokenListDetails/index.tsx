@@ -1,6 +1,8 @@
 import { ReactNode } from 'react'
 
 import { TokenLogo } from '@cowprotocol/tokens'
+
+import { Trans } from '@lingui/react/macro'
 import { TokenList as UniTokenList } from '@uniswap/token-lists'
 
 import * as styledEl from './styled'
@@ -11,6 +13,8 @@ export interface TokenListItemProps {
   children?: ReactNode
 }
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function TokenListDetails(props: TokenListItemProps) {
   const { list, children, className } = props
 
@@ -22,7 +26,7 @@ export function TokenListDetails(props: TokenListItemProps) {
       <div>
         <styledEl.ListName>{list.name}</styledEl.ListName>
         <styledEl.TokensInfo>
-          {list.tokens.length} tokens {children}
+          {list.tokens.length} <Trans>tokens</Trans> {children}
         </styledEl.TokensInfo>
       </div>
     </styledEl.ListInfo>

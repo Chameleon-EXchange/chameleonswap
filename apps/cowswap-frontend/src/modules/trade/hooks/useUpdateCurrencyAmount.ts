@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 
 import { FractionUtils, tryParseCurrencyAmount } from '@cowprotocol/common-utils'
-import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
+import { Currency, CurrencyAmount } from '@cowprotocol/currency'
 
 import { Field } from 'legacy/state/types'
 
@@ -18,12 +18,12 @@ type UpdateCurrencyAmountProps = {
   field: Field
 }
 
-export function useUpdateCurrencyAmount() {
+export function useUpdateCurrencyAmount(): (props: UpdateCurrencyAmountProps) => void {
   const { updateState } = useTradeState()
 
   return useCallback(
     ({ field, currency, amount }: UpdateCurrencyAmountProps) => {
-      if (!currency) {
+      if (!currency || !updateState) {
         return
       }
 
@@ -36,11 +36,19 @@ export function useUpdateCurrencyAmount() {
         ? tryParseCurrencyAmount(value, currency)
         : CurrencyAmount.fromRawAmount(currency, value)
 
+      if (!parsedAmount || parsedAmount.equalTo(0)) {
+        updateState({
+          inputCurrencyAmount: null,
+          outputCurrencyAmount: null,
+        })
+        return
+      }
+
       const currencyAmount = FractionUtils.serializeFractionToJSON(parsedAmount)
       const currencyField = field === Field.INPUT ? 'inputCurrencyAmount' : 'outputCurrencyAmount'
 
-      updateState?.({ [currencyField]: currencyAmount })
+      updateState({ [currencyField]: currencyAmount })
     },
-    [updateState]
+    [updateState],
   )
 }

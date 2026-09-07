@@ -1,6 +1,6 @@
 import { PropsWithChildren } from 'react'
 
-import { AlertCircle } from 'react-feather'
+import { AlertTriangle } from 'react-feather'
 import styled from 'styled-components/macro'
 
 import Card from 'legacy/components/Card'
@@ -30,12 +30,14 @@ const RightContainer = styled.div`
   }
 `
 
-const WarningIcon = styled(AlertCircle)`
+const WarningIcon = styled(AlertTriangle)`
   min-height: 32px;
   min-width: 32px;
   color: #764e0766;
 `
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function WarningCard({ children, className }: PropsWithChildren & { className?: string }) {
   return (
     <Wrapper className={className}>

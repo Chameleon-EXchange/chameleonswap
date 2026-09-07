@@ -1,7 +1,7 @@
 import { COW_PROTOCOL_LINK } from '@cowprotocol/common-const'
 import { ExternalLink, UI, ProductLogo, ProductVariant } from '@cowprotocol/ui'
 
-import { Trans } from '@lingui/macro'
+import { Trans } from '@lingui/react/macro'
 import styled from 'styled-components/macro'
 
 const Wrapper = styled.div`
@@ -39,12 +39,14 @@ const StyledExternalLink = styled(ExternalLink)`
   }
 `
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function PoweredFooter() {
   return (
     <Wrapper>
       <StyledExternalLink href={COW_PROTOCOL_LINK}>
         <ProductLogo variant={ProductVariant.CowExplorer} height={11} logoIconOnly />
-        <Trans>Powered by CoW Protocol</Trans>
+        <Trans>Powered by</Trans> CoW Protocol
       </StyledExternalLink>
     </Wrapper>
   )

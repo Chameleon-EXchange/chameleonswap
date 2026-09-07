@@ -1,8 +1,8 @@
-import { TokenSymbol } from '@cowprotocol/ui'
-import { HoverTooltip } from '@cowprotocol/ui'
-import { UI } from '@cowprotocol/ui'
-import { Currency } from '@uniswap/sdk-core'
+import { Currency } from '@cowprotocol/currency'
+import { TokenSymbol, HoverTooltip, UI } from '@cowprotocol/ui'
 
+import { t } from '@lingui/core/macro'
+import { Trans } from '@lingui/react/macro'
 import { AlertTriangle } from 'react-feather'
 import styled from 'styled-components/macro'
 
@@ -30,6 +30,8 @@ const ImpactTooltip = styled.span`
   max-width: 300px;
 `
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function RateImpactIndicator({ rateImpact, inputCurrency }: RateImpactProps) {
   const isPositive = rateImpact > 0
   const hugePositiveImpact = rateImpact > MAX_POSITIVE_RATE_IMPACT_PERCENT
@@ -41,13 +43,13 @@ export function RateImpactIndicator({ rateImpact, inputCurrency }: RateImpactPro
   const tooltipContent = (
     <ImpactTooltip>
       {isPositive &&
-        `Your order will execute when the market price is ${displayedPercent}% better than the current market price.`}
+        t`Your order will execute when the market price is ${displayedPercent}% better than the current market price.`}
       {!isPositive && (
-        <>
+        <Trans>
           This price is {displayedPercent}% lower than current market price. You could be selling your{' '}
           <TokenSymbol token={inputCurrency} /> at a loss! Click on "Market price" to set your limit price to the
           current market price.
-        </>
+        </Trans>
       )}
     </ImpactTooltip>
   )

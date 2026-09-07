@@ -10,10 +10,6 @@ export const MenuWrapper = styled.div`
 `
 
 export const MenuButton = styled.button`
-  background: none;
-  outline: none;
-  border: none;
-  cursor: pointer;
   color: inherit;
   background: var(${UI.COLOR_PAPER});
   height: 44px;
@@ -67,7 +63,7 @@ export const MenuItem = styled.div<{ active: boolean }>`
 
 export const Wrapper = styled.div`
   display: grid;
-  grid-template-columns: 120px minmax(auto, 1140px);
+  grid-template-columns: 160px minmax(0, 1140px);
   grid-template-rows: max-content;
   margin: 0;
   width: 100%;
@@ -76,11 +72,18 @@ export const Wrapper = styled.div`
 
   ${Media.upToMedium()} {
     display: flex;
-    flex-flow: column wrap;
+    flex-flow: column nowrap;
+    width: 100%;
+
+    > * {
+      width: 100%;
+      min-width: 0;
+    }
   }
 `
 
 export const AccountPageWrapper = styled.div`
+  min-width: 0;
   width: 100%;
   max-width: 100%;
   border: none;
@@ -98,10 +101,7 @@ export const AccountHeading = styled.div`
 `
 
 export const RemoveTokens = styled.button`
-  background: none;
-  border: none;
   color: var(${UI.COLOR_TEXT});
-  cursor: pointer;
 
   &:hover {
     text-decoration: underline;
@@ -161,7 +161,6 @@ export const SearchInputFormatter = styled(Column)`
 `
 
 export const TokenSearchInput = styled.input`
-  margin: 0;
   font-size: 14px;
   max-width: 280px;
   width: 100%;
@@ -173,15 +172,12 @@ export const TokenSearchInput = styled.input`
   transition:
     background var(${UI.ANIMATION_DURATION}) ease-in-out,
     max-width var(${UI.ANIMATION_DURATION}) ease-in-out;
-  appearance: none;
   height: 44px;
   padding: 0 16px;
-  outline: 0;
 
   &:focus {
     max-width: 500px;
     background: var(${UI.COLOR_PAPER});
-    outline: 0;
 
     ${Media.upToMedium()} {
       width: 100%;

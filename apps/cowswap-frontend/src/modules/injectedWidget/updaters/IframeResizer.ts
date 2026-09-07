@@ -1,51 +1,120 @@
 import { useAtomValue } from 'jotai'
 import { useLayoutEffect, useRef } from 'react'
 
-import { MEDIA_WIDTHS } from '@cowprotocol/ui'
-import { WidgetMethodsEmit, widgetIframeTransport } from '@cowprotocol/widget-lib'
+import { isIframe, isInjectedWidget } from '@cowprotocol/common-utils'
+import { getParentOrigin } from '@cowprotocol/iframe-transport'
+import { widgetIframeTransport, WidgetMethodsEmit } from '@cowprotocol/widget-lib'
+
+import { useInjectedWidgetParams } from 'entities/injectedWidget'
 
 import { openModalState } from 'common/state/openModalState'
 
-export function IframeResizer() {
+export function IframeResizer(): null {
   const isModalOpen = useAtomValue(openModalState)
   const previousHeightRef = useRef(0)
+  const { disableScrollbars } = useInjectedWidgetParams()
 
   useLayoutEffect(() => {
-    // Initial height calculation and message
-    const sendHeightUpdate = () => {
-      const contentHeight = document.body.scrollHeight
+    const parentOrigin = getParentOrigin()
+
+    if (!shouldPropagateHeightUpdates(parentOrigin)) return
+
+    if (disableScrollbars) {
+      document.documentElement.style.overflow = 'hidden'
+    }
+
+    return () => {
+      document.documentElement.style.removeProperty('overflow')
+    }
+  }, [disableScrollbars])
+
+  useLayoutEffect(() => {
+    const parentOrigin = getParentOrigin()
+
+    if (!shouldPropagateHeightUpdates(parentOrigin)) return
+
+    const contentElement = getContentElement(document)
+
+    const sendHeightUpdate = (): void => {
+      const contentHeight = getContentHeight(contentElement)
 
       if (isModalOpen) {
-        const isUpToSmall = document.body.offsetWidth <= MEDIA_WIDTHS.upToSmall
-
-        widgetIframeTransport.postMessageToWindow(window.parent, WidgetMethodsEmit.SET_FULL_HEIGHT, { isUpToSmall })
+        widgetIframeTransport.postMessageToWindow(
+          window.parent,
+          WidgetMethodsEmit.SET_FULL_HEIGHT,
+          void 0,
+          parentOrigin,
+        )
 
         previousHeightRef.current = 0
         return
       }
 
       if (contentHeight !== previousHeightRef.current) {
-        widgetIframeTransport.postMessageToWindow(window.parent, WidgetMethodsEmit.UPDATE_HEIGHT, {
-          height: contentHeight,
-        })
+        widgetIframeTransport.postMessageToWindow(
+          window.parent,
+          WidgetMethodsEmit.UPDATE_HEIGHT,
+          {
+            height: contentHeight,
+          },
+          parentOrigin,
+        )
         previousHeightRef.current = contentHeight
       }
     }
     sendHeightUpdate()
 
-    // Set up a MutationObserver to watch for changes in the DOM
-    const observer = new MutationObserver(() => {
-      sendHeightUpdate()
+    window.addEventListener('resize', sendHeightUpdate)
+
+    const resizeObserver =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => {
+            sendHeightUpdate()
+          })
+        : null
+
+    resizeObserver?.observe(contentElement)
+
+    if (contentElement !== document.body) {
+      resizeObserver?.observe(document.body)
+    }
+
+    const mutationObserver =
+      !resizeObserver && typeof MutationObserver !== 'undefined'
+        ? new MutationObserver(() => {
+            sendHeightUpdate()
+          })
+        : null
+
+    mutationObserver?.observe(document.body, {
+      attributes: true,
+      characterData: true,
+      childList: true,
+      subtree: true,
     })
 
-    // Start observing the entire body for changes that might affect its height
-    observer.observe(document.body, { childList: true, subtree: true })
-
-    // Cleanup: Disconnect the observer when the component is unmounted
     return () => {
-      observer.disconnect()
+      window.removeEventListener('resize', sendHeightUpdate)
+      resizeObserver?.disconnect()
+      mutationObserver?.disconnect()
     }
   }, [isModalOpen])
 
   return null
+}
+
+function getContentElement(doc: Document): HTMLElement {
+  return doc.getElementById('root') ?? doc.body
+}
+
+function getContentHeight(contentElement: HTMLElement): number {
+  return Math.max(
+    contentElement.offsetHeight,
+    contentElement.clientHeight,
+    Math.ceil(contentElement.getBoundingClientRect().height),
+  )
+}
+
+function shouldPropagateHeightUpdates(parentOrigin: string | null | undefined): boolean {
+  return isIframe() && isInjectedWidget() && Boolean(parentOrigin)
 }

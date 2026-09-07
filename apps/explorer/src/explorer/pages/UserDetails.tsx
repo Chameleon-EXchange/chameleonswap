@@ -1,5 +1,7 @@
 import React from 'react'
 
+import { NetworkLogo } from '@cowprotocol/ui'
+
 import { Helmet } from 'react-helmet'
 import { useParams } from 'react-router'
 import styled from 'styled-components/macro'
@@ -7,7 +9,7 @@ import styled from 'styled-components/macro'
 import { TitleAddress, Wrapper as WrapperMod, FlexContainerVar, StyledSearch } from './styled'
 
 import { BlockExplorerLink } from '../../components/common/BlockExplorerLink'
-import CowLoading from '../../components/common/CowLoading'
+import { LoadingWrapper } from '../../components/common/LoadingWrapper'
 import RedirectToSearch from '../../components/RedirectToSearch'
 import { useResolveEns } from '../../hooks/useResolveEns'
 import { useNetworkId } from '../../state/network'
@@ -28,13 +30,14 @@ const UserDetails: React.FC = () => {
   return (
     <Wrapper>
       <Helmet>
-        <title>User Details - {APP_TITLE}</title>
+        <title>Order History - {APP_TITLE}</title>
       </Helmet>
       <StyledSearch />
       {addressAccount ? (
         <>
           <FlexContainerVar>
-            <h1>User details</h1>
+            <h1>Order history</h1>
+            {networkId && <NetworkLogo chainId={networkId} size={16} />}
             <TitleAddress
               textToCopy={addressAccount.address}
               contentsToDisplay={
@@ -51,7 +54,7 @@ const UserDetails: React.FC = () => {
           <OrdersTableWidget ownerAddress={addressAccount.address} networkId={networkId} />
         </>
       ) : (
-        <CowLoading />
+        <LoadingWrapper message="Loading orders" />
       )}
     </Wrapper>
   )

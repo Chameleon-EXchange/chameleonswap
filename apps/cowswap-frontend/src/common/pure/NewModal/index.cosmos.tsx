@@ -1,4 +1,4 @@
-import ICON_ARROW from 'assets/icon/arrow.svg'
+import iconArrowSrc from 'assets/icon/arrow.svg'
 import SVG from 'react-inlinesvg'
 import styled from 'styled-components/macro'
 
@@ -31,7 +31,7 @@ const ModalFixtures = {
         <NewModalContentTop paddingTop={90}>
           <IconSpinner currency={MOCK_TOKEN} size={84} />
           <h3>
-            Approve spending AAVE <br /> on Chameleon swap
+            Approve spending AAVE <br /> on CoW Swap
           </h3>
         </NewModalContentTop>
 
@@ -56,7 +56,7 @@ const ModalFixtures = {
           <span>
             <h3>Confirm Swap</h3>
             <p>
-              10 AAVE <ArrowRight src={ICON_ARROW} /> 564.7202 DAI
+              10 AAVE <ArrowRight src={iconArrowSrc} /> 564.7202 DAI
             </p>
           </span>
         </NewModalContentTop>

@@ -1,25 +1,46 @@
-import { useState, useRef } from 'react'
+import { useAtomValue } from 'jotai'
+import { ReactNode, useRef, useState } from 'react'
 
-import ICON_ARROW_DOWN from '@cowprotocol/assets/images/carret-down.svg'
-import ICON_X from '@cowprotocol/assets/images/x.svg'
+import svgCarretDownSrc from '@cowprotocol/assets/images/carret-down.svg'
+import svgXSrc from '@cowprotocol/assets/images/x.svg'
 import { CODE_LINK } from '@cowprotocol/common-const'
 import { useOnClickOutside } from '@cowprotocol/common-hooks'
-import { getEtherscanLink } from '@cowprotocol/common-utils'
-import contractsPkg from '@cowprotocol/contracts/package.json'
 import {
+  getEtherscanLink,
+  isBarnBackendEnv,
   COW_PROTOCOL_SETTLEMENT_CONTRACT_ADDRESS,
   COW_PROTOCOL_VAULT_RELAYER_ADDRESS,
-  SupportedChainId as ChainId,
-} from '@cowprotocol/cow-sdk'
-import { UI, ExternalLink, Media } from '@cowprotocol/ui'
+} from '@cowprotocol/common-utils'
+import { CONTRACTS_PKG_VERSION, SupportedChainId as ChainId } from '@cowprotocol/cow-sdk'
+import { ExternalLink, Media, UI } from '@cowprotocol/ui'
 import { useWalletInfo } from '@cowprotocol/wallet'
 
+import { atomWithQuery } from 'jotai-tanstack-query'
 import SVG from 'react-inlinesvg'
 import styled from 'styled-components/macro'
 
 import pkg from '../../../../package.json'
+import { orderBookApi } from '../../../cowSdk'
 
-const _getContractsUrls = (chainId: ChainId, contractAddressMap: typeof COW_PROTOCOL_SETTLEMENT_CONTRACT_ADDRESS) => {
+const GIT_COMMIT_HASH = process.env.REACT_APP_GIT_COMMIT_HASH ?? ''
+const GIT_RELEASE_TAG = process.env.REACT_APP_GIT_RELEASE_TAG ?? ''
+
+const contractsTsVersion = CONTRACTS_PKG_VERSION
+
+function getCommitHref(): string {
+  if (GIT_RELEASE_TAG) {
+    return `${CODE_LINK}/releases/tag/${GIT_RELEASE_TAG}`
+  }
+  if (GIT_COMMIT_HASH) {
+    return `${CODE_LINK}/commit/${GIT_COMMIT_HASH}`
+  }
+  return CODE_LINK
+}
+
+const _getContractsUrls = (
+  chainId: ChainId,
+  contractAddressMap: typeof COW_PROTOCOL_SETTLEMENT_CONTRACT_ADDRESS,
+): string => {
   const contractAddress = contractAddressMap[chainId]
   return contractAddress ? getEtherscanLink(chainId, 'address', contractAddress) : '-'
 }
@@ -29,22 +50,17 @@ type VersionInfo = {
   href: (_chainId: ChainId) => string
 }
 
-const VERSIONS: Record<string, VersionInfo> = {
-  Web: {
-    version: 'v' + pkg.version,
-    href: () => CODE_LINK,
+const orderbookApiVersionQueryAtom = atomWithQuery(() => ({
+  queryKey: ['orderbookApiVersion'],
+  queryFn: async (): Promise<string> => {
+    try {
+      return await orderBookApi.getVersion()
+    } catch (error) {
+      console.error('Failed to fetch OrderBook API version', error)
+      return 'unknown'
+    }
   },
-  'Vault Relayer': {
-    version: 'v' + contractsPkg.version,
-    href: (chainId: ChainId) => _getContractsUrls(chainId, COW_PROTOCOL_VAULT_RELAYER_ADDRESS),
-  },
-  'Settlement Contract': {
-    version: 'v' + contractsPkg.version,
-    href: (chainId: ChainId) => _getContractsUrls(chainId, COW_PROTOCOL_SETTLEMENT_CONTRACT_ADDRESS),
-  },
-}
-
-const versionsList = Object.keys(VERSIONS)
+}))
 
 const Dropdown = styled.div`
   position: relative;
@@ -152,15 +168,43 @@ const CloseButton = styled.span`
   }
 `
 
-export const Version = ({ className }: { className?: string }) => {
+export const Version = ({ className }: { className?: string }): ReactNode => {
   const { chainId } = useWalletInfo()
   const [showDropdown, setShowDropdown] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
+  const orderbookApiVersion = useAtomValue(orderbookApiVersionQueryAtom)?.data || 'unknown'
+
+  const VERSIONS: Record<string, VersionInfo> = {
+    Web: {
+      version: 'v' + pkg.version,
+      href: () => CODE_LINK,
+    },
+    Commit: {
+      version: GIT_COMMIT_HASH || 'unknown',
+      href: () => getCommitHref(),
+    },
+    'Vault Relayer': {
+      version: 'v' + contractsTsVersion,
+      href: (chainId: ChainId) => _getContractsUrls(chainId, COW_PROTOCOL_VAULT_RELAYER_ADDRESS),
+    },
+    'Settlement Contract': {
+      version: 'v' + contractsTsVersion,
+      href: (chainId: ChainId) => _getContractsUrls(chainId, COW_PROTOCOL_SETTLEMENT_CONTRACT_ADDRESS),
+    },
+    'Orderbook API': {
+      version: `${isBarnBackendEnv ? 'barn' : 'prod'}:` + orderbookApiVersion,
+      href: () => 'https://github.com/cowprotocol/services/releases',
+    },
+  }
+
+  const versionsList = Object.keys(VERSIONS)
   const webVersion = VERSIONS['Web'].version
 
   useOnClickOutside([dropdownRef], () => setShowDropdown(false))
 
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   const handleLinkClick = () => {
     setShowDropdown(false)
   }
@@ -168,12 +212,12 @@ export const Version = ({ className }: { className?: string }) => {
   return (
     <Dropdown className={className} ref={dropdownRef}>
       <DropdownButton onClick={() => setShowDropdown(!showDropdown)}>
-        {webVersion} <SVG src={ICON_ARROW_DOWN} />
+        {webVersion} <SVG src={svgCarretDownSrc} />
       </DropdownButton>
       {showDropdown && (
         <DropdownContent>
           <CloseButton onClick={() => setShowDropdown(false)}>
-            <SVG src={ICON_X} />
+            <SVG src={svgXSrc} />
           </CloseButton>
           {versionsList.map((key) => {
             const { href, version } = VERSIONS[key]

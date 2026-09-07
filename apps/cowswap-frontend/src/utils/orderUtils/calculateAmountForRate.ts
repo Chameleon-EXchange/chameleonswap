@@ -1,5 +1,5 @@
 import { FractionUtils } from '@cowprotocol/common-utils'
-import { Currency, CurrencyAmount, Fraction, Price } from '@uniswap/sdk-core'
+import { Currency, CurrencyAmount, Fraction, Price } from '@cowprotocol/currency'
 
 import { Field } from 'legacy/state/types'
 
@@ -11,6 +11,8 @@ export type RateCalculationParams = {
   outputCurrency: Currency | null
 }
 
+// TODO: Reduce function complexity by extracting logic
+// eslint-disable-next-line complexity
 export function calculateAmountForRate({
   activeRate,
   amount,

@@ -1,15 +1,15 @@
-import { BannerOrientation, InlineBanner } from '@cowprotocol/ui'
-
-import styled from 'styled-components/macro'
-
-const StyledInlineBanner = styled(InlineBanner)`
-  --cow-color-danger-text: ${({ theme }): string => theme.alert2};
-`
+import { BannerOrientation, InlineBanner, StatusColorVariant } from '@cowprotocol/ui'
 
 export const UnsignedOrderWarning: React.FC = () => {
   return (
-    <StyledInlineBanner orientation={BannerOrientation.Horizontal} bannerType="danger" padding="0">
-      An unsigned order is not necessarily placed by the owner's account. Please be cautious.
-    </StyledInlineBanner>
+    <InlineBanner
+      orientation={BannerOrientation.Horizontal}
+      bannerType={StatusColorVariant.Alert}
+      noBackground
+      padding="0"
+      breakWord
+    >
+      <p>An unsigned order is not necessarily placed by the owner's account. Please be cautious.</p>
+    </InlineBanner>
   )
 }

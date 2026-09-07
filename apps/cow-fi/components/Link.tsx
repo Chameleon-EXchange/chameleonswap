@@ -1,9 +1,13 @@
-import styled, { css } from 'styled-components/macro'
-import { Font, Color, Media } from '@cowprotocol/ui'
-import { transparentize } from 'color2k'
-import { defaultUtm } from 'modules/utm'
 import { FC, ReactNode } from 'react'
+
+import { Media, UI } from '@cowprotocol/ui'
+
 import NextLink from 'next/link'
+import styled, { css } from 'styled-components/macro'
+
+import { addUtmToUrl } from 'modules/utm'
+
+import { CONFIG } from '@/const/meta'
 
 export enum LinkType {
   TopicButton = 'topicButton',
@@ -40,10 +44,15 @@ const topicButtonStyles = css<LinkProps>`
   padding: ${({ padding }) => padding || '16px 24px'};
   margin: ${({ margin }) => margin || 'initial'};
   font-size: ${({ fontSize }) => fontSize || 21}px;
-  font-weight: ${Font.weight.bold};
-  color: ${({ color, disabled }) => (disabled ? transparentize(Color.neutral10, 0.5) : color || Color.neutral98)};
+  font-weight: var(${UI.FONT_WEIGHT_BOLD});
+  color: ${({ color, disabled }) =>
+    disabled
+      ? `color-mix(in srgb, var(${UI.COLOR_NEUTRAL_10}) 50%, transparent)`
+      : color || `var(${UI.COLOR_NEUTRAL_98})`};
   background-color: ${({ bgColor, disabled }) =>
-    disabled ? transparentize(Color.neutral10, 0.5) : bgColor || Color.neutral10};
+    disabled
+      ? `color-mix(in srgb, var(${UI.COLOR_NEUTRAL_10}) 50%, transparent)`
+      : bgColor || `var(${UI.COLOR_NEUTRAL_10})`};
   border-radius: 32px;
   line-height: 1.2;
   text-align: center;
@@ -71,9 +80,9 @@ const heroButtonStyles = css<LinkProps>`
   display: inline-block;
   padding: 16px 24px;
   font-size: 27px;
-  font-weight: ${Font.weight.bold};
-  color: ${({ color }) => color || Color.neutral98};
-  background: ${({ bgColor }) => bgColor || Color.neutral10};
+  font-weight: var(${UI.FONT_WEIGHT_BOLD});
+  color: ${({ color }) => color || `var(${UI.COLOR_NEUTRAL_98})`};
+  background: ${({ bgColor }) => bgColor || `var(${UI.COLOR_NEUTRAL_10})`};
   text-decoration: none;
   border-radius: 32px;
   line-height: 1.2;
@@ -91,9 +100,9 @@ const sectionTitleButtonStyles = css<LinkProps>`
   display: inline-block;
   padding: 16px 24px;
   font-size: ${({ fontSize }) => (fontSize && `${fontSize}px`) || '24px'};
-  font-weight: ${Font.weight.bold};
-  color: ${({ color }) => color || Color.neutral98};
-  background: ${({ bgColor }) => bgColor || Color.neutral10};
+  font-weight: var(${UI.FONT_WEIGHT_BOLD});
+  color: ${({ color }) => color || `var(${UI.COLOR_NEUTRAL_98})`};
+  background: ${({ bgColor }) => bgColor || `var(${UI.COLOR_NEUTRAL_10})`};
   text-decoration: none;
   border-radius: 32px;
   line-height: 1.2;
@@ -128,12 +137,8 @@ const StyledDiv = styled.div<LinkProps>`
   ${({ linkType }) => linkType === LinkType.SectionTitleButton && sectionTitleButtonStyles}
 `
 
-export const Link: FC<LinkProps> = ({ href, external, linkType, children, utmContent, asButton, ...rest }) => {
-  const finalHref = external
-    ? `${href}?utm_source=${defaultUtm.utmSource}&utm_medium=${defaultUtm.utmMedium}&utm_content=${
-        utmContent || defaultUtm.utmContent
-      }`
-    : href
+export const Link: FC<LinkProps> = ({ href, external, linkType, children, asButton, utmContent, ...rest }) => {
+  const finalHref = external && href && utmContent ? addUtmToUrl(href, { ...CONFIG.utm, utmContent }) : href
 
   if (asButton) {
     return (

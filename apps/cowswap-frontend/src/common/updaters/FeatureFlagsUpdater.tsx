@@ -1,17 +1,36 @@
 import { useSetAtom } from 'jotai'
-import { useMemo } from 'react'
+import { useLayoutEffect } from 'react'
 
 import { useFeatureFlags } from '@cowprotocol/common-hooks'
 
-import { featureFlagsAtom } from '../state/featureFlagsState'
+import { useLDClient, useLDClientError } from 'launchdarkly-react-client-sdk'
 
-export function FeatureFlagsUpdater() {
+import { featureFlagsAtom, featureFlagsStatusAtom } from '../state/featureFlagsState'
+
+const FEATURE_FLAGS_TIMEOUT_MS = 5_000
+
+export function FeatureFlagsUpdater(): null {
   const setFeatureFlags = useSetAtom(featureFlagsAtom)
+  const setFeatureFlagsStatus = useSetAtom(featureFlagsStatusAtom)
   const flags = useFeatureFlags()
+  const client = useLDClient()
+  const clientError = useLDClientError()
 
-  useMemo(() => {
-    setFeatureFlags(flags)
-  }, [setFeatureFlags, flags])
+  // Copy resolved flags before paint so consumers can switch from LD to Jotai without a flash.
+  useLayoutEffect(() => {
+    if (client) {
+      setFeatureFlags(flags)
+      setFeatureFlagsStatus(clientError ? 'unavailable' : 'ready')
+      return
+    }
+
+    const timeout = window.setTimeout(() => {
+      setFeatureFlags({})
+      setFeatureFlagsStatus('unavailable')
+    }, FEATURE_FLAGS_TIMEOUT_MS)
+
+    return () => window.clearTimeout(timeout)
+  }, [client, clientError, flags, setFeatureFlags, setFeatureFlagsStatus])
 
   return null
 }

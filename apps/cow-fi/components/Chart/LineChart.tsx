@@ -1,8 +1,8 @@
+import React, { ReactNode } from 'react'
+
 import { Group } from '@visx/group'
 import { LinePath } from '@visx/shape'
 import { CurveFactory } from 'd3'
-import React from 'react'
-import { ReactNode } from 'react'
 
 export interface LineChartProps<T> {
   data: T[]

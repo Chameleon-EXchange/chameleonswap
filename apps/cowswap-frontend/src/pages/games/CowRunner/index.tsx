@@ -1,12 +1,16 @@
-import { useEffect } from 'react'
+import { ReactNode, useEffect } from 'react'
 
+import { useCowAnalytics } from '@cowprotocol/analytics'
+import { PAGE_TITLES } from '@cowprotocol/common-const'
 import { CowGame } from '@cowprotocol/cow-runner-game'
 
+import { t } from '@lingui/core/macro'
+import { Trans, useLingui } from '@lingui/react/macro'
 import styled from 'styled-components/macro'
 
-import { gameAnalytics } from 'modules/analytics'
-import { PageTitle } from 'modules/application/containers/PageTitle'
-import { Page, Content } from 'modules/application/pure/Page'
+import { PageTitle, Page, Content } from 'modules/application'
+
+import { CowSwapAnalyticsCategory } from 'common/analytics/types'
 
 const Wrapper = styled(Page)`
   min-height: initial;
@@ -34,22 +38,27 @@ const Wrapper = styled(Page)`
   }
 `
 
-export default function CowRunnerPage() {
+export default function CowRunnerPage(): ReactNode {
+  const { i18n } = useLingui()
+  const cowAnalytics = useCowAnalytics()
+
   useEffect(() => {
-    gameAnalytics('CoW Runner')
-  }, [])
+    cowAnalytics.sendEvent({
+      category: CowSwapAnalyticsCategory.GAMES,
+      action: 'Playing CoW Runner game',
+    })
+  }, [cowAnalytics])
 
   return (
     <Wrapper>
-      <PageTitle title="CoW Runner" />
+      <PageTitle title={i18n._(PAGE_TITLES.COW_RUNNER)} />
       <p>
-        Run! ...and try not getting sandwiched{' '}
-        <span role="img" aria-label="sandwich-icon">
+        <Trans>Run! ...and try not getting sandwiched</Trans>{' '}
+        <span role="img" aria-label={t`Sandwich icon`}>
           🥪
         </span>
-        - MEV is lethal these days!
+        - <Trans>MEV is lethal these days!</Trans>
       </p>
-
       <Content>
         <CowGame />
       </Content>

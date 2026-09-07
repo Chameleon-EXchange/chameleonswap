@@ -3,7 +3,7 @@ import React, { useState, createRef } from 'react'
 import { useMediaQuery } from '@cowprotocol/common-hooks'
 import { Media } from '@cowprotocol/ui'
 
-import IMAGE_CARRET_DOWN from 'assets/img/carret-down.svg'
+import svgCarretDownSrc from 'assets/img/carret-down.svg'
 import { MenuFlyout, Content, MenuSection, MenuTitle, ButtonMenuItem } from 'components/common/MenuDropdown/styled'
 import useOnClickOutside from 'hooks/useOnClickOutside'
 import SVG from 'react-inlinesvg'
@@ -11,6 +11,11 @@ import SVG from 'react-inlinesvg'
 import InternalExternalMenuLink from './InternalExternalLink'
 import { MenuTreeProps } from './MenuTree'
 import { DropDownItem, MenuItemKind } from './types'
+
+export interface DropdownProps {
+  menuItem: DropDownItem
+  context: Omit<MenuTreeProps, 'menuList' | 'isMobile'>
+}
 
 interface MenuProps {
   title: string
@@ -34,16 +39,11 @@ export function MenuItemsPanel({ title, children }: MenuProps): React.ReactNode 
   return (
     <MenuFlyout ref={node as never}>
       <ButtonMenuItem onClick={handleOnClick} className={showMenu ? 'expanded' : ''}>
-        {title} <SVG src={IMAGE_CARRET_DOWN} description="dropdown icon" className={showMenu ? 'expanded' : ''} />
+        {title} <SVG src={svgCarretDownSrc} description="dropdown icon" className={showMenu ? 'expanded' : ''} />
       </ButtonMenuItem>
       {showMenu && <Content onClick={handleOnClick}>{children}</Content>}
     </MenuFlyout>
   )
-}
-
-export interface DropdownProps {
-  menuItem: DropDownItem
-  context: Omit<MenuTreeProps, 'menuList' | 'isMobile'>
 }
 
 export const DropDown = ({ menuItem, context }: DropdownProps): React.ReactNode => {

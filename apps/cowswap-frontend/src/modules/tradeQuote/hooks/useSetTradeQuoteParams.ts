@@ -1,24 +1,28 @@
 import { useSetAtom } from 'jotai'
 import { useEffect } from 'react'
 
-import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
+import { Currency, CurrencyAmount } from '@cowprotocol/currency'
 
 import { Nullish } from 'types'
 
-import { useSafeMemoObject } from 'common/hooks/useSafeMemo'
+import { tradeQuoteInputAtom } from '../state/tradeQuoteInputAtom'
 
-import { useUpdateTradeQuote } from './useUpdateTradeQuote'
+export interface SetTradeQuoteParams {
+  amount: Nullish<CurrencyAmount<Currency>>
+  partiallyFillable?: boolean
+  fastQuote?: boolean
+}
 
-import { tradeQuoteParamsAtom } from '../state/tradeQuoteParamsAtom'
-
-export function useSetTradeQuoteParams(amount: Nullish<CurrencyAmount<Currency>>, fastQuote?: boolean) {
-  const updateTradeQuote = useUpdateTradeQuote()
-  const updateState = useSetAtom(tradeQuoteParamsAtom)
-
-  const context = useSafeMemoObject({ amount, fastQuote, updateTradeQuote, updateState })
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export function useSetTradeQuoteParams({ amount, partiallyFillable, fastQuote }: SetTradeQuoteParams) {
+  const updateState = useSetAtom(tradeQuoteInputAtom)
 
   useEffect(() => {
-    context.updateTradeQuote({ response: null, error: null })
-    context.updateState({ amount: context.amount || null, fastQuote: context.fastQuote })
-  }, [context])
+    updateState({
+      amount: amount || null,
+      fastQuote,
+      partiallyFillable,
+    })
+  }, [updateState, amount, partiallyFillable, fastQuote])
 }

@@ -1,21 +1,17 @@
-import { useAtom, useAtomValue } from 'jotai'
-import { useSetAtom } from 'jotai'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
+import { useCallback, useRef, useState, useMemo, ReactNode } from 'react'
 
-import twitterImage from '@cowprotocol/assets/cow-swap/twitter.svg'
-import IMAGE_ICON_FORTUNE_COOKIE from '@cowprotocol/assets/images/icon-fortune-cookie.svg'
+import svgTwitterSrc from '@cowprotocol/assets/cow-swap/twitter.svg'
+import iconFortuneCookieSrc from '@cowprotocol/assets/images/icon-fortune-cookie.svg'
 import { addBodyClass, removeBodyClass } from '@cowprotocol/common-utils'
-import { ExternalLink, Media } from '@cowprotocol/ui'
-import { UI, Color } from '@cowprotocol/ui'
-import { Confetti } from '@cowprotocol/ui'
+import { Confetti, ExternalLink, fontFamilyBrand, Media, UI } from '@cowprotocol/ui'
 
-import { Trans } from '@lingui/macro'
+import { Trans, useLingui } from '@lingui/react/macro'
 import ReactDOM from 'react-dom'
 import { X } from 'react-feather'
 import SVG from 'react-inlinesvg'
 import styled from 'styled-components/macro'
 
-import { openFortuneCookieAnalytics, shareFortuneTwitterAnalytics } from 'modules/analytics'
 import { useOpenRandomFortune } from 'modules/fortune/hooks/useOpenRandomFortune'
 import { lastCheckedFortuneAtom } from 'modules/fortune/state/checkedFortunesListAtom'
 import {
@@ -23,6 +19,8 @@ import {
   isFortunesFeatureDisabledAtom,
   updateOpenFortuneAtom,
 } from 'modules/fortune/state/fortuneStateAtom'
+
+import { CowSwapAnalyticsCategory, toCowSwapGtmEvent } from 'common/analytics/types'
 
 import { SuccessBanner } from './styled'
 
@@ -40,9 +38,10 @@ const FortuneButton = styled.div<{ isDailyFortuneChecked: boolean }>`
   font-size: 40px;
   line-height: 0;
   color: inherit;
+  z-index: 9;
 
   &:hover {
-    color: ${Color.neutral100};
+    color: var(${UI.COLOR_NEUTRAL_100});
   }
 
   > span {
@@ -145,6 +144,7 @@ const DontShowAgainBox = styled.div`
 const FortuneTitle = styled.h2`
   display: block;
   width: 100%;
+  ${fontFamilyBrand}
   font-size: 21px;
   text-align: center;
   font-weight: 700;
@@ -168,6 +168,7 @@ const FortuneTitle = styled.h2`
 const FortuneText = styled.h3`
   padding: 21px;
   width: 100%;
+  ${fontFamilyBrand}
   font-size: 32px;
   border-radius: 42px;
   word-break: break-word;
@@ -197,7 +198,7 @@ const FortuneText = styled.h3`
 
   &:before,
   &:after {
-    color: inherit;
+    color: var(${UI.COLOR_TEXT_PAPER});
     font-size: 100px;
     position: absolute;
     z-index: 1;
@@ -270,7 +271,9 @@ interface FortuneWidgetProps {
   isMobileMenuOpen?: boolean
 }
 
-export function FortuneWidget({ menuTitle, isMobileMenuOpen }: FortuneWidgetProps) {
+// TODO: Break down this large function into smaller functions
+// eslint-disable-next-line max-lines-per-function
+export function FortuneWidget({ menuTitle, isMobileMenuOpen }: FortuneWidgetProps): ReactNode {
   const { openFortune } = useAtomValue(fortuneStateAtom)
   const lastCheckedFortune = useAtomValue(lastCheckedFortuneAtom)
   const updateOpenFortune = useSetAtom(updateOpenFortuneAtom)
@@ -279,10 +282,11 @@ export function FortuneWidget({ menuTitle, isMobileMenuOpen }: FortuneWidgetProp
   const [isNewFortuneOpen, setIsNewFortuneOpen] = useState(false)
   const [isFortunedShared, setIsFortunedShared] = useState(false)
   const checkboxRef = useRef<HTMLInputElement>(null)
+  const openFortuneText = openFortune?.text || ''
+  const { t } = useLingui()
 
-  // TODO: add text
   const twitterText = openFortune
-    ? encodeURIComponent(`My Chameleon fortune cookie 🐮💬: “Chameleon can't count gas fee, but we've got you covered” \n\n Get yours at chameleon.exchange @Chameleonswap`)
+    ? encodeURIComponent(t`My CoW fortune cookie 🐮💬: "${openFortuneText}" \n\n Get yours at swap.cow.fi @CoWSwap`)
     : ''
 
   const isDailyFortuneChecked = useMemo(() => {
@@ -302,7 +306,6 @@ export function FortuneWidget({ menuTitle, isMobileMenuOpen }: FortuneWidgetProp
     updateOpenFortune(null)
     setIsNewFortuneOpen(false)
 
-    // only remove body class if isMobileMenuOpen is false
     if (!isMobileMenuOpen) {
       removeBodyClass('noScroll')
     }
@@ -314,10 +317,6 @@ export function FortuneWidget({ menuTitle, isMobileMenuOpen }: FortuneWidgetProp
 
   const openFortuneModal = useCallback(() => {
     setIsFortunedShared(false)
-    openFortuneCookieAnalytics()
-
-    // Add the 'noScroll' class on body, whenever the fortune modal is opened/closed.
-    // This removes the inner scrollbar on the page body, to prevent showing double scrollbars.
     addBodyClass('noScroll')
 
     if (isDailyFortuneChecked && lastCheckedFortune) {
@@ -332,12 +331,11 @@ export function FortuneWidget({ menuTitle, isMobileMenuOpen }: FortuneWidgetProp
   const onTweetShare = useCallback(() => {
     setIsFortunesFeatureDisabled(true)
     setIsFortunedShared(true)
-    shareFortuneTwitterAnalytics()
   }, [setIsFortunesFeatureDisabled])
 
   if (isFortunesFeatureDisabled && isDailyFortuneChecked && !openFortune) return null
 
-  const PortalContent = () => (
+  const PortalContent = (
     <>
       {openFortune && (
         <FortuneBanner>
@@ -347,26 +345,32 @@ export function FortuneWidget({ menuTitle, isMobileMenuOpen }: FortuneWidgetProp
             </HeaderElement>
             <FortuneTitle>
               {isNewFortuneOpen
-                ? 'Chameleon Fortune of the day'
-                : "Already seen today's fortune? Return tomorrow for a fresh one!"}
+                ? t`CoW Fortune of the day`
+                : t`Already seen today's fortune? Return tomorrow for a fresh one!`}
             </FortuneTitle>
             <FortuneContent>
-              <FortuneText>“Chameleon can't count gas fee, but we've got you covered”</FortuneText>
+              <FortuneText>{openFortune.text}</FortuneText>
               <FortuneBannerActions>
                 <StyledExternalLink
                   onClickOptional={onTweetShare}
                   href={`https://twitter.com/intent/tweet?text=${twitterText}`}
+                  data-click-event={toCowSwapGtmEvent({
+                    category: CowSwapAnalyticsCategory.COW_FORTUNE,
+                    action: t`Share on Twitter`,
+                  })}
                 >
                   <SuccessBanner type={'Twitter'}>
                     <Trans>Share on Twitter</Trans>
-                    <SVG src={twitterImage} description="Twitter" />
+                    <SVG src={svgTwitterSrc} description="Twitter" />
                   </SuccessBanner>
                 </StyledExternalLink>
                 {!isNewFortuneOpen && !isFortunedShared && (
                   <DontShowAgainBox>
                     <label>
                       <input type="checkbox" ref={checkboxRef} />
-                      <span>Hide today's fortune cookie</span>
+                      <span>
+                        <Trans>Hide today's fortune cookie</Trans>
+                      </span>
                     </label>
                   </DontShowAgainBox>
                 )}
@@ -381,11 +385,18 @@ export function FortuneWidget({ menuTitle, isMobileMenuOpen }: FortuneWidgetProp
 
   return (
     <>
-      <FortuneButton isDailyFortuneChecked={isDailyFortuneChecked} onClick={openFortuneModal}>
-        <SVG src={IMAGE_ICON_FORTUNE_COOKIE} description="Fortune Cookie" />
+      <FortuneButton
+        isDailyFortuneChecked={isDailyFortuneChecked}
+        onClick={openFortuneModal}
+        data-click-event={toCowSwapGtmEvent({
+          category: CowSwapAnalyticsCategory.COW_FORTUNE,
+          action: 'Open Fortune Cookie',
+        })}
+      >
+        <SVG src={iconFortuneCookieSrc} description="Fortune Cookie" />
         {menuTitle && <span>{menuTitle}</span>}
       </FortuneButton>
-      {ReactDOM.createPortal(<PortalContent />, document.body)}
+      {ReactDOM.createPortal(PortalContent, document.body)}
     </>
   )
 }

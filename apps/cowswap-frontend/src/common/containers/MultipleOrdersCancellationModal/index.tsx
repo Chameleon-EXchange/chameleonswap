@@ -1,16 +1,20 @@
 import { useAtomValue, useSetAtom } from 'jotai'
-import React, { useCallback, useState } from 'react'
+import React, { ReactNode, useCallback, useState } from 'react'
 
-import { isRejectRequestProviderError } from '@cowprotocol/common-utils'
+import { getProviderErrorMessage, isRejectRequestProviderError } from '@cowprotocol/common-utils'
 import { Command } from '@cowprotocol/types'
 import { ButtonPrimary } from '@cowprotocol/ui'
 import { useWalletInfo } from '@cowprotocol/wallet'
 
+import { t } from '@lingui/core/macro'
+import { Trans } from '@lingui/react/macro'
+import { ordersToCancelAtom, updateOrdersToCancelAtom } from 'entities/ordersToCancel/ordersToCancel.atom'
+
 import { LegacyConfirmationModalContent } from 'legacy/components/TransactionConfirmationModal/LegacyConfirmationModalContent'
 import { useRequestOrderCancellation } from 'legacy/state/orders/hooks'
 
-import { ordersToCancelAtom, updateOrdersToCancelAtom } from 'common/hooks/useMultipleOrdersCancellation/state'
-import { useCancelMultipleOrders } from 'common/hooks/useMultipleOrdersCancellation/useCancelMultipleOrders'
+import { getIsOrderBookTypedError } from 'api/cowProtocol'
+import { useCancelMultipleOrders } from 'common/hooks/useCancelMultipleOrders'
 import { CowModal as Modal } from 'common/pure/Modal'
 import { TransactionErrorContent } from 'common/pure/TransactionErrorContent'
 
@@ -20,7 +24,7 @@ interface Props {
   onDismiss: Command
 }
 
-export function MultipleOrdersCancellationModal(props: Props) {
+export function MultipleOrdersCancellationModal(props: Props): ReactNode {
   const { isOpen, onDismiss } = props
 
   const { chainId } = useWalletInfo()
@@ -57,7 +61,7 @@ export function MultipleOrdersCancellationModal(props: Props) {
       // Clean cancellation queue
       updateOrdersToCancel([])
       dismissAll()
-    } catch (error: any) {
+    } catch (error) {
       setCancellationInProgress(false)
       setCancellationError(error)
     }
@@ -65,14 +69,15 @@ export function MultipleOrdersCancellationModal(props: Props) {
 
   if (!isOpen || !chainId) return null
 
-  // TODO: use TradeConfirmModal
   if (cancellationError) {
     const errorMessage = isRejectRequestProviderError(cancellationError)
-      ? 'User rejected signing'
-      : cancellationError.message
+      ? t`User rejected signing the cancellation`
+      : getIsOrderBookTypedError(cancellationError)
+        ? cancellationError.body.description || cancellationError.body.errorType
+        : (getProviderErrorMessage(cancellationError) ?? String(cancellationError))
 
     return (
-      <Modal isOpen={true} onDismiss={dismissAll}>
+      <Modal isOpen onDismiss={dismissAll}>
         <TransactionErrorContent modalMode onDismiss={dismissAll} message={errorMessage} />
       </Modal>
     )
@@ -84,9 +89,9 @@ export function MultipleOrdersCancellationModal(props: Props) {
         <ConfirmationPendingContent
           modalMode
           onDismiss={onDismiss}
-          title={<>Cancelling {ordersCount} orders</>}
-          description="Canceling your order"
-          operationLabel="cancellation"
+          title={t`Cancelling ${ordersCount} orders`}
+          description={t`Canceling your order`}
+          operationLabel={t`cancellation`}
         />
       </Modal>
     )
@@ -95,18 +100,22 @@ export function MultipleOrdersCancellationModal(props: Props) {
   return (
     <Modal isOpen={isOpen} onDismiss={onDismiss}>
       <LegacyConfirmationModalContent
-        title={`Cancel multiple orders: ${ordersCount}`}
+        title={t`Cancel multiple orders: ${ordersCount}`}
         onDismiss={onDismiss}
-        topContent={() => (
+        topContent={
           <div>
-            <p>Are you sure you want to cancel {ordersCount} orders?</p>
+            <p>
+              <Trans>Are you sure you want to cancel {ordersCount} orders?</Trans>
+            </p>
           </div>
-        )}
-        bottomContent={() => (
+        }
+        bottomContent={
           <div>
-            <ButtonPrimary onClick={signAndSendCancellation}>Request cancellations</ButtonPrimary>
+            <ButtonPrimary onClick={signAndSendCancellation}>
+              <Trans>Request cancellations</Trans>
+            </ButtonPrimary>
           </div>
-        )}
+        }
       />
     </Modal>
   )

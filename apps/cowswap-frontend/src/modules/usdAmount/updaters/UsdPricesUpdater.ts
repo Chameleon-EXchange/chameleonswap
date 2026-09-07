@@ -1,13 +1,16 @@
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useMemo } from 'react'
 
-import { getWrappedToken } from '@cowprotocol/common-utils'
-import { useWalletInfo } from '@cowprotocol/wallet'
-import { Fraction, Token } from '@uniswap/sdk-core'
+import { getWrappedToken, normalizeError } from '@cowprotocol/common-utils'
+import { Token } from '@cowprotocol/currency'
 
 import ms from 'ms.macro'
 import useSWR, { SWRConfiguration } from 'swr'
 
+import { useIsProviderNetworkDeprecated } from 'common/hooks/useIsProviderNetworkDeprecated'
+import { useIsProviderNetworkUnsupported } from 'common/hooks/useIsProviderNetworkUnsupported'
+
+import { logUsdPrices } from '../logger'
 import { fetchCurrencyUsdPrice } from '../services/fetchCurrencyUsdPrice'
 import {
   currenciesUsdPriceQueueAtom,
@@ -16,7 +19,7 @@ import {
   usdRawPricesAtom,
   UsdRawPriceState,
 } from '../state/usdRawPricesAtom'
-import { usdcPriceLoader } from '../utils/usdcPriceLoader'
+import { getUsdPriceStateKey } from '../utils/usdPriceStateKey'
 
 const swrOptions: SWRConfiguration = {
   refreshInterval: ms`60s`,
@@ -26,22 +29,29 @@ const swrOptions: SWRConfiguration = {
   revalidateOnFocus: true,
 }
 
+const EMPTY_USD_PRICES: UsdRawPrices = {}
+
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function UsdPricesUpdater() {
-  const { chainId } = useWalletInfo()
   const setUsdPrices = useSetAtom(usdRawPricesAtom)
   const setUsdPricesLoading = useSetAtom(setUsdPricesLoadingAtom)
   const currenciesUsdPriceQueue = useAtomValue(currenciesUsdPriceQueueAtom)
+  const isProviderNetworkUnsupported = useIsProviderNetworkUnsupported()
+  const isProviderNetworkDeprecated = useIsProviderNetworkDeprecated()
 
   const queue = useMemo(() => Object.values(currenciesUsdPriceQueue), [currenciesUsdPriceQueue])
 
   const swrResponse = useSWR<UsdRawPrices | null>(
-    ['UsdPricesUpdater', queue, chainId],
+    ['UsdPricesUpdater', queue],
     () => {
-      const getUsdcPrice = usdcPriceLoader(chainId)
+      if (queue.length) {
+        logUsdPrices.debug(`Fetching USD prices for ${queue.map(({ symbol }) => symbol).join(', ')}`)
+      }
 
       setUsdPricesLoading(queue)
 
-      return processQueue(queue, getUsdcPrice)
+      return processQueue(queue)
     },
     swrOptions,
   )
@@ -49,8 +59,13 @@ export function UsdPricesUpdater() {
   useEffect(() => {
     const { data, isLoading, error } = swrResponse
 
+    if (isProviderNetworkUnsupported || isProviderNetworkDeprecated) {
+      setUsdPrices(EMPTY_USD_PRICES)
+      return
+    }
+
     if (error) {
-      console.error('Error loading USD prices', error)
+      logUsdPrices.error(new Error('Failed to load USD prices', { cause: normalizeError(error) }))
       return
     }
 
@@ -59,12 +74,12 @@ export function UsdPricesUpdater() {
     }
 
     setUsdPrices(data)
-  }, [swrResponse, setUsdPrices])
+  }, [swrResponse, setUsdPrices, isProviderNetworkUnsupported, isProviderNetworkDeprecated])
 
   return null
 }
 
-async function processQueue(queue: Token[], getUsdcPrice: () => Promise<Fraction | null>): Promise<UsdRawPrices> {
+async function processQueue(queue: Token[]): Promise<UsdRawPrices> {
   const results = await Promise.all(
     queue.map(async (currency) => {
       const state: UsdRawPriceState = {
@@ -77,16 +92,16 @@ async function processQueue(queue: Token[], getUsdcPrice: () => Promise<Fraction
       const wrappedCurrency = getWrappedToken(currency)
 
       try {
-        const price = await fetchCurrencyUsdPrice(wrappedCurrency, getUsdcPrice)
+        const price = await fetchCurrencyUsdPrice(wrappedCurrency)
         if (price) {
           state.price = price
           state.updatedAt = Date.now()
         }
       } catch {
-        console.debug(`[UsdPricesUpdater]: Failed to fetch price for`, currency.symbol)
+        logUsdPrices.warn(`Failed to fetch USD price for ${currency.symbol}`)
       }
 
-      return { [currency.address.toLowerCase()]: state }
+      return { [getUsdPriceStateKey(currency)]: state }
     }),
   )
 

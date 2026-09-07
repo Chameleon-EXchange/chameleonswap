@@ -1,5 +1,7 @@
 import { useMemo } from 'react'
 
+import type { Address } from 'viem'
+
 import { isAddress } from '@cowprotocol/common-utils'
 
 import { useENSAddress } from './useENSAddress'
@@ -9,12 +11,12 @@ import { useENSName } from './useENSName'
  * Given a name or address, does a lookup to resolve to an address and name
  * @param nameOrAddress ENS name or address
  */
-export function useENS(nameOrAddress?: string | null): {
+export function useENS(nameOrAddress?: Address | null): {
   loading: boolean
   address: string | null
   name: string | null
 } {
-  const validated = isAddress(nameOrAddress)
+  const validated = isAddress(nameOrAddress) as Address
   const reverseLookup = useENSName(validated ? validated : undefined)
   const lookup = useENSAddress(nameOrAddress)
 
@@ -24,6 +26,6 @@ export function useENS(nameOrAddress?: string | null): {
       address: validated ? validated : lookup.address,
       name: reverseLookup.ENSName ? reverseLookup.ENSName : !validated && lookup.address ? nameOrAddress || null : null,
     }),
-    [lookup.address, lookup.loading, nameOrAddress, reverseLookup.ENSName, reverseLookup.loading, validated]
+    [lookup.address, lookup.loading, nameOrAddress, reverseLookup.ENSName, reverseLookup.loading, validated],
   )
 }

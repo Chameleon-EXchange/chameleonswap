@@ -1,7 +1,14 @@
-import LineChart from '@/components/Chart/LineChart'
-import { bisect, curveCardinal, NumberValue, scaleLinear, timeDay, timeHour, timeMinute, timeMonth } from 'd3'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+
+import { Color } from '@cowprotocol/ui'
+
 import { AxisBottom, TickFormatter } from '@visx/axis'
+import { localPoint } from '@visx/event'
+import { EventType } from '@visx/event/lib/types'
+import { GlyphCircle } from '@visx/glyph'
+import { Line } from '@visx/shape'
+import { bisect, curveCardinal, NumberValue, scaleLinear, timeDay, timeHour, timeMinute, timeMonth } from 'd3'
+
 import {
   dayHourFormatter,
   hourFormatter,
@@ -10,11 +17,8 @@ import {
   monthYearDayFormatter,
   weekFormatter,
 } from 'util/formatChartTimes'
-import { Line } from '@visx/shape'
-import { GlyphCircle } from '@visx/glyph'
-import { localPoint } from '@visx/event'
-import { EventType } from '@visx/event/lib/types'
-import { Color } from 'styles/variables'
+import { formatUSDPrice } from 'util/formatUSDPrice'
+
 import { MissingPriceChart } from './MissingChart'
 import {
   ArrowCell,
@@ -27,7 +31,15 @@ import {
   TokenPrice,
   TokenPriceWrapper,
 } from './styled'
-import { formatUSDPrice } from 'util/formatUSDPrice'
+
+import LineChart from '@/components/Chart/LineChart'
+
+export type ChartProps = {
+  width: number
+  height: number
+  prices: any
+  timePeriod: TimePeriod
+}
 
 export type PricePoint = { timestamp: number; value: number }
 
@@ -39,44 +51,7 @@ export enum TimePeriod {
   YEAR,
 }
 
-export type ChartProps = {
-  width: number
-  height: number
-  prices: any
-  timePeriod: TimePeriod
-}
-
 const DATA_EMPTY = { value: 0, timestamp: 0 }
-
-export function getPriceBounds(pricePoints: PricePoint[]): [number, number] {
-  const prices = pricePoints.map((x) => x.value)
-  const min = Math.min(...prices)
-  const max = Math.max(...prices)
-  return [min, max]
-}
-
-function calculateDelta(start: number, current: number) {
-  return (current / start - 1) * 100
-}
-
-export function getDeltaArrow(delta: number | null | undefined, iconSize = 20) {
-  // Null-check not including zero
-  if (delta === null || delta === undefined) {
-    return null
-  } else if (Math.sign(delta) < 0) {
-    return <StyledDownArrow size={iconSize} key="arrow-down" aria-label="down" />
-  }
-  return <StyledUpArrow size={iconSize} key="arrow-up" aria-label="up" />
-}
-
-export function formatDelta(delta: number | null | undefined) {
-  // Null-check not including zero
-  if (delta === null || delta === undefined || delta === Infinity || isNaN(delta)) {
-    return '-'
-  }
-
-  return Math.abs(delta).toFixed(2) + '%'
-}
 
 export function Chart({ prices, height, width, timePeriod }: ChartProps) {
   const chartAvailable = !!prices && prices.length > 0
@@ -107,13 +82,13 @@ export function Chart({ prices, height, width, timePeriod }: ChartProps) {
       scaleLinear()
         .domain(getPriceBounds(prices ?? []))
         .range([graphInnerHeight, 0]),
-    [prices, graphInnerHeight]
+    [prices, graphInnerHeight],
   )
 
   // x scale
   const timeScale = useMemo(
     () => scaleLinear().domain([startingPrice.timestamp, endingPrice.timestamp]).range([0, width]),
-    [startingPrice, endingPrice, width]
+    [startingPrice, endingPrice, width],
   )
 
   const getX = useMemo(() => (p: PricePoint) => timeScale(p.timestamp), [timeScale])
@@ -129,7 +104,7 @@ export function Chart({ prices, height, width, timePeriod }: ChartProps) {
 
   function tickFormat(
     timePeriod: TimePeriod,
-    locale: string
+    locale: string,
   ): [TickFormatter<NumberValue>, (v: number) => string, NumberValue[]] {
     const offsetTime = (endingPrice.timestamp.valueOf() - startingPrice.timestamp.valueOf()) / 24
     const startDateWithOffset = new Date((startingPrice.timestamp.valueOf() + offsetTime) * 1000)
@@ -205,7 +180,7 @@ export function Chart({ prices, height, width, timePeriod }: ChartProps) {
       const index = bisect(
         prices.map((x: { timestamp: number }) => x.timestamp),
         x0,
-        1
+        1,
       )
 
       const d0 = prices[index - 1]
@@ -222,7 +197,7 @@ export function Chart({ prices, height, width, timePeriod }: ChartProps) {
         setDisplayPrice(pricePoint)
       }
     },
-    [timeScale, prices]
+    [timeScale, prices],
   )
 
   const resetDisplay = useCallback(() => {
@@ -230,7 +205,7 @@ export function Chart({ prices, height, width, timePeriod }: ChartProps) {
     setDisplayPrice(endingPrice)
   }, [setCrosshair, setDisplayPrice, endingPrice])
 
-  const mainColor = Color.lightBlue3
+  const mainColor = Color.cowfi_lightBlue3
 
   return (
     <>
@@ -265,23 +240,23 @@ export function Chart({ prices, height, width, timePeriod }: ChartProps) {
             marginTop={margin.top}
             curve={curve}
             strokeWidth={2}
-            color={mainColor}
+            color={Color.cowfi_text1}
           />
 
           {crosshair !== null ? (
             <g>
               <AxisBottom
                 scale={timeScale}
-                stroke={Color.text1}
+                stroke={Color.cowfi_text1}
                 tickFormat={tickFormatter}
-                tickStroke={Color.text1}
+                tickStroke={Color.cowfi_text1}
                 tickLength={4}
                 hideTicks={true}
                 tickTransform="translate(0 -5)"
                 tickValues={updatedTicks}
                 top={height - 1}
                 tickLabelProps={() => ({
-                  fill: Color.text1,
+                  fill: Color.cowfi_text1,
                   fontSize: 11,
                   textAnchor: 'middle',
                   transform: 'translate(0 -24)',
@@ -292,14 +267,14 @@ export function Chart({ prices, height, width, timePeriod }: ChartProps) {
                 y={margin.crosshair + 10}
                 textAnchor={crosshairAtEdge ? 'end' : 'start'}
                 fontSize={15}
-                fill={Color.text1}
+                fill={Color.cowfi_text1}
               >
                 {crosshairDateFormatter(displayPrice.timestamp)}
               </text>
               <Line
                 from={{ x: crosshair, y: margin.crosshair }}
                 to={{ x: crosshair, y: height }}
-                stroke={Color.text1}
+                stroke={Color.cowfi_text1}
                 strokeWidth={1}
                 pointerEvents="none"
                 strokeDasharray="4,4"
@@ -314,7 +289,7 @@ export function Chart({ prices, height, width, timePeriod }: ChartProps) {
               />
             </g>
           ) : (
-            <AxisBottom hideAxisLine={true} scale={timeScale} stroke={Color.text1} top={height - 1} hideTicks />
+            <AxisBottom hideAxisLine={true} scale={timeScale} stroke={Color.cowfi_text1} top={height - 1} hideTicks />
           )}
           <rect
             x={0}
@@ -331,4 +306,34 @@ export function Chart({ prices, height, width, timePeriod }: ChartProps) {
       )}
     </>
   )
+}
+
+export function formatDelta(delta: number | null | undefined) {
+  // Null-check not including zero
+  if (delta === null || delta === undefined || delta === Infinity || isNaN(delta)) {
+    return '-'
+  }
+
+  return Math.abs(delta).toFixed(2) + '%'
+}
+
+export function getDeltaArrow(delta: number | null | undefined, iconSize = 20) {
+  // Null-check not including zero
+  if (delta === null || delta === undefined) {
+    return null
+  } else if (Math.sign(delta) < 0) {
+    return <StyledDownArrow size={iconSize} key="arrow-down" aria-label="down" />
+  }
+  return <StyledUpArrow size={iconSize} key="arrow-up" aria-label="up" />
+}
+
+export function getPriceBounds(pricePoints: PricePoint[]): [number, number] {
+  const prices = pricePoints.map((x) => x.value)
+  const min = Math.min(...prices)
+  const max = Math.max(...prices)
+  return [min, max]
+}
+
+function calculateDelta(start: number, current: number) {
+  return (current / start - 1) * 100
 }

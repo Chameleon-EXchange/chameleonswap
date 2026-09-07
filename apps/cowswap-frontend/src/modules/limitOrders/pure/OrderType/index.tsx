@@ -1,6 +1,9 @@
-import IMAGE_CARET_DOWN from '@cowprotocol/assets/cow-swap/carret-down.svg'
+import { ReactNode } from 'react'
+
+import svgCarretDownSrc from '@cowprotocol/assets/cow-swap/carret-down.svg'
 import { InfoTooltip, RowFixed } from '@cowprotocol/ui'
 
+import { Trans, useLingui } from '@lingui/react/macro'
 import { Menu } from '@reach/menu-button'
 
 import { DetailsRow } from 'modules/limitOrders/pure/LimitOrdersDetails/styled'
@@ -14,21 +17,24 @@ export type OrderTypeProps = {
   className?: string
 }
 
-export function OrderType(props: OrderTypeProps) {
+export function OrderType(props: OrderTypeProps): ReactNode {
   const {
     isPartiallyFillable,
     className,
     partiallyFillableOverride: [override],
   } = props
+  const { t } = useLingui()
   const textContent =
     (override ?? isPartiallyFillable)
-      ? 'This order can be partially filled'
-      : 'This order will either be filled completely or not filled.'
+      ? t`This order can be partially filled`
+      : t`This order will either be filled completely or not filled.`
 
   return (
     <DetailsRow className={className}>
       <RowFixed>
-        <p>Order type</p>
+        <p>
+          <Trans>Order type</Trans>
+        </p>
         <InfoTooltip content={textContent} />
       </RowFixed>
       <OrderTypePicker {...props} />
@@ -36,16 +42,16 @@ export function OrderType(props: OrderTypeProps) {
   )
 }
 
-const LABELS = ['Partially fillable', 'Fill or kill']
-
-function OrderTypePicker({ isPartiallyFillable, partiallyFillableOverride }: OrderTypeProps) {
+function OrderTypePicker({ isPartiallyFillable, partiallyFillableOverride }: OrderTypeProps): ReactNode {
+  const { t } = useLingui()
+  const LABELS = [t`Partially fillable`, t`Fill or kill`]
   const [override, setOverride] = partiallyFillableOverride
-
   const showPartiallyFillable = override ?? isPartiallyFillable
-
   const [labelText] = showPartiallyFillable ? LABELS : [...LABELS].reverse()
 
-  const onSelect = (label: string) => setOverride(label === LABELS[0])
+  const onSelect = (label: string): void => {
+    setOverride(label === LABELS[0])
+  }
 
   return (
     <Menu>
@@ -54,8 +60,8 @@ function OrderTypePicker({ isPartiallyFillable, partiallyFillableOverride }: Ord
           <styledEl.StyledMenuButton>
             <styledEl.LabelText>{labelText}</styledEl.LabelText>
             <styledEl.StyledSVG
-              src={IMAGE_CARET_DOWN}
-              description="dropdown icon"
+              src={svgCarretDownSrc}
+              description={t`dropdown icon`}
               className={isExpanded ? 'expanded' : ''}
             />
           </styledEl.StyledMenuButton>

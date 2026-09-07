@@ -19,7 +19,7 @@ export const volumePeriodTitle = new Map(
   (Object.keys(VolumePeriod) as (keyof typeof VolumePeriod)[]).map((key) => [
     VolumePeriod[key],
     key.toLocaleLowerCase(),
-  ])
+  ]),
 )
 
 /* A lightweight-charts logical range is an object with: 'from' and 'to', which are numbers and represent
@@ -36,6 +36,7 @@ export function VolumeChartWidget(): React.ReactNode {
 
   // update the width on a window resize
   const isClient = typeof window === 'object'
+  // eslint-disable-next-line react-hooks/refs
   const [width, setWidth] = useState(containerRef.current?.getBoundingClientRect().width)
   React.useLayoutEffect(() => {
     if (!isClient || containerRef.current === null) return

@@ -5,23 +5,26 @@ import { useCallback } from 'react'
 import { calculateGasMargin } from '@cowprotocol/common-utils'
 import { Command } from '@cowprotocol/types'
 import { useWalletDetails, useWalletInfo } from '@cowprotocol/wallet'
+import { WidgetHookEvents } from '@cowprotocol/widget-lib'
 
 import { useCloseModal, useOpenModal } from 'legacy/state/application/hooks'
 import { ApplicationModal } from 'legacy/state/application/reducer'
 import { useGasPrices } from 'legacy/state/gas/hooks'
-import { Order, OrderStatus } from 'legacy/state/orders/actions'
+import { Order } from 'legacy/state/orders/actions'
 
-import { getIsEthFlowOrder } from 'modules/swap/containers/EthFlowStepper'
-import { getSwapErrorMessage } from 'modules/trade/utils/swapErrorHelper'
+// eslint-disable-next-line @typescript-eslint/no-restricted-imports
+import { buildOrderWidgetHookPayload, callWidgetHook } from 'modules/injectedWidget'
 
 import { useGetOnChainCancellation } from 'common/hooks/useCancelOrder/useGetOnChainCancellation'
-import { computeOrderSummary } from 'common/updaters/orders/utils'
 import { isOrderCancellable } from 'common/utils/isOrderCancellable'
+import { isOrderOffChainCancellable } from 'common/utils/isOrderOffChainCancellable'
 import useNativeCurrency from 'lib/hooks/useNativeCurrency'
 
 import { cancellationModalContextAtom, CancellationType, updateCancellationModalContextAtom } from './state'
 import { useOffChainCancelOrder } from './useOffChainCancelOrder'
 import { useSendOnChainCancellation } from './useSendOnChainCancellation'
+
+import { getSwapErrorMessage } from '../../utils/getSwapErrorMessage'
 
 export type UseCancelOrderReturn = Command | null
 
@@ -53,12 +56,8 @@ export function useCancelOrder(): (order: Order) => UseCancelOrderReturn {
     (order: Order) => {
       // Check the 'cancellability'
 
-      const isEthFlowOrder = getIsEthFlowOrder(order.inputToken.address)
-
-      // 1. EthFlow orders will never be able to be cancelled offChain
-      // 2. The wallet must support offChain singing
-      // 3. The order must be PENDING
-      const isOffChainCancellable = !isEthFlowOrder && allowsOffchainSigning && order?.status === OrderStatus.PENDING
+      // The wallet must support off-chain signing
+      const isOffChainCancellable = allowsOffchainSigning && isOrderOffChainCancellable(order)
 
       // When the order is not cancellable, there won't be a callback
       if (!isOrderCancellable(order)) {
@@ -66,7 +65,7 @@ export function useCancelOrder(): (order: Order) => UseCancelOrderReturn {
       }
 
       // When dismissing the modal, close it and also reset context
-      const onDismiss = () => {
+      const onDismiss = (): void => {
         closeModal()
         resetContext()
       }
@@ -81,11 +80,11 @@ export function useCancelOrder(): (order: Order) => UseCancelOrderReturn {
           await cancelFn(order)
           onDismiss()
           // When done, dismiss the modal
-        } catch (e: any) {
+        } catch (e) {
           onDismiss()
           if (!isPendingSignature) return
 
-          const swapErrorMessage = getSwapErrorMessage(e?.body?.description || e)
+          const swapErrorMessage = getSwapErrorMessage(e?.body?.description || e, chainId)
           setContext({ error: swapErrorMessage })
         }
         setContext({ isPendingSignature: false })
@@ -93,29 +92,33 @@ export function useCancelOrder(): (order: Order) => UseCancelOrderReturn {
 
       // The callback returned that triggers the modal
       return () => {
-        const summary = computeOrderSummary({
-          orderFromStore: order,
-          orderFromApi: null,
-        })
-        // Updates the cancellation context with details pertaining the order
-        setContext({
-          orderId: order.id,
-          chainId,
-          summary,
-          defaultType: isOffChainCancellable ? 'offChain' : 'onChain',
-          onDismiss,
-          triggerCancellation,
-          nativeCurrency,
-        })
-        // Display the actual modal
-        openModal()
-        // Estimate tx cost in case when OnChain cancellation is used
-        getOnChainTxInfo(order).then(({ estimatedGas }) => {
-          const gasPrice = +(gasPrices?.average || '0')
-          const txCost = calculateGasMargin(estimatedGas).mul(gasPrice)
+        void (async () => {
+          const isWidgetHookPassed = await callWidgetHook(
+            WidgetHookEvents.ON_BEFORE_ORDER_CANCEL,
+            buildOrderWidgetHookPayload(order),
+          ).catch(() => false)
 
-          setContext({ txCost })
-        })
+          if (!isWidgetHookPassed) return
+
+          // Updates the cancellation context with details pertaining the order
+          setContext({
+            orderId: order.id,
+            chainId,
+            defaultType: isOffChainCancellable ? 'offChain' : 'onChain',
+            onDismiss,
+            triggerCancellation,
+            nativeCurrency,
+          })
+          // Display the actual modal
+          openModal()
+          // Estimate tx cost in case when OnChain cancellation is used
+          getOnChainTxInfo(order).then(({ estimatedGas }) => {
+            const gasPrice = BigInt(gasPrices?.average || '0')
+            const txCost = calculateGasMargin(estimatedGas) * gasPrice
+
+            setContext({ txCost })
+          })
+        })()
       }
     },
     [
@@ -131,6 +134,6 @@ export function useCancelOrder(): (order: Order) => UseCancelOrderReturn {
       gasPrices,
       nativeCurrency,
       isPendingSignature,
-    ]
+    ],
   )
 }

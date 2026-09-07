@@ -1,11 +1,12 @@
 import { UI, ExternalLink, Loader as SpinnerLoader, ButtonPrimary, Media } from '@cowprotocol/ui'
+import { toPixelValue } from '@cowprotocol/ui-utils'
 
 import { X } from 'react-feather'
 import styled, { css } from 'styled-components/macro'
 
 import { CopyIcon as ClickToCopy } from 'legacy/components/Copy'
 
-import { WatchAssetInWallet } from 'modules/wallet/containers/WatchAssetInWallet'
+import { WatchAssetInWallet } from 'modules/wallet'
 
 export const Container = styled.div`
   max-width: 100%;
@@ -13,8 +14,31 @@ export const Container = styled.div`
   z-index: 1;
 `
 
+export const TitleRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+
+  > h1 {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  ${Media.upToSmall()} {
+    flex-direction: column;
+    align-items: stretch;
+    margin: 0 0 20px;
+
+    > h1 {
+      text-align: center;
+      margin: 24px 0 10px;
+    }
+  }
+`
+
 export const ExtLink = styled(ExternalLink)`
-  color: var(${UI.COLOR_TEXT});
+  color: var(${UI.COLOR_TEXT_OPACITY_70});
 
   &:hover,
   &:focus {
@@ -83,7 +107,6 @@ export const Card = styled.div<{ showLoader?: boolean }>`
   display: flex;
   flex-flow: row wrap;
   flex: 1;
-  min-height: 192px;
   margin: 0;
   background: var(${UI.COLOR_PAPER});
   box-shadow: none;
@@ -93,12 +116,20 @@ export const Card = styled.div<{ showLoader?: boolean }>`
   border: none;
   align-items: flex-end;
 
+  > * {
+    transition: opacity 200ms ease-out;
+  }
+
   ${({ showLoader, theme }) =>
     showLoader &&
     css`
       position: relative;
       overflow: hidden;
+      > * {
+        opacity: 0;
+      }
       &::after {
+        z-index: 2;
         position: absolute;
         top: 0;
         right: 0;
@@ -116,8 +147,7 @@ export const Card = styled.div<{ showLoader?: boolean }>`
   }
 
   ${ButtonPrimary} {
-    height: 52px;
-    gap: 10px;
+    gap: 8px;
 
     > svg {
       height: 100%;
@@ -148,7 +178,6 @@ export const BannerCard = styled.div<{ rowOnMobile?: boolean }>`
   flex-flow: row;
   align-items: center;
   justify-content: flex-start;
-  min-height: 192px;
   border-radius: 16px;
   background: var(${UI.COLOR_PAPER});
   border: none;
@@ -166,11 +195,11 @@ export const BannerCard = styled.div<{ rowOnMobile?: boolean }>`
   }
 `
 
-export const BannerCardContent = styled.span<{ fontSize?: string }>`
+export const BannerCardContent = styled.span<{ fontSize?: string; justifyContent?: string; alignItems?: string }>`
   z-index: 2;
   display: flex;
   flex-flow: column;
-  justify-content: space-between;
+  justify-content: ${({ justifyContent }) => justifyContent ?? 'space-between'};
   gap: 24px;
   height: 100%;
   width: 100%;
@@ -217,8 +246,8 @@ export const BannerCardIcon = styled.div<{ width?: string | number; height?: str
   display: flex;
   align-items: center;
   justify-content: center;
-  width: ${({ width }) => (typeof width === 'number' ? `${width}px` : (width ?? '100%'))};
-  height: ${({ height }) => (typeof height === 'number' ? `${height}px` : (height ?? '100%'))};
+  width: ${({ width }) => toPixelValue(width) || '100%'};
+  height: ${({ height }) => toPixelValue(height) || '100%'};
 `
 
 export const CardActions = styled.div<{ content?: string }>`

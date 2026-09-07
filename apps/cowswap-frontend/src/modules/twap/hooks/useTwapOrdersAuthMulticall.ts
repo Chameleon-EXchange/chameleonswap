@@ -1,41 +1,45 @@
 import { useMemo } from 'react'
 
-import { ComposableCoW } from '@cowprotocol/abis'
-import { useSingleContractMultipleData } from '@cowprotocol/multicall'
+import type { Hex } from 'viem'
+import { useReadContracts } from 'wagmi'
 
-import ms from 'ms.macro'
+import { ComposableCowContractData } from 'modules/advancedOrders/hooks/useComposableCowContract'
 
-import { TwapOrderInfo, TwapOrdersAuthResult } from '../types'
+import { TwapOrdersAuthResult } from '../types'
 
 const EMPTY_AUTH_RESULT = {}
-const MULTICALL_OPTIONS = {}
-const SWR_CONFIG = { refreshInterval: ms`30s` }
 
 export function useTwapOrdersAuthMulticall(
   safeAddress: string,
-  composableCowContract: ComposableCoW,
-  ordersInfo: TwapOrderInfo[]
+  composableCowContract: ComposableCowContractData,
+  pendingTwapOrderIds: string[],
 ): TwapOrdersAuthResult | null {
-  const input = useMemo(() => {
-    return ordersInfo.map(({ id }) => [safeAddress, id])
-  }, [safeAddress, ordersInfo])
+  // Use stringified key to avoid excessive multicalls
+  const orderIdsKey = pendingTwapOrderIds.join(',')
 
-  const { data: loadedResults, isLoading } = useSingleContractMultipleData<[boolean]>(
-    composableCowContract,
-    'singleOrders',
-    input,
-    MULTICALL_OPTIONS,
-    SWR_CONFIG
-  )
+  const input = useMemo(() => {
+    if (!orderIdsKey) return undefined
+    return orderIdsKey.split(',').map((id) => [safeAddress, id] as [string, Hex])
+  }, [safeAddress, orderIdsKey])
+
+  const { data, isLoading } = useReadContracts({
+    contracts: (input || []).map((args) => ({
+      abi: composableCowContract.abi,
+      address: composableCowContract.address as `0x${string}`,
+      functionName: 'singleOrders' as const,
+      args,
+    })),
+    query: { enabled: !!input },
+  })
 
   return useMemo(() => {
-    if (ordersInfo.length === 0) return EMPTY_AUTH_RESULT
+    if (pendingTwapOrderIds.length === 0) return EMPTY_AUTH_RESULT
 
-    if (isLoading || !loadedResults || loadedResults.length !== ordersInfo.length) return null
+    if (isLoading || !data || data.length !== pendingTwapOrderIds.length) return null
 
-    return ordersInfo.reduce((acc, val, index) => {
-      acc[val.id] = loadedResults[index]?.[0]
+    return pendingTwapOrderIds.reduce((acc, id, index) => {
+      acc[id] = data[index]?.result as boolean | undefined
       return acc
     }, {} as TwapOrdersAuthResult)
-  }, [ordersInfo, loadedResults, isLoading])
+  }, [pendingTwapOrderIds, data, isLoading])
 }

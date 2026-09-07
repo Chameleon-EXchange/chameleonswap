@@ -1,10 +1,10 @@
 import { ReactNode } from 'react'
 
-import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
+import { Currency, CurrencyAmount } from '@cowprotocol/currency'
 
 import { useUsdAmount } from 'modules/usdAmount'
 
-import { RateInfoParams } from 'common/pure/RateInfo'
+import { RateInfoParams, RateInfo } from 'common/pure/RateInfo'
 import { TradeDetailsAccordion } from 'common/pure/TradeDetailsAccordion'
 
 import * as styledEl from './styled'
@@ -15,10 +15,11 @@ export interface TradeRatesProps {
   isFeeDetailsOpen: boolean
   toggleAccordion: () => void
   children?: ReactNode
+  feeWrapper?: (defaultFeeContent: React.ReactNode, isOpen: boolean) => ReactNode
 }
 
-export function TradeTotalCostsDetails(props: TradeRatesProps) {
-  const { rateInfoParams, totalCosts, isFeeDetailsOpen, toggleAccordion, children } = props
+export function TradeTotalCostsDetails(props: TradeRatesProps): ReactNode {
+  const { rateInfoParams, totalCosts, isFeeDetailsOpen, toggleAccordion, children, feeWrapper } = props
   const totalCostsUsd = useUsdAmount(totalCosts).value
 
   if (!totalCosts) {
@@ -27,11 +28,12 @@ export function TradeTotalCostsDetails(props: TradeRatesProps) {
 
   return (
     <TradeDetailsAccordion
-      rateInfo={<styledEl.StyledRateInfo noLabel={true} stylized={true} rateInfoParams={rateInfoParams} />}
+      rateInfo={<RateInfo noLabel={true} stylized={true} rateInfoParams={rateInfoParams} fontSize={13} fontBold />}
       feeUsdTotalAmount={totalCostsUsd}
       feeTotalAmount={totalCosts}
       open={isFeeDetailsOpen}
       onToggle={toggleAccordion}
+      feeWrapper={feeWrapper}
     >
       <styledEl.Box noMargin>{children}</styledEl.Box>
     </TradeDetailsAccordion>

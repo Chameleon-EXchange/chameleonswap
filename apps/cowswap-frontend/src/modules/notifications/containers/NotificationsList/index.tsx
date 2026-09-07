@@ -1,58 +1,158 @@
-import { useSetAtom } from 'jotai/index'
+import { useSetAtom } from 'jotai'
 import React, { ReactNode, useEffect, useMemo } from 'react'
 
-import { clickNotifications } from 'modules/analytics'
+import { i18n } from '@lingui/core'
 
-import { ListWrapper, NoNotifications, NotificationCard, NotificationsListWrapper, NotificationThumb } from './styled'
+import iconMessageReadSrc from '@cowprotocol/assets/images/icon-message-read.svg'
 
+import { Trans } from '@lingui/react/macro'
+
+import { CowSwapAnalyticsCategory, toCowSwapGtmEvent } from 'common/analytics/types'
+
+import {
+  ListWrapper,
+  NoNotifications,
+  NotificationCard,
+  NotificationsListWrapper,
+  NotificationThumb,
+  MessageReadIcon,
+  EnableAlertsLink,
+  PromoBanner,
+  PromoBannerLink,
+} from './styled'
+
+import { NOTIFICATION_MARK_READ_DELAY_MS } from '../../constants'
 import { useAccountNotifications } from '../../hooks/useAccountNotifications'
 import { useUnreadNotifications } from '../../hooks/useUnreadNotifications'
-import { markNotificationsAsReadAtom } from '../../state/readNotificationsAtom'
+import { markNotificationsAsReadCloneArrayAtom } from '../../state/readNotificationsAtom'
+import { isSidebarNotification } from '../../utils/filterNotifications.utils'
+import { getTrustedNotificationLink } from '../../utils/getTrustedNotificationLink'
 import { groupNotificationsByDate } from '../../utils/groupNotificationsByDate'
+
+interface EmptyNotificationsProps {
+  hasSubscription: boolean | undefined
+  onToggleSettings: (() => void) | undefined
+}
+
+interface NotificationsPromoBannerProps {
+  onToggleSettings: () => void
+}
+
+function EmptyNotifications({ hasSubscription, onToggleSettings }: EmptyNotificationsProps): ReactNode {
+  return (
+    <NoNotifications>
+      <MessageReadIcon src={iconMessageReadSrc} />
+      <h4>
+        <Trans>You're all caught up</Trans>
+      </h4>
+      {!hasSubscription && onToggleSettings && (
+        <p>
+          <Trans>
+            <EnableAlertsLink
+              onClick={onToggleSettings}
+              data-click-event={toCowSwapGtmEvent({
+                category: CowSwapAnalyticsCategory.NOTIFICATIONS,
+                action: 'Enable trade alerts',
+                label: 'empty state link',
+              })}
+            >
+              Enable trade alerts
+            </EnableAlertsLink>{' '}
+            for fills and expiries
+          </Trans>
+        </p>
+      )}
+    </NoNotifications>
+  )
+}
+
+function NotificationsPromoBanner({ onToggleSettings }: NotificationsPromoBannerProps): ReactNode {
+  return (
+    <PromoBanner>
+      <p>
+        <Trans>
+          <strong>New!</strong> Get Telegram notifications about your order status!{' '}
+          <PromoBannerLink
+            onClick={onToggleSettings}
+            data-click-event={toCowSwapGtmEvent({
+              category: CowSwapAnalyticsCategory.NOTIFICATIONS,
+              action: 'Open notification settings',
+              label: 'promo banner',
+            })}
+          >
+            Get started
+          </PromoBannerLink>
+        </Trans>
+      </p>
+    </PromoBanner>
+  )
+}
 
 const DATE_FORMAT_OPTION: Intl.DateTimeFormatOptions = {
   dateStyle: 'long',
 }
 
-export function NotificationsList({ children }: { children: ReactNode }) {
+interface NotificationsListProps {
+  children: ReactNode
+  hasSubscription: boolean | undefined
+  onToggleSettings: (() => void) | undefined
+}
+
+// TODO: Break down this large function into smaller functions
+export function NotificationsList({ children, hasSubscription, onToggleSettings }: NotificationsListProps): ReactNode {
   const notifications = useAccountNotifications()
   const unreadNotifications = useUnreadNotifications()
-  const markNotificationsAsRead = useSetAtom(markNotificationsAsReadAtom)
+  const markNotificationsAsRead = useSetAtom(markNotificationsAsReadCloneArrayAtom)
 
-  const groups = useMemo(() => (notifications ? groupNotificationsByDate(notifications) : null), [notifications])
+  const sidebarNotifications = useMemo(
+    () => (notifications ? notifications.filter(isSidebarNotification) : null),
+    [notifications],
+  )
+  const groups = useMemo(
+    () => (sidebarNotifications ? groupNotificationsByDate(sidebarNotifications) : null),
+    [sidebarNotifications],
+  )
 
   useEffect(() => {
-    if (!notifications) return
+    if (!sidebarNotifications) return
 
-    setTimeout(() => {
-      markNotificationsAsRead(notifications.map(({ id }) => id) || [])
-    }, 1000)
-  }, [notifications, markNotificationsAsRead])
+    const timeoutId = setTimeout(() => {
+      markNotificationsAsRead(sidebarNotifications.map(({ id }) => id))
+    }, NOTIFICATION_MARK_READ_DELAY_MS)
+
+    return () => {
+      clearTimeout(timeoutId)
+    }
+  }, [sidebarNotifications, markNotificationsAsRead])
 
   return (
     <>
       {children}
       <ListWrapper>
+        {onToggleSettings && hasSubscription === false && (
+          <NotificationsPromoBanner onToggleSettings={onToggleSettings} />
+        )}
         {groups?.map((group) => (
           <>
-            <h4>{group.date.toLocaleString(undefined, DATE_FORMAT_OPTION)}</h4>
+            <h4>{group.date.toLocaleString(i18n.locale, DATE_FORMAT_OPTION)}</h4>
             <NotificationsListWrapper key={group.date.getTime()}>
               {group.notifications.map(({ id, thumbnail, title, description, url }) => {
-                const target = url
-                  ? url.includes(window.location.host) || url.startsWith('/')
-                    ? '_parent'
-                    : '_blank'
-                  : undefined
+                const trustedLink = getTrustedNotificationLink(url)
 
                 return (
                   <NotificationCard
                     key={id}
                     isRead={!unreadNotifications[id]}
-                    href={url || undefined}
-                    target={target}
+                    href={trustedLink?.href}
+                    target={trustedLink?.target}
                     noImage={!thumbnail}
-                    rel={target === '_blank' ? 'noopener noreferrer' : ''}
-                    onClick={() => clickNotifications('click-notification-card', id, title)}
+                    rel={trustedLink?.rel || ''}
+                    data-click-event={toCowSwapGtmEvent({
+                      category: CowSwapAnalyticsCategory.NOTIFICATIONS,
+                      action: 'Click Notification Card',
+                      label: title,
+                      value: id,
+                    })}
                   >
                     {thumbnail && (
                       <NotificationThumb>
@@ -69,12 +169,8 @@ export function NotificationsList({ children }: { children: ReactNode }) {
             </NotificationsListWrapper>
           </>
         ))}
-
         {groups?.length === 0 && (
-          <NoNotifications>
-            <h4>Nothing new yet</h4>
-            <p>As soon as anything important or interesting happens, we will definitely let you know.</p>
-          </NoNotifications>
+          <EmptyNotifications hasSubscription={hasSubscription} onToggleSettings={onToggleSettings} />
         )}
       </ListWrapper>
     </>

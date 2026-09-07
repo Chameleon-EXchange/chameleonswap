@@ -1,5 +1,8 @@
-import { TransactionReceipt } from '@ethersproject/abstract-provider'
+import type { TransactionReceipt } from 'viem'
 
+import { UiOrderType } from '@cowprotocol/types'
+
+import { t } from '@lingui/core/macro'
 import { orderBookApi } from 'cowSdk'
 
 import { EnhancedTransactionDetails } from 'legacy/state/enhancedTransactions/reducer'
@@ -10,17 +13,19 @@ import { emitCancelledOrderEvent } from 'modules/orders'
 import { emitOnchainTransactionEvent } from '../../../utils/emitOnchainTransactionEvent'
 import { CheckEthereumTransactions } from '../types'
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function finalizeOnChainCancellation(
   transaction: EnhancedTransactionDetails,
   receipt: TransactionReceipt,
   params: CheckEthereumTransactions,
   hash: string,
   orderId: string,
-  sellTokenSymbol: string
+  sellTokenSymbol: string,
 ) {
   const { chainId, isSafeWallet, dispatch, cancelOrdersBatch, getTwapOrderById } = params
 
-  if (receipt.status === 1) {
+  if (receipt.status === 'success') {
     // If cancellation succeeded, mark order as cancelled
     cancelOrdersBatch({ chainId, ids: [orderId], isSafeWallet })
 
@@ -30,6 +35,7 @@ export function finalizeOnChainCancellation(
       emitCancelledOrderEvent({
         chainId,
         order: twapOrder,
+        orderType: UiOrderType.TWAP,
         transactionHash: hash,
       })
 
@@ -51,20 +57,22 @@ export function finalizeOnChainCancellation(
     // 1. Update order state and remove the isCancelling flag and cancellationHash
     partialOrderUpdate(
       { chainId, order: { id: orderId, isCancelling: false, cancellationHash: undefined }, isSafeWallet },
-      dispatch
+      dispatch,
     )
     // 2. Show failure tx pop-up
     emitOnchainTransactionEvent({
       receipt: {
-        to: receipt.to,
+        to: receipt.to || '',
         from: receipt.from,
-        contractAddress: receipt.contractAddress,
+        contractAddress: receipt.contractAddress || '',
         transactionHash: receipt.transactionHash,
-        blockNumber: receipt.blockNumber,
-        status: receipt.status,
+        blockNumber: Number(receipt.blockNumber),
+        status: 0, // inside receipt.status !== 'success' block
         replacementType: transaction.replacementType,
       },
-      summary: `Failed to cancel order selling ${sellTokenSymbol}`,
+      summary: t`Failed to cancel order selling ${sellTokenSymbol}`,
+      // `receipt.transactionHash` is an on-chain Ethereum tx hash, not a safeTxHash.
+      isSafeTx: false,
     })
   }
 }

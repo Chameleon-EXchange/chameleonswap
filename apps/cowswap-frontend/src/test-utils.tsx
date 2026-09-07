@@ -1,19 +1,18 @@
 import { Provider as JotaiProvider } from 'jotai'
 import { useHydrateAtoms } from 'jotai/utils'
 import { createStore } from 'jotai/vanilla'
-import { ReactElement, ReactNode, useMemo } from 'react'
-
-import { isInjectedWidget } from '@cowprotocol/common-utils'
-import { Web3Provider } from '@cowprotocol/wallet'
-import { initializeConnector, Web3ReactHooks, Web3ReactProvider } from '@web3-react/core'
-import { Connector } from '@web3-react/types'
+import { ReactElement, ReactNode, useMemo, useState } from 'react'
 
 import { i18n } from '@lingui/core'
 import { I18nProvider } from '@lingui/react'
+import { QueryClientProvider, QueryClient } from '@tanstack/react-query'
+
+import { Web3Provider } from '@cowprotocol/wallet'
+
 import { render } from '@testing-library/react'
-import { LocationDescriptorObject } from 'history'
+import ms from 'ms.macro'
 import { Provider } from 'react-redux'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter } from 'react-router'
 import { ThemeProvider as StyledComponentsThemeProvider } from 'styled-components/macro'
 import { getCowswapTheme } from 'theme'
 
@@ -21,62 +20,76 @@ import { cowSwapStore } from 'legacy/state'
 import { useIsDarkMode } from 'legacy/state/user/hooks'
 
 import { LanguageProvider } from './i18n'
+import enMessages from './locales/en-US.po'
 
 type JotaiStore = ReturnType<typeof createStore>
 
+// TODO: Replace any with proper type definitions
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-function-return-type
 const MockedI18nProvider = ({ children }: any) => <I18nProvider i18n={i18n}>{children}</I18nProvider>
 
-const MockThemeProvider = ({ children }: { children: React.ReactNode }) => {
+const MockThemeProvider = ({ children }: { children: React.ReactNode }): ReactNode => {
   const darkMode = useIsDarkMode()
-  const isInjectedWidgetMode = isInjectedWidget()
 
-  const themeObject = useMemo(() => getCowswapTheme(darkMode, isInjectedWidgetMode), [darkMode, isInjectedWidgetMode])
+  const themeObject = useMemo(() => getCowswapTheme(darkMode), [darkMode])
 
   return <StyledComponentsThemeProvider theme={themeObject}>{children}</StyledComponentsThemeProvider>
 }
 
-const WithProviders = ({ children }: { children?: ReactNode }) => {
+function createQueryClient(): QueryClient {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: ms`5m`,
+      },
+    },
+  })
+}
+
+const WithProviders = ({ children }: { children?: ReactNode }): ReactNode => {
+  const [queryClient] = useState(createQueryClient)
   return (
-    <LanguageProvider>
-      <MockedI18nProvider>
-        <Provider store={cowSwapStore}>
-          <Web3Provider selectedWallet={undefined}>
-            <MockThemeProvider>{children}</MockThemeProvider>
-          </Web3Provider>
-        </Provider>
-      </MockedI18nProvider>
-    </LanguageProvider>
+    <QueryClientProvider client={queryClient}>
+      <LanguageProvider messages={enMessages}>
+        <MockedI18nProvider>
+          <Provider store={cowSwapStore}>
+            <Web3Provider>
+              <MockThemeProvider>{children}</MockThemeProvider>
+            </Web3Provider>
+          </Provider>
+        </MockedI18nProvider>
+      </LanguageProvider>
+    </QueryClientProvider>
   )
 }
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 const customRender = (ui: ReactElement) => render(ui, { wrapper: WithProviders })
 
 export * from '@testing-library/react'
 export { customRender as render }
 
-class MockedConnector extends Connector {
-  activate(): Promise<void> {
-    return Promise.resolve()
-  }
+/** Partial location for tests; matches what MemoryRouter's initialEntries accepts. */
+export type MockRouterLocation = string | { pathname: string; search?: string; hash?: string }
 
-  getActions() {
-    return this.actions
-  }
-}
-
-export const [mockedConnector, mockedConnectorHooks] = initializeConnector<MockedConnector>(
-  (actions) => new MockedConnector(actions)
-)
-
-export function WithMockedWeb3({ children, location }: { children?: ReactNode; location?: LocationDescriptorObject }) {
-  const connectors: [Connector, Web3ReactHooks][] = [[mockedConnector, mockedConnectorHooks]]
-
+export function WithMockedWeb3({
+  children,
+  location,
+}: {
+  children?: ReactNode
+  location?: MockRouterLocation
+}): ReactNode {
+  const [queryClient] = useState(createQueryClient)
   return (
-    <MemoryRouter initialEntries={location ? [location] : undefined}>
-      <Provider store={cowSwapStore}>
-        <Web3ReactProvider connectors={connectors}>{children}</Web3ReactProvider>
-      </Provider>
-    </MemoryRouter>
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={location !== undefined ? [location] : undefined}>
+        <Provider store={cowSwapStore}>
+          <Web3Provider>{children}</Web3Provider>
+        </Provider>
+      </MemoryRouter>
+    </QueryClientProvider>
   )
 }
 
@@ -86,8 +99,12 @@ const HydrateAtoms = ({
   store,
 }: {
   store?: JotaiStore
+  // TODO: Replace any with proper type definitions
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   initialValues: any[]
   children?: ReactNode
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 }) => {
   useHydrateAtoms(initialValues, { store })
   return <>{children}</>
@@ -98,9 +115,13 @@ export const JotaiTestProvider = ({
   children,
   store,
 }: {
+  // TODO: Replace any with proper type definitions
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   initialValues: any[]
   children?: ReactNode
   store?: JotaiStore
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 }) => (
   <JotaiProvider store={store}>
     <HydrateAtoms initialValues={initialValues} store={store}>

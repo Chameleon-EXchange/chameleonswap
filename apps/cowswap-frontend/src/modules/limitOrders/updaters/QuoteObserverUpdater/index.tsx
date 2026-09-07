@@ -2,19 +2,18 @@ import { useSetAtom } from 'jotai'
 import { useMemo } from 'react'
 
 import { FractionUtils, getWrappedToken } from '@cowprotocol/common-utils'
-import { CurrencyAmount, Fraction, Token } from '@uniswap/sdk-core'
+import { CurrencyAmount, Fraction, Token } from '@cowprotocol/currency'
 
 import { Nullish } from 'types'
 
 import { updateLimitRateAtom } from 'modules/limitOrders/state/limitRateAtom'
-import { useDerivedTradeState } from 'modules/trade/hooks/useDerivedTradeState'
+import { useDerivedTradeState } from 'modules/trade'
 import { useTradeQuote } from 'modules/tradeQuote'
 import { useUsdPrice } from 'modules/usdAmount/hooks/useUsdPrice'
 
 import { useSafeEffect } from 'common/hooks/useSafeMemo'
 
-
-export function QuoteObserverUpdater() {
+export function QuoteObserverUpdater(): null {
   const state = useDerivedTradeState()
 
   const updateLimitRateState = useSetAtom(updateLimitRateAtom)
@@ -32,9 +31,8 @@ export function QuoteObserverUpdater() {
     updateLimitRateState({ marketRate: price, isLoadingMarketRate: isLoading })
   }, [price, isLoading, updateLimitRateState])
 
-  const { response } = useTradeQuote()
-  const { quote } = response || {}
-  const { feeAmount: feeAmountRaw } = quote || {}
+  const { quote } = useTradeQuote()
+  const feeAmountRaw = quote?.quoteResults.quoteResponse.quote.feeAmount
   const feeAmount = inputCurrency && feeAmountRaw ? CurrencyAmount.fromRawAmount(inputCurrency, feeAmountRaw) : null
 
   // Update fee amount based on quote response
@@ -55,6 +53,7 @@ function useSpotPrice(
   const inputUsdPrice = useUsdPrice(inputCurrency)
   const outputUsdPrice = useUsdPrice(outputCurrency)
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   return useMemo(() => {
     const isLoading = !!inputUsdPrice?.isLoading || !!outputUsdPrice?.isLoading
 

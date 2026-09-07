@@ -19,9 +19,11 @@ export enum UI {
   COLOR_PAPER_OPACITY_99 = '--cow-color-paper-opacity-99',
   COLOR_PAPER_DARKER = '--cow-color-paper-darker',
   COLOR_PAPER_DARKEST = '--cow-color-paper-darkest',
+  COLOR_PAPER_GRADIENT = '--cow-color-paper-gradient',
 
   BOX_SHADOW = '--cow-box-shadow',
   BOX_SHADOW_2 = '--cow-box-shadow-2',
+  BOX_SHADOW_3 = '--cow-box-shadow-3',
 
   COLOR_TEXT = '--cow-color-text',
   COLOR_TEXT_PAPER = '--cow-color-text-paper',
@@ -30,6 +32,7 @@ export enum UI {
   COLOR_TEXT_OPACITY_60 = '--cow-color-text-opacity-60',
   COLOR_TEXT_OPACITY_50 = '--cow-color-text-opacity-50',
   COLOR_TEXT_OPACITY_25 = '--cow-color-text-opacity-25',
+  COLOR_TEXT_OPACITY_15 = '--cow-color-text-opacity-15',
   COLOR_TEXT_OPACITY_10 = '--cow-color-text-opacity-10',
 
   COLOR_SECONDARY_TEXT = '--cow-color-secondary-text',
@@ -70,8 +73,8 @@ export enum UI {
   COLOR_COWAMM_LIGHT_GREEN_OPACITY_30 = '--cow-color-cowamm-light-green-opacity-30',
   COLOR_COWAMM_LIGHTER_GREEN = '--cow-color-cowamm-lighter-green',
   COLOR_COWAMM_BLUE = '--cow-color-cowamm-blue',
-  COLOR_COWAMM_DARK_BLUE = '--cow-color-cowamm-dark-blue',
   COLOR_COWAMM_LIGHT_BLUE = '--cow-color-cowamm-light-blue',
+  COLOR_COWAMM_LIGHT_ORANGE = '--cow-color-cowamm-light-orange',
 
   // ================================================================================
 
@@ -80,13 +83,45 @@ export enum UI {
   COLOR_BADGE_YELLOW_TEXT = '--cow-color-badge-yellow-text',
 
   // Colors
-  COLOR_WHITE = '--cow-color-white',
   COLOR_BLUE = '--cow-color-blue',
+  COLOR_BLUE_100_PRIMARY = '--cow-color-blue-100-primary',
+  COLOR_BLUE_100_PRIMARY_OPACITY_15 = '--cow-color-blue-100-primary-opacity-15',
+  COLOR_BLUE_200_PRIMARY = '--cow-color-blue-200-primary',
+  COLOR_BLUE_300_PRIMARY = '--cow-color-blue-300-primary',
+  COLOR_BLUE_400_PRIMARY = '--cow-color-blue-400-primary',
+  COLOR_BLUE_500_PRIMARY = '--cow-color-blue-500-primary',
+  COLOR_BLUE_700_PRIMARY = '--cow-color-blue-700-primary',
+  COLOR_BLUE_700_PRIMARY_OPACITY_25 = '--cow-color-blue-700-primary-opacity-25',
+  COLOR_BLUE_900_PRIMARY = '--cow-color-blue-900-primary',
+  COLOR_PURPLE_200_PRIMARY = '--cow-color-purple-200-primary',
+  COLOR_PURPLE_800_PRIMARY = '--cow-color-purple-800-primary',
   COLOR_LIGHT_BLUE_OPACITY_90 = '--cow-color-lightBlue-opacity-90',
   COLOR_LIGHT_BLUE_OPACITY_80 = '--cow-color-lightBlue-opacity-80',
   COLOR_YELLOW_LIGHT = '--cow-color-yellow-light',
+  COLOR_YELLOW_300_PRIMARY = '--cow-color-yellow-300-primary',
+  COLOR_YELLOW_700_PRIMARY = '--cow-color-yellow-700-primary',
+  COLOR_YELLOW_800_PRIMARY = '--cow-color-yellow-800-primary',
   COLOR_GREEN = '--cow-color-green',
   COLOR_RED = '--cow-color-red',
+
+  // Neutral colors - Base grayscale palette from black (0) to white (100)
+  COLOR_WHITE = '--cow-color-neutral-100',
+  COLOR_NEUTRAL_100 = '--cow-color-neutral-100',
+  COLOR_NEUTRAL_98 = '--cow-color-neutral-98',
+  COLOR_NEUTRAL_95 = '--cow-color-neutral-95',
+  COLOR_NEUTRAL_90 = '--cow-color-neutral-90',
+  COLOR_NEUTRAL_80 = '--cow-color-neutral-80',
+  COLOR_NEUTRAL_70 = '--cow-color-neutral-70',
+  COLOR_NEUTRAL_60 = '--cow-color-neutral-60',
+  COLOR_NEUTRAL_50 = '--cow-color-neutral-50',
+  COLOR_NEUTRAL_40 = '--cow-color-neutral-40',
+  COLOR_NEUTRAL_30 = '--cow-color-neutral-30',
+  COLOR_NEUTRAL_20 = '--cow-color-neutral-20',
+  COLOR_NEUTRAL_10 = '--cow-color-neutral-10',
+  COLOR_NEUTRAL_0 = '--cow-color-neutral-0',
+  COLOR_BLACK = '--cow-color-neutral-0',
+  COLOR_BLACK_OPACITY_70 = '--cow-color-neutral-0-opacity-70',
+  COLOR_BLACK_OPACITY_30 = '--cow-color-neutral-0-opacity-30',
 
   // Elements
   COLOR_BORDER = '--cow-color-border',
@@ -98,6 +133,7 @@ export enum UI {
   BORDER_RADIUS_NORMAL = '--cow-border-radius-normal',
   BORDER_RADIUS_LARGE = '--cow-border-radius-large',
   PADDING_NORMAL = '--cow-padding-normal',
+  CLICKABLE_SIZE = '--cow-clickable-size',
 
   // Icons
   ICON_SIZE_NORMAL = '--cow-icon-size-normal',
@@ -107,9 +143,7 @@ export enum UI {
   ICON_SIZE_LARGE = '--cow-icon-size-large',
   ICON_COLOR_NORMAL = '--cow-icon-color-normal',
 
-  // States
-
-  // Text
+  // Text Colors:
   COLOR_TEXT1 = '--cow-color-text1',
   COLOR_TEXT1_INACTIVE = '--cow-color-text1-inactive',
   COLOR_TEXT1_OPACITY_25 = '--cow-color-text1-opacity-25',
@@ -117,18 +151,38 @@ export enum UI {
   COLOR_TEXT2 = '--cow-color-text2',
   COLOR_LINK = '--cow-color-link',
   COLOR_LINK_OPACITY_10 = '--cow-color-link-opacity-10',
+
+  // Font Weights (values come from Font.weight in ThemeColorVars):
+  FONT_WEIGHT_ULTRALIGHT = '--cow-font-weight-ultralight',
+  FONT_WEIGHT_LIGHT = '--cow-font-weight-light',
   FONT_WEIGHT_NORMAL = '--cow-font-weight-normal',
+  FONT_WEIGHT_BOOK = '--cow-font-weight-book',
   FONT_WEIGHT_MEDIUM = '--cow-font-weight-medium',
+  FONT_WEIGHT_SEMIBOLD = '--cow-font-weight-semibold',
   FONT_WEIGHT_BOLD = '--cow-font-weight-bold',
+
+  // Font Sizes:
   FONT_SIZE_SMALLER = '--cow-font-size-smaller',
   FONT_SIZE_SMALL = '--cow-font-size-small',
+  FONT_SIZE_SMALL_PLUS = '--cow-font-size-small-plus',
   FONT_SIZE_NORMAL = '--cow-font-size-normal',
+  FONT_SIZE_NORMAL_PLUS = '--cow-font-size-normal-plus',
   FONT_SIZE_MEDIUM = '--cow-font-size-medium',
   FONT_SIZE_LARGE = '--cow-font-size-large',
   FONT_SIZE_LARGER = '--cow-font-size-larger',
   FONT_SIZE_LARGEST = '--cow-font-size-largest',
 
+  // Line Heights:
+  LINE_HEIGHT_SMALL = '--cow-line-height-small',
+  LINE_HEIGHT_NORMAL = '--cow-line-height-normal',
+  LINE_HEIGHT_MEDIUM = '--cow-line-height-medium',
+
+  // Font Families:
+  FONT_FAMILY_PRIMARY = '--cow-font-family-primary',
+  FONT_FAMILY_BRAND = '--cow-font-family-brand',
+
   // Animation
   ANIMATION_DURATION = '--cow-animation-duration',
   ANIMATION_DURATION_SLOW = '--cow-animation-duration-slow',
+  ANIMATION_TIMING_FUNCTION = '--cow-animation-timing-function',
 }

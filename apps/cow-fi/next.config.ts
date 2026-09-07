@@ -1,0 +1,161 @@
+import { withNx } from '@nx/next'
+import { WithNxOptions } from '@nx/next/plugins/with-nx'
+import { NextConfig } from 'next'
+
+const configuredEnvironment = process.env.NEXT_PUBLIC_ENVIRONMENT ?? process.env.REACT_APP_ENVIRONMENT
+
+const DEFAULT_CACHE_CONTROL_HEADER = {
+  key: 'Cache-Control',
+  value: 'public, s-maxage=3600, stale-while-revalidate=86400', // 1h cache, 24h stale
+}
+
+const nextConfig: WithNxOptions & NextConfig = {
+  reactStrictMode: true,
+  generateBuildId: process.env.BUNDLE_SIZE_BUILD === 'true' ? async () => 'bundle-size' : undefined,
+  nx: {},
+  env: {
+    REACT_APP_ENVIRONMENT: configuredEnvironment,
+    NEXT_PUBLIC_ENVIRONMENT: configuredEnvironment,
+  },
+  // Type checking is handled by tsc in CI; skip here to avoid false positives
+  // from ox's raw .ts source files (skipLibCheck doesn't cover them).
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  compiler: {
+    styledComponents: true,
+  },
+  webpack: (config, { isServer, webpack }) => {
+    config.plugins.push(
+      new webpack.DefinePlugin({
+        'process.env.REACT_APP_ENVIRONMENT': JSON.stringify(configuredEnvironment),
+        'process.env.NEXT_PUBLIC_ENVIRONMENT': JSON.stringify(configuredEnvironment),
+      }),
+    )
+
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        module: false,
+      }
+    }
+
+    config.module.rules.push(
+      {
+        test: /\.(woff|woff2|eot|ttf|otf)$/,
+        type: 'asset/resource',
+        generator: {
+          filename: 'static/fonts/[hash][ext][query]',
+        },
+      },
+      {
+        test: /\.(png|jpg|gif|svg)$/,
+        type: 'asset/resource',
+        generator: {
+          filename: 'static/images/[hash][ext][query]',
+        },
+      },
+      {
+        test: /\.(mp4|webm)$/,
+        use: {
+          loader: 'file-loader',
+          options: {
+            publicPath: '/_next/static/videos/',
+            outputPath: 'static/videos/',
+            name: '[name].[hash].[ext]',
+            esModule: false,
+          },
+        },
+      },
+      {
+        test: /\.[tj]sx?$/,
+        exclude: /node_modules/,
+        use: [
+          {
+            loader: 'babel-loader',
+            options: {
+              presets: ['next/babel'],
+              plugins: ['babel-plugin-macros'],
+            },
+          },
+        ],
+      },
+    )
+
+    return config
+  },
+  async redirects() {
+    return [
+      {
+        source: '/learn/articles/1',
+        destination: '/learn/articles',
+        permanent: true,
+      },
+      {
+        source: '/jobs',
+        destination: '/careers',
+        permanent: true,
+      },
+      {
+        source: '/report-scam',
+        destination: 'https://app.chainpatrol.io/cow',
+        permanent: true,
+      },
+      {
+        source: '/widget/terms-and-conditions',
+        destination: '/legal/integrator-terms',
+        permanent: true,
+      },
+      {
+        source: '/legal/widget-terms',
+        destination: '/legal/integrator-terms',
+        permanent: true,
+      },
+      {
+        source: '/mevblocker',
+        destination: '/mev-blocker',
+        permanent: true,
+      },
+    ]
+  },
+
+  images: {
+    domains: ['celebrated-gift-f83e5c9419.media.strapiapp.com'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'coin-images.coingecko.com',
+      },
+    ],
+  },
+  async headers() {
+    return [
+      {
+        source: '/widget',
+        headers: [
+          DEFAULT_CACHE_CONTROL_HEADER,
+          {
+            key: 'Content-Security-Policy',
+            value: "frame-ancestors 'self'",
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN',
+          },
+        ],
+      },
+      {
+        source: '/learn/:path*',
+        headers: [DEFAULT_CACHE_CONTROL_HEADER],
+      },
+      // Cache all other pages for 1 hour
+      {
+        source: '/:path*',
+        headers: [DEFAULT_CACHE_CONTROL_HEADER],
+      },
+    ]
+  },
+}
+
+module.exports = withNx(nextConfig)

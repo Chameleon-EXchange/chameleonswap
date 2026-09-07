@@ -1,20 +1,28 @@
 import { useEffect } from 'react'
 
-import { getCurrencyAddress } from '@cowprotocol/common-utils'
+import { getCurrencyAddress, percentToBps } from '@cowprotocol/common-utils'
+import { Currency, CurrencyAmount } from '@cowprotocol/currency'
 import { AtomsAndUnits, CowWidgetEvents, OnTradeParamsPayload } from '@cowprotocol/events'
 import { TokenInfo } from '@cowprotocol/types'
-import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
 
 import { WIDGET_EVENT_EMITTER } from 'widgetEventEmitter'
 
+import { TradeType } from 'common/modules/tradeNavigation'
+
+import { AmountsToSign, useAmountsToSignFromQuote } from './useAmountsToSignFromQuote'
 import { useDerivedTradeState } from './useDerivedTradeState'
 
 import { TradeTypeToUiOrderType } from '../const/common'
-import { TradeType } from '../types'
-import { TradeDerivedState } from '../types/TradeDerivedState'
+import { TradeDerivedState } from '../types'
 
-export function useNotifyWidgetTrade() {
+const ZERO_AMOUNT: AtomsAndUnits = {
+  atoms: BigInt(0),
+  units: '0',
+}
+
+export function useNotifyWidgetTrade(): void {
   const state = useDerivedTradeState()
+  const amountsToSign = useAmountsToSignFromQuote()
 
   useEffect(() => {
     if (!state) return
@@ -34,26 +42,17 @@ export function useNotifyWidgetTrade() {
 
     WIDGET_EVENT_EMITTER.emit(
       CowWidgetEvents.ON_CHANGE_TRADE_PARAMS,
-      getTradeParamsEventPayload(state.tradeType, state),
+      getTradeParamsEventPayload(state.tradeType, state, amountsToSign),
     )
-  }, [state])
+  }, [state, amountsToSign])
 }
 
-function getTradeParamsEventPayload(tradeType: TradeType, state: TradeDerivedState): OnTradeParamsPayload {
+function currencyAmountToAtomsAndUnits(currency: CurrencyAmount<Currency> | null): AtomsAndUnits | undefined {
+  if (!currency) return undefined
+
   return {
-    orderType: TradeTypeToUiOrderType[tradeType],
-    sellToken: currencyToTokenInfo(state.inputCurrency),
-    buyToken: currencyToTokenInfo(state.outputCurrency),
-    sellTokenAmount: currencyAmountToAtomsAndUnits(state.inputCurrencyAmount),
-    buyTokenAmount: currencyAmountToAtomsAndUnits(state.outputCurrencyAmount),
-    sellTokenBalance: currencyAmountToAtomsAndUnits(state.inputCurrencyBalance),
-    buyTokenBalance: currencyAmountToAtomsAndUnits(state.outputCurrencyBalance),
-    sellTokenFiatAmount: state.inputCurrencyFiatAmount?.toExact(),
-    buyTokenFiatAmount: state.outputCurrencyFiatAmount?.toExact(),
-    maximumSendSellAmount: currencyAmountToAtomsAndUnits(state.slippageAdjustedSellAmount),
-    minimumReceiveBuyAmount: currencyAmountToAtomsAndUnits(state.slippageAdjustedBuyAmount),
-    recipient: state.recipient || undefined,
-    orderKind: state.orderKind,
+    atoms: BigInt(currency.quotient.toString()),
+    units: currency.toExact(),
   }
 }
 
@@ -69,11 +68,30 @@ function currencyToTokenInfo(currency: Currency | null): TokenInfo | undefined {
   }
 }
 
-function currencyAmountToAtomsAndUnits(currency: CurrencyAmount<Currency> | null): AtomsAndUnits | undefined {
-  if (!currency) return undefined
-
+function getTradeParamsEventPayload(
+  tradeType: TradeType,
+  state: TradeDerivedState,
+  amountsToSign: AmountsToSign | null,
+): OnTradeParamsPayload {
   return {
-    atoms: BigInt(currency.quotient.toString()),
-    units: currency.toExact(),
+    orderType: TradeTypeToUiOrderType[tradeType],
+    chainId: state.inputCurrency?.chainId,
+    sellToken: currencyToTokenInfo(state.inputCurrency),
+    buyToken: currencyToTokenInfo(state.outputCurrency),
+    sellTokenAmount: currencyAmountToAtomsAndUnits(state.inputCurrencyAmount),
+    buyTokenAmount: currencyAmountToAtomsAndUnits(state.outputCurrencyAmount),
+    sellTokenBalance: currencyAmountToAtomsAndUnits(state.inputCurrencyBalance),
+    buyTokenBalance: currencyAmountToAtomsAndUnits(state.outputCurrencyBalance),
+    sellTokenFiatAmount: state.inputCurrencyFiatAmount?.toExact(),
+    buyTokenFiatAmount: state.outputCurrencyFiatAmount?.toExact(),
+    maximumSendSellAmount: amountsToSign
+      ? currencyAmountToAtomsAndUnits(amountsToSign?.maximumSendSellAmount)
+      : ZERO_AMOUNT,
+    minimumReceiveBuyAmount: amountsToSign
+      ? currencyAmountToAtomsAndUnits(amountsToSign?.minimumReceiveBuyAmount)
+      : ZERO_AMOUNT,
+    recipient: state.recipient || undefined,
+    orderKind: state.orderKind,
+    slippageBps: state.slippage ? percentToBps(state.slippage) : undefined,
   }
 }

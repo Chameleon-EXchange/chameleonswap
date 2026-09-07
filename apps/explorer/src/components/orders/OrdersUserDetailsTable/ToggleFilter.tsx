@@ -1,5 +1,7 @@
 import React from 'react'
 
+import { Color, UI } from '@cowprotocol/ui'
+
 import styled from 'styled-components/macro'
 
 import { MEDIA } from '../../../const'
@@ -14,19 +16,19 @@ interface BadgeProps {
 const Wrapper = styled.div<{ checked: boolean }>`
   display: flex;
   align-items: center;
-  padding: 0 8px;
+  padding: 0 0.8rem;
   font-size: ${({ theme }): string => theme.fontSizeDefault};
   cursor: pointer;
-  color: ${({ checked, theme }): string => (checked ? theme.textActive1 : theme.white)};
+  color: ${({ checked }): string => (checked ? Color.explorer_textActive : `var(${UI.COLOR_NEUTRAL_100})`)};
   height: 3rem;
-  border: 1px solid ${({ theme }): string => theme.borderPrimary};
+  border: 0.1rem solid ${Color.explorer_border};
   border-radius: 0.5rem;
-  background: ${({ theme }): string => theme.bg2};
+  background: ${Color.explorer_bg2};
 
   &media ${MEDIA.mediumUp} {
     &:hover {
       transition: all 0.2s ease-in-out;
-      color: ${({ theme }): string => theme.textActive1};
+      color: ${Color.explorer_textActive};
     }
   }
 
@@ -36,7 +38,7 @@ const Wrapper = styled.div<{ checked: boolean }>`
 `
 
 const Label = styled.span`
-  margin-right: 8px;
+  margin-right: 0.8rem;
 `
 
 const Count = styled.span`

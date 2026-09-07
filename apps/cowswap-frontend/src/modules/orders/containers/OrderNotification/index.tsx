@@ -1,90 +1,65 @@
-import { useCallback, useMemo } from 'react'
+import { ReactNode, useMemo } from 'react'
 
-import { shortenOrderId } from '@cowprotocol/common-utils'
-import { EnrichedOrder, SupportedChainId } from '@cowprotocol/cow-sdk'
-import { ToastMessageType } from '@cowprotocol/events'
-import { useTokensByAddressMap } from '@cowprotocol/tokens'
-import { TokenInfo, UiOrderType } from '@cowprotocol/types'
+import { getIsNativeToken } from '@cowprotocol/common-utils'
+import { SupportedChainId, getChainInfo, ChainInfo } from '@cowprotocol/cow-sdk'
 
-import { useOrder } from 'legacy/state/orders/hooks'
+import { useBridgeSupportedNetwork } from 'entities/bridgeProvider'
 
-import {
-  getToastMessageCallback,
-  isEnrichedOrder,
-  mapEnrichedOrderToInfo,
-  mapStoreOrderToInfo,
-  OrderInfo,
-} from './utils'
+import { useUltimateOrder } from 'common/hooks/useUltimateOrder'
+import { getUltimateOrderTradeAmounts } from 'common/updaters/orders/utils'
+import { getUiOrderType } from 'utils/orderUtils/getUiOrderType'
 
-import { OrderSummary } from '../../pure/OrderSummary'
-import { ReceiverInfo } from '../../pure/ReceiverInfo'
-import { TransactionContentWithLink } from '../TransactionContentWithLink'
+import { OrderNotificationContent, OrderNotificationContentProps } from '../../pure/OrderNotificationContent'
+import { OrderNotificationInfo } from '../../types'
 
-export interface BaseOrderNotificationProps {
-  title: JSX.Element | string
-  messageType: ToastMessageType
+interface BaseOrderNotificationProps extends Omit<OrderNotificationContentProps, 'orderInfo'> {
   chainId: SupportedChainId
   orderUid: string
-  orderType: UiOrderType
-  orderInfo?: OrderInfo | EnrichedOrder
-  transactionHash?: string
-  isEthFlow?: boolean
-  children?: JSX.Element
+  orderInfo?: OrderNotificationInfo
 }
 
-export function OrderNotification(props: BaseOrderNotificationProps) {
-  const { title, orderUid, orderType, transactionHash, chainId, messageType, children, orderInfo, isEthFlow } = props
+export function OrderNotification(props: BaseOrderNotificationProps): ReactNode {
+  const { orderUid, chainId, orderInfo: _orderInfo, ...rest } = props
+  const ultimateOrder = useUltimateOrder(chainId, orderUid)
 
-  const allTokens = useTokensByAddressMap()
+  const orderInfo: OrderNotificationInfo | undefined = useMemo(() => {
+    if (_orderInfo) return _orderInfo
 
-  const orderFromStore = useOrder({ chainId, id: orderInfo ? undefined : orderUid })
+    if (ultimateOrder) {
+      const { id, kind, owner, receiver } = ultimateOrder.orderFromStore
 
-  const order = useMemo(() => {
-    if (orderInfo) {
-      return isEnrichedOrder(orderInfo) ? mapEnrichedOrderToInfo(orderInfo, allTokens) : orderInfo
+      return {
+        ...getUltimateOrderTradeAmounts(ultimateOrder),
+        orderUid: id,
+        kind: kind,
+        owner: owner,
+        orderType: getUiOrderType(ultimateOrder.orderFromStore),
+        isEthFlowOrder: getIsNativeToken(ultimateOrder.orderFromStore.inputToken),
+        receiver: ultimateOrder.bridgeOrderFromStore?.recipient ?? receiver,
+      }
     }
 
-    return orderFromStore ? mapStoreOrderToInfo(orderFromStore) : undefined
-  }, [orderFromStore, orderInfo, allTokens])
+    return undefined
+  }, [ultimateOrder, _orderInfo])
 
-  const onToastMessage = useMemo(
-    () =>
-      getToastMessageCallback(messageType, {
-        orderUid,
-        orderType,
-      }),
-    [messageType, orderType, orderUid]
+  const { srcChainData, dstChainData } = useTradeChainsInfo(
+    orderInfo?.inputAmount.currency.chainId,
+    orderInfo?.outputAmount.currency.chainId,
   )
 
-  const ref = useCallback(
-    (node: HTMLDivElement) => {
-      if (node) onToastMessage(node.innerText)
-    },
-    [onToastMessage]
-  )
-
-  if (!order) return
+  if (!orderInfo) return
 
   return (
-    <TransactionContentWithLink isEthFlow={isEthFlow} transactionHash={transactionHash} orderUid={orderUid}>
-      <div ref={ref}>
-        <strong>{title}</strong>
-        <br />
-        <p>
-          Order <strong>{shortenOrderId(orderUid)}</strong>:
-        </p>
-        {children ||
-          (order.inputToken && order.outputToken ? (
-            <OrderSummary
-              kind={order.kind}
-              inputToken={order.inputToken as TokenInfo}
-              outputToken={order.outputToken as TokenInfo}
-              sellAmount={order.inputAmount.toString()}
-              buyAmount={order.outputAmount.toString()}
-            />
-          ) : null)}
-        <ReceiverInfo receiver={order.receiver} owner={order.owner} />
-      </div>
-    </TransactionContentWithLink>
+    <OrderNotificationContent {...rest} orderInfo={orderInfo} srcChainData={srcChainData} dstChainData={dstChainData} />
   )
+}
+
+function useTradeChainsInfo(
+  sourceChainId: SupportedChainId | undefined,
+  destChainId: SupportedChainId | undefined,
+): { srcChainData: ChainInfo | undefined; dstChainData: ChainInfo | undefined } {
+  const srcChainData = sourceChainId ? getChainInfo(sourceChainId) : undefined
+  const dstChainData = useBridgeSupportedNetwork(destChainId)
+
+  return { srcChainData, dstChainData }
 }

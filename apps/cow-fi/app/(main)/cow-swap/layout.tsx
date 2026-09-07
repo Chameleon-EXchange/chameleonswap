@@ -1,12 +1,13 @@
 import { Metadata } from 'next'
-import { getPageMetadata } from '@/util/getPageMetadata'
+
 import { CONFIG } from '@/const/meta'
+import { getPageMetadata } from '@/util/getPageMetadata'
 
 export const metadata: Metadata = {
   ...getPageMetadata({
-    absoluteTitle: "Chameleon swap - Don't worry, trade happy",
+    absoluteTitle: "CoW Swap - Don't worry, trade happy",
     description:
-      'Chameleon swap protects traders from the dangers of DeFi, so you can do what you want without needing to worry',
+      'CoW Swap protects traders from the dangers of DeFi, so you can do what you want without needing to worry',
     image: CONFIG.ogImageCOWSWAPP,
   }),
 }

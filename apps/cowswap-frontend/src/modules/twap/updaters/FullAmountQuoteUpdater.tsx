@@ -1,41 +1,52 @@
-import { useSetAtom } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect } from 'react'
 
 import { onlyResolvesLast } from '@cowprotocol/common-utils'
-import { OrderQuoteResponse } from '@cowprotocol/cow-sdk'
+import { CrossChainQuoteAndPost, isBridgeQuoteAndPost } from '@cowprotocol/sdk-bridging'
+
+import { captchaCanQuoteAtom } from 'entities/captcha/state/captchaCanQuoteAtom'
+import { bridgingSdk } from 'tradingSdk/bridgingSdk'
 
 import { useAdvancedOrdersDerivedState } from 'modules/advancedOrders'
 import { useTradeQuote, useQuoteParams } from 'modules/tradeQuote'
 
-import { getQuote } from 'api/cowProtocol/api'
-
 import { fullAmountQuoteAtom } from '../state/fullAmountQuoteAtom'
 
-const getQuoteOnlyResolveLast = onlyResolvesLast<OrderQuoteResponse>(getQuote)
+const getQuote = bridgingSdk.getQuote.bind(bridgingSdk)
+const getQuoteOnlyResolveLast = onlyResolvesLast<CrossChainQuoteAndPost>(getQuote)
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function FullAmountQuoteUpdater() {
+  const canQuote = useAtomValue(captchaCanQuoteAtom)
   const { inputCurrencyAmount } = useAdvancedOrdersDerivedState()
-  const { response, error, isLoading } = useTradeQuote()
+  const { quote, error, isLoading } = useTradeQuote()
 
   const fullQuoteAmount = inputCurrencyAmount?.quotient.toString() || null
-  const partQuoteAmount = response?.quote.buyAmount
+  const partQuoteAmount = quote?.quoteResults.quoteResponse.quote.buyAmount
 
-  const quoteParams = useQuoteParams(fullQuoteAmount)
+  const quoteParams = useQuoteParams(fullQuoteAmount)?.quoteParams
   const updateQuoteState = useSetAtom(fullAmountQuoteAtom)
 
   useEffect(() => {
-    if (error || isLoading || !partQuoteAmount || !quoteParams) return
+    if (!canQuote || error || isLoading || !partQuoteAmount || !quoteParams) return
 
-    getQuoteOnlyResolveLast(quoteParams).then((response) => {
-      const { cancelled, data } = response
+    getQuoteOnlyResolveLast(quoteParams)
+      .then((response) => {
+        const { cancelled, data } = response
 
-      if (cancelled) {
-        return
-      }
+        if (cancelled) {
+          return
+        }
 
-      updateQuoteState(data)
-    })
-  }, [partQuoteAmount, isLoading, error, quoteParams, updateQuoteState])
+        const quote = isBridgeQuoteAndPost(data) ? data.swap.quoteResponse : data.quoteResults.quoteResponse
+
+        updateQuoteState(quote)
+      })
+      .catch((error) => {
+        console.error('[TWAP FullAmountQuoteUpdater]:: fetchQuote error', error)
+      })
+  }, [canQuote, partQuoteAmount, isLoading, error, quoteParams, updateQuoteState])
 
   return null
 }

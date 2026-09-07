@@ -21,6 +21,7 @@ const HookList = styled.ul`
 interface AppliedHookListProps {
   account: string | undefined
   dapps: HookDapp[]
+  disabled?: boolean
   hooks: CowHookDetails[]
   isPreHook: boolean
   removeHook: (uuid: string, isPreHook: boolean) => void
@@ -28,9 +29,13 @@ interface AppliedHookListProps {
   moveHook: (fromIndex: number, toIndex: number) => void
 }
 
+// TODO: Break down this large function into smaller functions
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function AppliedHookList({
   account,
   dapps,
+  disabled = false,
   hooks,
   isPreHook,
   removeHook,
@@ -42,7 +47,7 @@ export function AppliedHookList({
   useEffect(() => {
     let sortable: Sortable | undefined
 
-    if (listRef.current) {
+    if (listRef.current && !disabled) {
       sortable = Sortable.create(listRef.current, {
         animation: 250,
         sort: true,
@@ -63,7 +68,7 @@ export function AppliedHookList({
         sortable.destroy()
       }
     }
-  }, [moveHook])
+  }, [disabled, moveHook])
 
   return (
     <HookList ref={listRef}>
@@ -72,6 +77,7 @@ export function AppliedHookList({
           <AppliedHookItem
             key={hookDetails.uuid}
             dapp={findHookDappById(dapps, hookDetails)}
+            disabled={disabled}
             index={index}
             account={account}
             hookDetails={hookDetails}

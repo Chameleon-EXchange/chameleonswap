@@ -2,20 +2,17 @@ import { useSetLocalTimeOffset } from 'common/containers/InvalidLocalTimeWarning
 
 import { useTradeQuote } from '../../hooks/useTradeQuote'
 import { useTradeQuotePolling } from '../../hooks/useTradeQuotePolling'
+import { TradeQuotePollingParameters } from '../../types'
 import { getQuoteTimeOffset } from '../../utils/quoteDeadline'
 
-export function TradeQuoteUpdater() {
+export interface TradeQuoteUpdaterProps extends TradeQuotePollingParameters {}
+
+export function TradeQuoteUpdater(props: TradeQuoteUpdaterProps): null {
   const quoteState = useTradeQuote()
 
-  useTradeQuotePolling()
+  useTradeQuotePolling(props)
 
-  useSetLocalTimeOffset(
-    getQuoteTimeOffset({
-      validFor: quoteState.quoteParams?.validFor,
-      quoteValidTo: quoteState.response?.quote.validTo,
-      localQuoteTimestamp: quoteState.localQuoteTimestamp,
-    })
-  )
+  useSetLocalTimeOffset(getQuoteTimeOffset(quoteState))
 
   return null
 }

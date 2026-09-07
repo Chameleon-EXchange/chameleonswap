@@ -1,5 +1,6 @@
-import { latest, LatestAppDataDocVersion } from '@cowprotocol/app-data'
-import { CowEnv, SupportedChainId } from '@cowprotocol/cow-sdk'
+import { cowAppDataLatestScheme, CowEnv, LatestAppDataDocVersion, SupportedChainId } from '@cowprotocol/cow-sdk'
+
+export type AppDataHooks = cowAppDataLatestScheme.OrderInteractionHooks
 
 export type AppDataInfo = {
   doc: LatestAppDataDocVersion
@@ -8,51 +9,49 @@ export type AppDataInfo = {
   env?: CowEnv
 }
 
-type AppDataUploadStatus = {
-  lastAttempt?: number
-  failedAttempts: number
-  uploading: boolean
-}
-
 export type AppDataKeyParams = {
   chainId: SupportedChainId
   orderId: string
 }
 
-export type AppDataRecord = AppDataInfo & AppDataUploadStatus & AppDataKeyParams
+export type AppDataMetadataOrderClass = cowAppDataLatestScheme.OrderClass
 
-export type AppDataMetadataOrderClass = latest.OrderClass
-export type AppDataOrderClass = latest.OrderClass['orderClass']
+export type AppDataOrderClass = cowAppDataLatestScheme.OrderClass['orderClass']
+export type AppDataPartnerFee = cowAppDataLatestScheme.PartnerFee
 
 export type AppDataPendingToUpload = Array<AppDataRecord>
 
-export type UploadAppDataParams = AppDataKeyParams & {
-  appData: AppDataInfo
-}
-export type UpdateAppDataOnUploadQueueParams = AppDataKeyParams & Partial<AppDataUploadStatus>
+export type AppDataRecord = AppDataInfo & AppDataUploadStatus & AppDataKeyParams
+export type AppDataRootSchema = cowAppDataLatestScheme.AppDataRootSchema
+export type AppDataWidget = cowAppDataLatestScheme.Widget
+
+export type CowHook = cowAppDataLatestScheme.CoWHook
+
+export type OrderInteractionHooks = cowAppDataLatestScheme.OrderInteractionHooks
+
+export type PostHooks = cowAppDataLatestScheme.PostHooks
+
+export type PreHooks = cowAppDataLatestScheme.PreHooks
+
 export type RemoveAppDataFromUploadQueueParams = AppDataKeyParams
-
-export type CowHook = latest.CoWHook
-
-export type TypedCowHook = CowHook & {
-  type: 'permit' | 'hookStore'
-}
-
-export type AppDataHooks = latest.OrderInteractionHooks
 
 export type TypedAppDataHooks = Omit<AppDataHooks, 'pre' | 'post'> & {
   pre?: TypedCowHook[]
   post?: TypedCowHook[]
 }
 
-export type PreHooks = latest.PreHooks
+export type TypedCowHook = CowHook & {
+  type: 'permit' | 'hookStore'
+}
 
-export type PostHooks = latest.PostHooks
+export type UpdateAppDataOnUploadQueueParams = AppDataKeyParams & Partial<AppDataUploadStatus>
 
-export type AppDataRootSchema = latest.AppDataRootSchema
+export type UploadAppDataParams = AppDataKeyParams & {
+  appData: AppDataInfo
+}
 
-export type AppDataWidget = latest.Widget
-
-export type AppDataPartnerFee = latest.PartnerFee
-
-export type OrderInteractionHooks = latest.OrderInteractionHooks
+type AppDataUploadStatus = {
+  lastAttempt?: number
+  failedAttempts: number
+  uploading: boolean
+}

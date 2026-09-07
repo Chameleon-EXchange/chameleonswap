@@ -1,27 +1,33 @@
 import { useAtomValue, useSetAtom } from 'jotai'
-import { ReactNode, useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { ReactNode, useEffect, useMemo, useState } from 'react'
 
+import { useCowAnalytics } from '@cowprotocol/analytics'
 import { renderTooltip } from '@cowprotocol/ui'
 import { useWalletInfo } from '@cowprotocol/wallet'
 import { TradeType } from '@cowprotocol/widget-lib'
 
 import { useAdvancedOrdersDerivedState } from 'modules/advancedOrders'
-import { openAdvancedOrdersTabAnalytics, twapWalletCompatibilityAnalytics } from 'modules/analytics'
+import { AffiliateTraderRewardsRow, useIsRewardsRowEnabled } from 'modules/affiliate'
+import { TradeApproveWithAffectedOrderList } from 'modules/erc20Approve'
 import { useInjectedWidgetDeadline } from 'modules/injectedWidget'
-import { useReceiveAmountInfo } from 'modules/trade'
-import { useIsWrapOrUnwrap } from 'modules/trade/hooks/useIsWrapOrUnwrap'
+import { useGetReceiveAmountInfo } from 'modules/trade'
 import { useTradeState } from 'modules/trade/hooks/useTradeState'
 import { TradeNumberInput } from 'modules/trade/pure/TradeNumberInput'
 import { TradeTextBox } from 'modules/trade/pure/TradeTextBox'
-import { useGetTradeFormValidation } from 'modules/tradeFormValidation'
-import { useTradeQuote } from 'modules/tradeQuote'
+import {
+  useGetTradeFormValidations,
+  useIsTradeFormValidationPassed,
+  useShouldHideTradeRateDetails,
+} from 'modules/tradeFormValidation'
 import { TwapFormState } from 'modules/twap/pure/PrimaryActionButton/getTwapFormState'
 
+import { CowSwapAnalyticsCategory } from 'common/analytics/types'
 import { usePrice } from 'common/hooks/usePrice'
 import { useRateInfoParams } from 'common/hooks/useRateInfoParams'
+import { RateInfo } from 'common/pure/RateInfo'
 
 import * as styledEl from './styled'
-import { LABELS_TOOLTIPS } from './tooltips'
+import { useLabelsTooltips } from './tooltips'
 
 import {
   DEFAULT_NUM_OF_PARTS,
@@ -36,6 +42,7 @@ import {
   useIsFallbackHandlerCompatible,
   useIsFallbackHandlerRequired,
 } from '../../hooks/useFallbackHandlerVerification'
+import { useTwapDemandAnalytics } from '../../hooks/useTwapDemandAnalytics'
 import { useTwapFormState } from '../../hooks/useTwapFormState'
 import { useTwapSlippage } from '../../hooks/useTwapSlippage'
 import { DeadlineSelector } from '../../pure/DeadlineSelector'
@@ -52,14 +59,16 @@ interface TwapFormWidget {
   tradeWarnings: ReactNode
 }
 
-export function TwapFormWidget({ tradeWarnings }: TwapFormWidget) {
+// TODO: Break down this large function into smaller functions
+// eslint-disable-next-line max-lines-per-function
+export function TwapFormWidget({ tradeWarnings }: TwapFormWidget): ReactNode {
   const { account } = useWalletInfo()
+  const isRewardsRowEnabled = useIsRewardsRowEnabled()
 
   const { numberOfPartsValue, deadline, customDeadline, isCustomDeadline } = useAtomValue(twapOrdersSettingsAtom)
 
   const { inputCurrencyAmount, outputCurrencyAmount } = useAdvancedOrdersDerivedState()
   const { updateState } = useTradeState()
-  const tradeQuote = useTradeQuote()
   const isFallbackHandlerRequired = useIsFallbackHandlerRequired()
   const isFallbackHandlerCompatible = useIsFallbackHandlerCompatible()
   const verification = useFallbackHandlerVerification()
@@ -69,19 +78,24 @@ export function TwapFormWidget({ tradeWarnings }: TwapFormWidget) {
   const updateSettingsState = useSetAtom(updateTwapOrdersSettingsAtom)
 
   const localFormValidation = useTwapFormState()
-  const primaryFormValidation = useGetTradeFormValidation()
-  const isWrapOrUnwrap = useIsWrapOrUnwrap()
+  const validations = useGetTradeFormValidations()
+  const primaryFormValidation = validations?.[0] || null
+  const isPrimaryValidationPassed = useIsTradeFormValidationPassed()
 
+  const hideQuoteAmount = useShouldHideTradeRateDetails({ hideIfWrapUnwrap: true })
   const rateInfoParams = useRateInfoParams(inputCurrencyAmount, outputCurrencyAmount)
 
-  const receiveAmountInfo = useReceiveAmountInfo()
+  const receiveAmountInfo = useGetReceiveAmountInfo()
 
-  const limitPriceAfterSlippage = usePrice(
-    receiveAmountInfo?.afterSlippage.sellAmount,
-    receiveAmountInfo?.afterSlippage.buyAmount,
+  const executionPrice = usePrice(
+    receiveAmountInfo?.amountsToSign.sellAmount,
+    receiveAmountInfo?.amountsToSign.buyAmount,
   )
 
   const widgetDeadline = useInjectedWidgetDeadline(TradeType.ADVANCED)
+
+  const cowAnalytics = useCowAnalytics()
+  const { trackTwapTabOpened } = useTwapDemandAnalytics()
 
   useEffect(() => {
     if (widgetDeadline) {
@@ -115,28 +129,36 @@ export function TwapFormWidget({ tradeWarnings }: TwapFormWidget) {
   // Reset warnings flags once on start
   useEffect(() => {
     updateSettingsState({ isFallbackHandlerSetupAccepted: false })
-    openAdvancedOrdersTabAnalytics()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    cowAnalytics.sendEvent({
+      category: CowSwapAnalyticsCategory.TWAP,
+      action: 'Open Advanced Orders Tab',
+    })
+  }, [updateSettingsState, cowAnalytics])
+
+  useEffect(() => {
+    trackTwapTabOpened()
+  }, [trackTwapTabOpened])
 
   useEffect(() => {
     if (account && verification) {
-      if (localFormValidation === TwapFormState.TX_BUNDLING_NOT_SUPPORTED) {
-        twapWalletCompatibilityAnalytics('non-compatible')
+      if (localFormValidation === TwapFormState.WALLET_NOT_SUPPORTED) {
+        cowAnalytics.sendEvent({
+          category: CowSwapAnalyticsCategory.TWAP,
+          action: 'non-compatible',
+        })
       } else if (isFallbackHandlerRequired) {
-        twapWalletCompatibilityAnalytics('safe-that-could-be-converted')
+        cowAnalytics.sendEvent({
+          category: CowSwapAnalyticsCategory.TWAP,
+          action: 'safe-that-could-be-converted',
+        })
       } else if (isFallbackHandlerCompatible) {
-        twapWalletCompatibilityAnalytics('compatible')
+        cowAnalytics.sendEvent({
+          category: CowSwapAnalyticsCategory.TWAP,
+          action: 'compatible',
+        })
       }
     }
-  }, [account, isFallbackHandlerRequired, isFallbackHandlerCompatible, localFormValidation, verification])
-
-  // Reset output amount when quote params are changed
-  useLayoutEffect(() => {
-    if (tradeQuote.hasParamsChanged) {
-      updateState?.({ outputCurrencyAmount: null })
-    }
-  }, [tradeQuote.hasParamsChanged, updateState])
+  }, [account, isFallbackHandlerRequired, isFallbackHandlerCompatible, localFormValidation, verification, cowAnalytics])
 
   const isInvertedState = useState(false)
   const [isInverted] = isInvertedState
@@ -151,16 +173,23 @@ export function TwapFormWidget({ tradeWarnings }: TwapFormWidget) {
     }
   }, [updateSettingsState, updateState])
 
+  const tooltips = useLabelsTooltips()
+
   return (
     <>
-      {!isWrapOrUnwrap && (
-        <styledEl.Row>
-          <styledEl.StyledRateInfo
-            label={LABELS_TOOLTIPS.price.label}
-            rateInfoParams={rateInfoParams}
-            isInvertedState={isInvertedState}
-          />
-        </styledEl.Row>
+      {!hideQuoteAmount && (
+        <>
+          <styledEl.FooterBox>
+            <RateInfo
+              label={tooltips.price.label}
+              rateInfoParams={rateInfoParams}
+              isInvertedState={isInvertedState}
+              fontSize={13}
+              rightAlign
+            />
+            {isRewardsRowEnabled && <AffiliateTraderRewardsRow />}
+          </styledEl.FooterBox>
+        </>
       )}
       <TradeNumberInput
         value={+twapOrderSlippage.toFixed(2)}
@@ -169,15 +198,15 @@ export function TwapFormWidget({ tradeWarnings }: TwapFormWidget) {
         placeholder={DEFAULT_TWAP_SLIPPAGE.toFixed(1)}
         min={0}
         max={MAX_TWAP_SLIPPAGE}
-        label={LABELS_TOOLTIPS.slippage.label}
-        tooltip={renderTooltip(LABELS_TOOLTIPS.slippage.tooltip)}
+        label={tooltips.slippage.label}
+        tooltip={renderTooltip(tooltips.slippage.tooltip)}
         showUpDownArrows={true}
         upDownArrowsLeftAlign={true}
         prefixComponent={
           <em>
-            {limitPriceAfterSlippage ? (
+            {executionPrice && !hideQuoteAmount ? (
               <styledEl.ExecutionPriceStyled
-                executionPrice={limitPriceAfterSlippage}
+                executionPrice={executionPrice}
                 isInverted={isInverted}
                 hideFiat
                 hideSeparator
@@ -195,8 +224,8 @@ export function TwapFormWidget({ tradeWarnings }: TwapFormWidget) {
           value={numberOfPartsValue}
           onUserInput={onNumOfPartsInput}
           min={DEFAULT_NUM_OF_PARTS}
-          label={LABELS_TOOLTIPS.numberOfParts.label}
-          tooltip={renderTooltip(LABELS_TOOLTIPS.numberOfParts.tooltip)}
+          label={tooltips.numberOfParts.label}
+          tooltip={renderTooltip(tooltips.numberOfParts.tooltip)}
           showUpDownArrows={true}
         />
       </styledEl.Row>
@@ -207,22 +236,25 @@ export function TwapFormWidget({ tradeWarnings }: TwapFormWidget) {
           isDeadlineDisabled={isDeadlineDisabled}
           items={ORDER_DEADLINES}
           setDeadline={updateSettingsState}
-          label={LABELS_TOOLTIPS.totalDuration.label}
-          tooltip={renderTooltip(LABELS_TOOLTIPS.totalDuration.tooltip, {
+          label={tooltips.totalDuration.label}
+          tooltip={renderTooltip(tooltips.totalDuration.tooltip, {
             parts: numberOfPartsValue,
             partDuration: timeInterval,
           })}
         />
 
-        <TradeTextBox label={LABELS_TOOLTIPS.partDuration.label} tooltip={LABELS_TOOLTIPS.partDuration.tooltip}>
+        <TradeTextBox label={tooltips.partDuration.label} tooltip={tooltips.partDuration.tooltip}>
           <>{deadlinePartsDisplay(timeInterval)}</>
         </TradeTextBox>
       </styledEl.Row>
 
       <AmountParts />
 
-      {tradeWarnings}
+      {/* Local validation replaces the trade button with a disabled one, so trade hints and approval controls
+          are pointless: only the warning explaining the block stays visible */}
+      {!localFormValidation && tradeWarnings}
       <TwapFormWarnings localFormValidation={localFormValidation} />
+      {isPrimaryValidationPassed && !localFormValidation && <TradeApproveWithAffectedOrderList />}
       <ActionButtons
         fallbackHandlerIsNotSet={isFallbackHandlerRequired}
         localFormValidation={localFormValidation}

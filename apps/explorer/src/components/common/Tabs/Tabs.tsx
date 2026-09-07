@@ -1,116 +1,86 @@
 import React, { useState } from 'react'
 
-import { Media } from '@cowprotocol/ui'
+import { Color } from '@cowprotocol/ui'
 
 import TabContent from 'components/common/Tabs/TabContent'
 import TabItem from 'components/common/Tabs/TabItem'
-import styled from 'styled-components/macro'
+import { DefaultTheme } from 'styled-components/macro'
+
+import { Wrapper, TabList, ExtraContent } from './styled'
 
 // Components
 export { default as TabIcon } from 'components/common/Tabs/TabIcon'
-
-type TabId = number
-export enum IndicatorTabSize {
-  small = 0.1,
-  big = 0.2,
-}
-export type TabBarExtraContent = React.ReactNode
+export { TabList } from './styled'
 
 export interface TabItemInterface {
   readonly tab: React.ReactNode
   readonly content: React.ReactNode
   readonly id: TabId
 }
-
-export interface TabTheme {
-  readonly activeBg: string
-  readonly activeBgAlt: string
-  readonly inactiveBg: string
-  readonly activeText: string
-  readonly inactiveText: string
-  readonly activeBorder: string
-  readonly inactiveBorder: string
-  readonly letterSpacing: string
-  readonly fontWeight: string
-  readonly fontSize: string
-  readonly borderRadius: boolean
-  readonly indicatorTabSize: IndicatorTabSize
-}
-export interface Props {
+export interface TabsProps {
   readonly className?: string
   readonly tabItems: TabItemInterface[]
   readonly tabTheme: TabTheme
   readonly selectedTab?: TabId
-  readonly extra?: TabBarExtraContent
+  readonly extra?: React.ReactNode
   readonly extraPosition?: 'top' | 'bottom' | 'both'
   readonly updateSelectedTab?: (activeId: TabId) => void
 }
 
-const Wrapper = styled.div`
-  width: 100%;
-  max-width: 100%;
-`
+export interface TabTheme {
+  readonly activeBg: string
+  readonly activeBgAlt?: string | undefined
+  readonly inactiveBg: string
+  readonly activeText: string | ((props: { theme: DefaultTheme }) => string)
+  readonly inactiveText: string | ((props: { theme: DefaultTheme }) => string)
+  readonly activeBorder: string | ((props: { theme: DefaultTheme }) => string)
+  readonly inactiveBorder: string
+  readonly indicatorTabSize: number
+  readonly fontSize: string
+  readonly fontWeight: string
+  readonly letterSpacing: string
+  readonly borderRadius: boolean
+}
 
-export const TabList = styled.div`
-  position: sticky;
-  top: 0;
-  background: #16171f;
-  z-index: 2;
-  max-width: 100%;
-  display: flex;
-  justify-content: flex-start;
-  border-bottom: ${({ theme }): string => `1px solid ${theme.borderPrimary}`};
-  box-sizing: border-box;
-  flex-flow: row wrap;
+export enum IndicatorTabSize {
+  small = 0.1,
+  big = 0.2,
+}
 
-  > button {
-    flex: 0 0 auto;
-    min-width: 12rem;
-    padding: 1rem;
-    line-height: 2;
-    height: auto;
-
-    ${Media.upToSmall()} {
-      flex: 1 1 auto;
-    }
-  }
-`
+type TabId = number
 
 export const DEFAULT_TAB_THEME: TabTheme = {
-  activeBg: 'var(--color-transparent)',
-  activeBgAlt: 'initial',
-  inactiveBg: 'var(--color-transparent)',
-  activeText: 'var(--color-text-primary)',
-  inactiveText: 'var(--color-text-secondary2)',
-  activeBorder: 'var(--color-text-primary)',
-  inactiveBorder: 'none',
-  fontSize: 'var(--font-size-default)',
-  fontWeight: 'var(--font-weight-normal)',
-  letterSpacing: 'initial',
+  activeBg: 'transparent',
+  activeBgAlt: undefined,
+  inactiveBg: 'transparent',
+  activeText: Color.neutral100,
+  inactiveText: Color.explorer_textSecondary2,
+  activeBorder: Color.neutral100,
+  inactiveBorder: 'transparent',
+  indicatorTabSize: 0.2,
+  fontSize: '1.4rem',
+  fontWeight: '500',
+  letterSpacing: '0',
   borderRadius: false,
-  indicatorTabSize: IndicatorTabSize.small,
 }
 
-interface ExtraContentProps {
-  extra?: TabBarExtraContent
+export function getTabTheme(tabStyles: Partial<TabTheme> = {}): TabTheme {
+  return {
+    ...DEFAULT_TAB_THEME,
+    ...tabStyles,
+  }
 }
 
-const ExtraContent = ({ extra }: ExtraContentProps): React.ReactNode | null => {
-  if (!extra) return null
+export default Tabs
 
-  return <div className="tab-extra-content">{extra}</div>
-}
-
-const Tabs: React.FC<Props> = (props) => {
-  const {
-    tabTheme = DEFAULT_TAB_THEME,
-    tabItems,
-    selectedTab: parentSelectedTab,
-    extra: tabBarExtraContent,
-    extraPosition = 'top',
-    updateSelectedTab: parentUpdateSelectedTab,
-  } = props
-
+function Tabs({
+  tabTheme = DEFAULT_TAB_THEME,
+  tabItems,
+  selectedTab: parentSelectedTab,
+  extra: tabBarExtraContent,
+  extraPosition = 'top',
+  updateSelectedTab: parentUpdateSelectedTab,
+}: TabsProps): React.ReactNode {
   const [innerSelectedTab, setInnerSelectedTab] = useState(1)
   // Use parent state management if provided, otherwise use internal state
   const selectedTab = parentSelectedTab ?? innerSelectedTab
@@ -129,19 +99,16 @@ const Tabs: React.FC<Props> = (props) => {
             tabTheme={tabTheme}
           />
         ))}
-        {['top', 'both'].includes(extraPosition) && <ExtraContent extra={tabBarExtraContent} />}
+        {tabBarExtraContent && ['top', 'both'].includes(extraPosition) && (
+          <ExtraContent className="tab-extra-content">{tabBarExtraContent}</ExtraContent>
+        )}
       </TabList>
       <TabContent tabItems={tabItems} activeTab={selectedTab} />
-      {['bottom', 'both'].includes(extraPosition) && <ExtraContent extra={tabBarExtraContent} />}
+      {tabBarExtraContent && ['bottom', 'both'].includes(extraPosition) && (
+        <ExtraContent className="tab-extra-content" $isBottom>
+          {tabBarExtraContent}
+        </ExtraContent>
+      )}
     </Wrapper>
   )
-}
-
-export default Tabs
-
-export function getTabTheme(tabStyles: Partial<TabTheme> = {}): TabTheme {
-  return {
-    ...DEFAULT_TAB_THEME,
-    ...tabStyles,
-  }
 }

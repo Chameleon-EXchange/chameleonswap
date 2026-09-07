@@ -1,9 +1,9 @@
 import { atom } from 'jotai'
-import { atomWithStorage } from 'jotai/utils'
 
 import { deepEqual } from '@cowprotocol/common-utils'
-import { getJotaiIsolatedStorage } from '@cowprotocol/core'
 import { walletInfoAtom } from '@cowprotocol/wallet'
+
+import { eoaTwapOrdersAtom, twapOrdersAtom, TwapOrdersList } from 'entities/twap'
 
 import { cowSwapStore } from 'legacy/state'
 import { deleteOrders } from 'legacy/state/orders/actions'
@@ -11,24 +11,6 @@ import { deleteOrders } from 'legacy/state/orders/actions'
 import { TWAP_FINAL_STATUSES } from '../const'
 import { TwapOrderItem, TwapOrderStatus } from '../types'
 import { updateTwapOrdersList } from '../utils/updateTwapOrdersList'
-
-export type TwapOrdersList = { [key: string]: TwapOrderItem }
-
-export const twapOrdersAtom = atomWithStorage<TwapOrdersList>('twap-orders-list:v1', {}, getJotaiIsolatedStorage())
-
-export const twapOrdersListAtom = atom<TwapOrderItem[]>((get) => {
-  const { account, chainId } = get(walletInfoAtom)
-
-  if (!account || !chainId) return []
-
-  const accountLowerCase = account.toLowerCase()
-
-  const orders = Object.values(get(twapOrdersAtom))
-
-  return orders
-    .flat()
-    .filter((order) => order.safeAddress.toLowerCase() === accountLowerCase && order.chainId === chainId)
-})
 
 export const updateTwapOrdersListAtom = atom(null, (get, set, nextState: TwapOrdersList) => {
   const currentState = get(twapOrdersAtom)
@@ -49,20 +31,30 @@ export const deleteTwapOrdersFromListAtom = atom(null, (get, set, ids: string[])
   const { chainId } = get(walletInfoAtom)
   const currentState = get(twapOrdersAtom)
 
+  if (ids.length === 0) return
+
+  const nextState = { ...currentState }
   ids.forEach((id) => {
-    delete currentState[id]
+    delete nextState[id]
   })
 
   cowSwapStore.dispatch(deleteOrders({ chainId, ids }))
 
-  set(twapOrdersAtom, currentState)
+  set(twapOrdersAtom, nextState)
 })
 
 export const setTwapOrderStatusAtom = atom(null, (get, set, orderId: string, status: TwapOrderStatus) => {
+  const currentEoaState = get(eoaTwapOrdersAtom)
+  const currentEoaOrder = currentEoaState[orderId]
   const currentState = get(twapOrdersAtom)
-  const currentOrder = currentState[orderId]
+  const cachedOrderId = currentEoaOrder?.hash ?? orderId
+  const currentOrder = currentState[cachedOrderId]
 
-  if (TWAP_FINAL_STATUSES.includes(currentOrder.status)) return
+  if (currentOrder && !TWAP_FINAL_STATUSES.includes(currentOrder.status)) {
+    set(twapOrdersAtom, { ...currentState, [cachedOrderId]: { ...currentOrder, status } })
+  }
 
-  set(twapOrdersAtom, { ...currentState, [orderId]: { ...currentOrder, status } })
+  if (currentEoaOrder && !TWAP_FINAL_STATUSES.includes(currentEoaOrder.status)) {
+    set(eoaTwapOrdersAtom, { ...currentEoaState, [orderId]: { ...currentEoaOrder, status } })
+  }
 })

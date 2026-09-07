@@ -1,32 +1,35 @@
-import React, { PropsWithChildren, useMemo } from 'react'
+import React, { PropsWithChildren } from 'react'
 
 import { baseTheme } from '@cowprotocol/ui'
 
-// eslint-disable-next-line no-restricted-imports
-import { DefaultTheme } from 'styled-components'
-import { ThemeProvider as StyledComponentsThemeProvider } from 'styled-components/macro'
+import { css, ThemeProvider as StyledComponentsThemeProvider } from 'styled-components/macro'
 
-import { getFonts, getThemePalette } from './styles'
+import { getFonts } from './styles'
+import { Theme } from './types'
 
-import { useThemeMode } from '../hooks/useThemeManager'
+const themeObject = {
+  ...baseTheme(Theme.DARK),
+  mode: Theme.DARK,
+  ...getFonts(),
+  colorScrollbar: css`
+    --scrollbarWidth: 0.6rem;
 
-export const ThemeProvider = ({ children }: PropsWithChildren) => {
-  const mode = useThemeMode()
-
-  const themeObject = useMemo(() => {
-    const themePalette = getThemePalette(mode)
-    const fontPalette = getFonts(mode)
-
-    const computedTheme: DefaultTheme = {
-      ...baseTheme(mode),
-      // Compute the app colour pallette using the passed in themeMode
-      ...themePalette,
-      ...fontPalette,
+    &::-webkit-scrollbar {
+      width: var(--scrollbarWidth);
+      height: var(--scrollbarWidth);
     }
+    &::-webkit-scrollbar-thumb {
+      background: hsla(0, 0%, 100%, 0.35);
+      border-radius: 2rem;
+    }
+    &::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+    }
+  `,
+}
 
-    return computedTheme
-  }, [mode])
-
-  // We want to pass the ThemeProvider theme to all children implicitly, no need to manually pass it
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export const ThemeProvider = ({ children }: PropsWithChildren) => {
   return <StyledComponentsThemeProvider theme={themeObject}>{children}</StyledComponentsThemeProvider>
 }

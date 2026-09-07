@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-restricted-imports */ // TODO: Don't use 'modules' import
 import { useMemo } from 'react'
 
 import { MIN_FIAT_SURPLUS_VALUE, MIN_FIAT_SURPLUS_VALUE_MODAL, MIN_SURPLUS_UNITS } from '@cowprotocol/common-const'
-import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
+import { Currency, CurrencyAmount } from '@cowprotocol/currency'
 
 import { Nullish } from 'types'
 
@@ -10,8 +11,8 @@ import { Order } from 'legacy/state/orders/actions'
 import { useUsdAmount } from 'modules/usdAmount'
 
 import { useSafeMemo } from 'common/hooks/useSafeMemo'
-import { getExecutedSummaryData } from 'utils/getExecutedSummaryData'
-import { ParsedOrder } from 'utils/orderUtils/parseOrder'
+
+import { useGetExecutedBridgeSummary } from './useGetExecutedBridgeSummary'
 
 export type SurplusData = {
   surplusFiatValue: Nullish<CurrencyAmount<Currency>>
@@ -22,19 +23,20 @@ export type SurplusData = {
   showSurplus: boolean | null
 }
 
-export function useGetSurplusData(order: Order | ParsedOrder | undefined): SurplusData {
+export function useGetSurplusData(order: Order | undefined): SurplusData {
+  const summaryData = useGetExecutedBridgeSummary(order)
+
   const { surplusAmount, surplusToken, surplusPercent } = useMemo(() => {
     const output: { surplusToken?: Currency; surplusAmount?: CurrencyAmount<Currency>; surplusPercent?: string } = {}
 
-    if (order) {
-      const summaryData = getExecutedSummaryData(order)
+    if (summaryData) {
       output.surplusAmount = summaryData.surplusAmount
       output.surplusToken = summaryData.surplusToken
       output.surplusPercent = summaryData.surplusPercent
     }
 
     return output
-  }, [order])
+  }, [summaryData])
 
   const surplusFiatValue = useUsdAmount(surplusAmount).value
   const showFiatValue = Number(surplusFiatValue?.toExact()) >= MIN_FIAT_SURPLUS_VALUE
@@ -50,13 +52,13 @@ export function useGetSurplusData(order: Order | ParsedOrder | undefined): Surpl
       surplusPercent,
       showSurplus,
     }),
-    [surplusFiatValue, showFiatValue, surplusToken, surplusAmount, surplusPercent, showSurplus]
+    [surplusFiatValue, showFiatValue, surplusToken, surplusAmount, surplusPercent, showSurplus],
   )
 }
 
 function shouldShowSurplus(
   fiatAmount: Nullish<CurrencyAmount<Currency>>,
-  surplusAmount: Nullish<CurrencyAmount<Currency>>
+  surplusAmount: Nullish<CurrencyAmount<Currency>>,
 ): boolean | null {
   if (fiatAmount) {
     // When there's a fiat amount, use that to decide whether to display the modal

@@ -1,57 +1,97 @@
-import { Erc20 } from '@cowprotocol/abis'
-import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
+import { Address, BaseError } from 'viem'
+import type { Config } from 'wagmi'
+import { simulateContract } from 'wagmi/actions'
+
+import { Currency, CurrencyAmount } from '@cowprotocol/currency'
 
 import { Nullish } from 'types'
 
-import { ApprovalState } from 'common/hooks/useApproveState'
+import { ApprovalState } from 'modules/erc20Approve'
 
-interface ShouldZeroApproveBaseParams {
-  tokenContract: Nullish<Erc20>
-  spender: Nullish<string>
-  amountToApprove: Nullish<CurrencyAmount<Currency>>
+// viem errors are multi-line `BaseError`s; logging the whole object floods the console with a
+// scary stack + docs links. We only need the one-line reason here.
+function getSimulationErrorReason(e: unknown): string {
+  return e instanceof BaseError ? e.shortMessage : String(e)
 }
 
-interface ShouldZeroApproveBundleParams extends ShouldZeroApproveBaseParams {
-  isBundle: true
-  approvalState?: undefined
+const erc20Abi = [
+  {
+    type: 'function',
+    name: 'approve',
+    stateMutability: 'nonpayable',
+    inputs: [
+      {
+        name: 'spender',
+        type: 'address',
+      },
+      {
+        name: 'amount',
+        type: 'uint256',
+      },
+    ],
+    // It's important to keep it empty
+    // Viem validates the output and USDT output is not a standard ERC-20 type (bool expected)
+    outputs: [],
+  },
+]
+
+export interface ShouldZeroApproveParams {
+  tokenAddress: Nullish<Address>
+  owner?: Nullish<Address>
+  spender: Nullish<Address>
+  amountToApprove: bigint | Nullish<CurrencyAmount<Currency>>
+  forceApprove?: boolean
+  approvalState?: ApprovalState
+  config: Nullish<Config>
 }
 
-interface ShouldZeroApproveNonBundleParams extends ShouldZeroApproveBaseParams {
-  approvalState: ApprovalState
-  isBundle?: undefined
-}
-
-type ShouldZeroApproveParams = ShouldZeroApproveBundleParams | ShouldZeroApproveNonBundleParams
-
+// eslint-disable-next-line complexity
 export async function shouldZeroApprove({
   approvalState,
-  tokenContract,
+  tokenAddress,
+  owner,
   spender,
   amountToApprove,
-  isBundle,
+  forceApprove,
+  config,
 }: ShouldZeroApproveParams): Promise<boolean | null> {
   const shouldApprove =
-    isBundle || approvalState === ApprovalState.NOT_APPROVED || approvalState === ApprovalState.PENDING
+    forceApprove || approvalState === ApprovalState.NOT_APPROVED || approvalState === ApprovalState.PENDING
 
-  if (!tokenContract || !spender || !amountToApprove || !shouldApprove) {
+  if (!tokenAddress || !spender || !amountToApprove || !shouldApprove || !config) {
     return null
   }
 
+  const amountToApproveBigint =
+    typeof amountToApprove === 'bigint' ? amountToApprove : BigInt(amountToApprove.quotient.toString())
+
   try {
-    // Check if the trade is possible via estimating gas.
-    await tokenContract.estimateGas.approve(spender, amountToApprove.quotient.toString())
+    await simulateContract(config, {
+      address: tokenAddress,
+      abi: erc20Abi,
+      functionName: 'approve',
+      args: [spender, amountToApproveBigint],
+      account: owner,
+    })
 
     return false
-  } catch {
+  } catch (e) {
+    // Approving a non-zero amount over an existing non-zero allowance reverts for USDT-style tokens
+    // that require resetting the allowance to zero first. This is expected and is exactly how we
+    // detect that a zero-approval is needed, so keep it as a quiet debug breadcrumb.
+    console.debug('shouldZeroApprove: approve simulation reverted, checking zero-approval', getSimulationErrorReason(e))
     try {
-      // Check for the trade has failed. Check if a trade with 0 amount is possible.
-      // If it is, then we need to first reset the allowance to 0.
-      await tokenContract.estimateGas.approve(spender, '0')
-
+      await simulateContract(config, {
+        address: tokenAddress,
+        abi: erc20Abi,
+        functionName: 'approve',
+        args: [spender, 0n],
+        account: owner,
+      })
       return true
-    } catch {
-      // If the trade with 0 amount is also not possible, we have an actual error case.
-      // We can't do anything about it, so we just return false.
+    } catch (e) {
+      // The zero-amount approval also reverted, so we can't determine the allowance behaviour.
+      console.warn('shouldZeroApprove: zero-amount approve simulation reverted', getSimulationErrorReason(e))
       return false
     }
   }

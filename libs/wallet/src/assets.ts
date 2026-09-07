@@ -1,5 +1,6 @@
-import CoinbaseWalletIcon from './api/assets/coinbase.svg'
-import MetaMaskLogo from './api/assets/metamask.png'
-import WalletConnectIcon from './api/assets/walletConnectIcon.svg'
+import svgBaseSrc from './api/assets/base.svg'
+import svgCoinbaseSrc from './api/assets/coinbase.svg'
+import imgMetamaskSrc from './api/assets/metamask.png'
+import iconWalletConnectSrc from './api/assets/walletConnectIcon.svg'
 
-export { CoinbaseWalletIcon, WalletConnectIcon, MetaMaskLogo }
+export { svgCoinbaseSrc, iconWalletConnectSrc, imgMetamaskSrc, svgBaseSrc }

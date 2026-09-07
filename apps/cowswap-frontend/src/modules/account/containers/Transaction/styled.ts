@@ -1,10 +1,9 @@
-import { TokenLogoWrapper } from '@cowprotocol/tokens'
-import { FiatAmount, Media, RowFixed } from '@cowprotocol/ui'
-import { ExternalLink, StyledLink } from '@cowprotocol/ui'
-import { UI } from '@cowprotocol/ui'
+import { ExternalLink, FiatAmount, Media, RowFixed, StyledLink, UI } from '@cowprotocol/ui'
 
 import { transparentize } from 'color2k'
-import styled, { css, keyframes } from 'styled-components/macro'
+import styled, { css } from 'styled-components/macro'
+
+import { ActivityState } from 'legacy/hooks/useActivityDerivedState'
 
 import { RateWrapper } from 'common/pure/RateInfo'
 
@@ -48,6 +47,7 @@ export const Summary = styled.div`
     display: flex;
     grid-template-columns: initial;
     grid-template-rows: initial;
+    padding: 8px;
   }
 
   > span {
@@ -118,12 +118,13 @@ export const SummaryInner = styled.div`
 `
 
 export const SummaryInnerRow = styled.div<{ isExpired?: boolean; isCancelled?: boolean }>`
-  display: grid;
-  grid-template-rows: 1fr;
-  grid-template-columns: 100px 1fr;
-  width: 100%;
-  margin: 0 0 4px;
   color: inherit;
+  display: grid;
+  column-gap: 16px;
+  grid-template-columns: 130px 1fr;
+  grid-template-rows: 1fr;
+  margin: 0 0 4px;
+  width: 100%;
 
   ${Media.upToSmall()} {
     grid-template-columns: 1fr;
@@ -144,8 +145,8 @@ export const SummaryInnerRow = styled.div<{ isExpired?: boolean; isCancelled?: b
   }
 
   > b {
-    padding: 0;
     opacity: 0.7;
+    padding: 0;
   }
 
   > i {
@@ -156,10 +157,6 @@ export const SummaryInnerRow = styled.div<{ isExpired?: boolean; isCancelled?: b
     ${Media.upToSmall()} {
       font-weight: 600;
       margin: 6px 0 0;
-    }
-
-    &.cancelled {
-      text-decoration: line-through;
     }
   }
 
@@ -190,33 +187,30 @@ export const TransactionStatusText = styled.div`
   }
 `
 
-export const StatusLabelWrapper = styled.div<{ withCancellationHash$: boolean }>`
+export const StatusLabelWrapper = styled.div`
   display: flex;
-  flex-flow: ${({ withCancellationHash$ }) => (withCancellationHash$ ? 'row' : 'column wrap')};
+  flex-flow: column wrap;
   flex: 0 1 auto;
   justify-content: center;
   align-items: center;
   margin: 0 0 auto auto;
-
   gap: 4px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
+
   > span,
   > button {
     cursor: pointer;
     font-size: inherit;
     padding: 0;
   }
+
   > span {
     color: inherit;
+
     &:hover {
       text-decoration: underline;
     }
-  }
-  > button {
-    appearance: none;
-    border: none;
-    background: none;
   }
 
   ${Media.upToSmall()} {
@@ -234,16 +228,19 @@ export const StatusLabel = styled.div<{
   isCancelling: boolean
   isPresignaturePending: boolean
   isCreating: boolean
+  isLoading: boolean
   color: string
 }>`
   --statusColor: ${({ isPending, isPresignaturePending, isCreating, color }) =>
     isPending || isPresignaturePending || isCreating
       ? `var(${UI.COLOR_TEXT})`
       : color === 'success'
-      ? `var(${UI.COLOR_SUCCESS})`
-      : color === 'danger'
-      ? `var(${UI.COLOR_DANGER})`
-      : `var(${UI.COLOR_ALERT})`};
+        ? `var(${UI.COLOR_SUCCESS})`
+        : color === 'danger'
+          ? `var(${UI.COLOR_DANGER})`
+          : color === ActivityState.OPEN
+            ? `var(${UI.COLOR_TEXT})`
+            : `var(${UI.COLOR_ALERT})`};
   height: 28px;
   width: 100px;
   ${({ isPending, isPresignaturePending, isCancelling, isCreating, theme }) =>
@@ -279,8 +276,8 @@ export const StatusLabel = styled.div<{
     opacity: 0.15;
   }
 
-  ${({ theme, isCancelling, isPresignaturePending, isTransaction, isPending }) =>
-    (isCancelling || isPresignaturePending || (isPending && isTransaction)) &&
+  ${({ theme, isCancelling, isPresignaturePending, isTransaction, isPending, isLoading }) =>
+    (isCancelling || isPresignaturePending || (isPending && isTransaction) || isLoading) &&
     css`
       &::after {
         position: absolute;
@@ -293,7 +290,6 @@ export const StatusLabel = styled.div<{
         content: '';
       }
     `}
-
   > svg {
     margin: 0 5px 0 0;
     max-height: 13px;
@@ -309,12 +305,18 @@ export const StatusLabel = styled.div<{
 export const StatusLabelBelow = styled.div<{ isCancelling?: boolean }>`
   width: 100%;
   display: flex;
+  flex-flow: column wrap;
+  gap: 6px;
   justify-content: center;
   align-items: center;
-  font-size: 12px;
+  font-size: inherit;
   line-height: 1.1;
   margin: 7px auto 0;
   color: ${({ isCancelling }) => (isCancelling ? `var(${UI.COLOR_TEXT})` : 'inherit')};
+
+  > button {
+    font-size: inherit;
+  }
 `
 
 export const OldTransactionState = styled(ExternalLink)<{ pending: boolean; success?: boolean }>`
@@ -331,7 +333,7 @@ export const OldTransactionState = styled(ExternalLink)<{ pending: boolean; succ
 // override the href, pending and success props
 // override mouse actions via CSS when we dont want a clickable row
 export const TransactionState = styled(OldTransactionState).attrs(
-  (props): { href?: string; disableMouseActions?: boolean; pending?: boolean; success?: boolean } => props
+  (props): { href?: string; disableMouseActions?: boolean; pending?: boolean; success?: boolean } => props,
 )`
   ${(props): string | false => !!props.disableMouseActions && `pointer-events: none; cursor: none;`}
   width: 100%;
@@ -351,35 +353,6 @@ export const TransactionState = styled(OldTransactionState).attrs(
 
   ${RowFixed} {
     width: 100%;
-  }
-`
-
-export const TransactionInnerDetail = styled.div`
-  display: flex;
-  flex-flow: column wrap;
-  align-items: center;
-  text-align: center;
-  border-radius: 12px;
-  padding: 20px 16px 16px;
-  color: inherit;
-  margin: 24px auto 0 0;
-  border: 1px solid ${({ theme }) => `${theme.darkMode ? 'rgb(197 218 239 / 10%)' : 'rgb(16 42 72 / 20%)'}`};
-  gap: 10px;
-
-  ${Media.upToSmall()} {
-    margin: 24px auto 12px;
-    width: 100%;
-    max-width: 100%;
-    grid-column: 1 / -1;
-  }
-
-  > span {
-    flex: 1 1 auto;
-    margin: 0;
-  }
-
-  > span:last-of-type {
-    margin: 3px 0 12px;
   }
 `
 
@@ -408,35 +381,27 @@ export const CreationTimeText = styled.div`
   padding: 0 0 12px;
 `
 
-const rotate360 = keyframes`
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-`
-
 export const ActivityVisual = styled.div`
   display: flex;
+  align-items: center;
+  justify-content: center;
   margin: 0 0 6px;
-
-  ${TokenLogoWrapper} {
-    border: 3px solid var(${UI.COLOR_PAPER});
-  }
-
-  ${TokenLogoWrapper}:not(:first-child):last-child {
-    margin: 0 0 0 -9px;
-  }
-
-  &:hover ${TokenLogoWrapper} {
-    animation: ${rotate360} 1s cubic-bezier(0.83, 0, 0.17, 1) infinite;
-    transform: translateZ(0);
-  }
 `
 
 export const CancelTxLink = styled(ExternalLink)`
-  margin-left: 10px;
+  margin: 0 auto;
+`
+
+export const ProgressLink = styled.span`
+  color: inherit;
+  font-size: inherit;
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+    cursor: pointer;
+  }
 `
 
 export const StyledFiatAmount = styled(FiatAmount)`
@@ -447,4 +412,8 @@ export const FiatWrapper = styled.span`
   margin-left: 5px;
   align-items: center;
   display: flex;
+`
+
+export const DangerText = styled.b`
+  color: var(${UI.COLOR_DANGER}) !important;
 `

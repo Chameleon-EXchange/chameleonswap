@@ -1,7 +1,7 @@
 import { useAtomValue } from 'jotai'
 
-import { zeroApprovalState } from '../state/zeroApprovalState'
+import { ZeroApprovalState, zeroApprovalState } from '../state/zeroApprovalState'
 
-export function useZeroApprovalState() {
+export function useZeroApprovalState(): ZeroApprovalState {
   return useAtomValue(zeroApprovalState)
 }

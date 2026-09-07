@@ -1,34 +1,51 @@
 import { useAtomValue } from 'jotai'
 
-import { useIsTxBundlingSupported, useWalletInfo } from '@cowprotocol/wallet'
+import { useFeatureFlags } from '@cowprotocol/common-hooks'
+import { isSafeAppAtom, isSafeViaWcAtom, useIsTxBundlingSupported, useWalletInfo } from '@cowprotocol/wallet'
 
-import { useReceiveAmountInfo } from 'modules/trade'
+import { useGetReceiveAmountInfo } from 'modules/trade'
+import { tradeFormValidationContextAtom } from 'modules/tradeFormValidation'
 import { useUsdAmount } from 'modules/usdAmount'
 
 import { useFallbackHandlerVerification } from './useFallbackHandlerVerification'
+import { useTwapOrder } from './useTwapOrder'
 
 import { getTwapFormState, TwapFormState } from '../pure/PrimaryActionButton/getTwapFormState'
-import { twapOrderAtom, twapTimeIntervalAtom } from '../state/twapOrderAtom'
+import { twapTimeIntervalAtom } from '../state/twapOrderAtom'
+import { twapOrdersSettingsAtom } from '../state/twapOrdersSettingsAtom'
 
 export function useTwapFormState(): TwapFormState | null {
   const { chainId } = useWalletInfo()
-  const twapOrder = useAtomValue(twapOrderAtom)
+  const twapOrder = useTwapOrder()
+  const { isTwapEoaEnabled } = useFeatureFlags()
 
-  const receiveAmountInfo = useReceiveAmountInfo()
-  const { sellAmount } = receiveAmountInfo?.afterPartnerFees || {}
+  const receiveAmountInfo = useGetReceiveAmountInfo()
+  const { sellAmount } = receiveAmountInfo?.beforeAllFees || {}
   const sellAmountPartFiat = useUsdAmount(sellAmount).value
 
   const partTime = useAtomValue(twapTimeIntervalAtom)
+  const { numberOfPartsValue } = useAtomValue(twapOrdersSettingsAtom)
+  const tradeFormValidationContext = useAtomValue(tradeFormValidationContextAtom)
 
   const verification = useFallbackHandlerVerification()
+  const isSafeApp = useAtomValue(isSafeAppAtom)
+  const isSafeViaWc = useAtomValue(isSafeViaWcAtom)
   const isTxBundlingSupported = useIsTxBundlingSupported()
+  // TODO: Replace these connection-based checks once isSafeWalletAtom distinguishes
+  // loading from a confirmed non-Safe account.
+  const isWalletSupported = isSafeApp === null || isSafeViaWc === null ? null : isSafeApp || isSafeViaWc
 
   return getTwapFormState({
+    isWalletSupported,
     isTxBundlingSupported,
     verification,
     twapOrder,
     sellAmountPartFiat,
     chainId,
     partTime,
+    tradeFormValidationContext,
+    numberOfPartsValue,
+    isTwapEoaEnabled: !!isTwapEoaEnabled,
+    isSafeViaWc,
   })
 }

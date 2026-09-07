@@ -1,6 +1,6 @@
 import React, { RefObject } from 'react'
 
-import { LATEST_APP_DATA_VERSION } from '@cowprotocol/app-data'
+import { LATEST_APP_DATA_VERSION } from '@cowprotocol/cow-sdk'
 
 import Form, { AjvError, FieldProps, FormValidation } from '@rjsf/core'
 import { JSONSchema7 } from 'json-schema'
@@ -20,17 +20,82 @@ export const INITIAL_FORM_VALUES = {
   metadata: {},
 }
 
+// TODO: Replace any with proper type definitions
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type FormProps = Record<string, any>
 
 export const getSchema = async (): Promise<JSONSchema7> => {
-  const latestSchema = (await metadataApiSDK
-    .getAppDataSchema(LATEST_APP_DATA_VERSION)
-    .then((m) => m.default)) as JSONSchema7
+  const latestSchemaResponse = await metadataApiSDK.getAppDataSchema(LATEST_APP_DATA_VERSION)
+  // TODO: Replace any with proper type definitions
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const latestSchema = ((latestSchemaResponse as any).default ?? latestSchemaResponse) as JSONSchema7
 
-  return makeSchemaCopy(latestSchema)
+  return normalizePartnerFeeSchema(latestSchema)
 }
 
-const makeSchemaCopy = (schema: JSONSchema7): JSONSchema7 => structuredClone(schema)
+const makeSchemaCopy = (schema: JSONSchema7): JSONSchema7 => {
+  if (typeof structuredClone === 'function') {
+    return structuredClone(schema)
+  }
+
+  return JSON.parse(JSON.stringify(schema)) as JSONSchema7
+}
+
+const PARTNER_FEE_REF_PREFIX = '#/properties/metadata/properties/partnerFee/definitions/'
+
+const normalizePartnerFeeRefs = (schema: JSONSchema7): JSONSchema7 => {
+  const metadata = schema.properties?.metadata
+  if (!metadata || typeof metadata !== 'object') {
+    return schema
+  }
+
+  const partnerFee = (metadata as JSONSchema7).properties?.partnerFee
+  if (!partnerFee || typeof partnerFee !== 'object') {
+    return schema
+  }
+
+  const partnerFeeDefinitions = (partnerFee as JSONSchema7).definitions as Record<string, JSONSchema7> | undefined
+  const rootDefinitions = (schema.definitions ?? {}) as Record<string, JSONSchema7>
+  const allDefinitionKeys = new Set<string>(Object.keys(rootDefinitions))
+
+  if (partnerFeeDefinitions && typeof partnerFeeDefinitions === 'object') {
+    Object.entries(partnerFeeDefinitions).forEach(([key, value]) => {
+      if (!(key in rootDefinitions)) {
+        rootDefinitions[key] = value
+      }
+      allDefinitionKeys.add(key)
+    })
+
+    schema.definitions = rootDefinitions
+  }
+
+  const rewriteRefs = (node: unknown): void => {
+    if (!node || typeof node !== 'object') return
+
+    if (Array.isArray(node)) {
+      node.forEach(rewriteRefs)
+      return
+    }
+
+    const record = node as Record<string, unknown>
+    if (typeof record.$ref === 'string' && record.$ref.startsWith(PARTNER_FEE_REF_PREFIX)) {
+      const definitionKey = record.$ref.slice(PARTNER_FEE_REF_PREFIX.length)
+      if (allDefinitionKeys.has(definitionKey)) {
+        record.$ref = `#/definitions/${definitionKey}`
+      }
+    }
+
+    Object.values(record).forEach(rewriteRefs)
+  }
+
+  rewriteRefs(schema)
+  return schema
+}
+
+export const normalizePartnerFeeSchema = (schema: JSONSchema7): JSONSchema7 => {
+  const schemaCopy = makeSchemaCopy(schema)
+  return normalizePartnerFeeRefs(schemaCopy)
+}
 
 export const transformErrors = (errors: AjvError[]): AjvError[] => {
   return errors.reduce<AjvError[]>((errorsList, error) => {
@@ -38,17 +103,39 @@ export const transformErrors = (errors: AjvError[]): AjvError[] => {
       // Disable the non-required fields (it validates the required fields on un-required fields)
       // error.message = ERROR_MESSAGES.REQUIRED
       return errorsList
-    } else {
-      if (error.property === '.metadata.referrer.address') {
-        error.message = ERROR_MESSAGES.INVALID_ADDRESS
+    }
+
+    // Filter out confusing oneOf errors from partnerFee
+    if (error.property.includes('.metadata.partnerFee')) {
+      // Only show oneOf errors if there's actually data in the field
+      if (error.name === 'oneOf') {
+        return errorsList
+      }
+      // Filter out "additionalProperties" errors from nested oneOf schemas
+      if (error.name === 'additionalProperties') {
+        return errorsList
       }
 
-      if (error.property === '.metadata.quote.slippageBips') {
-        error.message = ERROR_MESSAGES.ONLY_DIGITS
+      // Filter out type errors from nested oneOf schemas
+      if (error.name === 'type') {
+        return errorsList
       }
-      if (error.property === '.appData') {
-        error.message = ERROR_MESSAGES.INVALID_APPDATA
-      }
+    }
+
+    if (error.property === '.metadata.referrer.address') {
+      error.message = ERROR_MESSAGES.INVALID_ADDRESS
+    }
+
+    if (error.property === '.metadata.quote.slippageBips') {
+      error.message = ERROR_MESSAGES.ONLY_DIGITS
+    }
+
+    if (error.property === '.appData') {
+      error.message = ERROR_MESSAGES.INVALID_APPDATA
+    }
+
+    if (errorsList.some((e) => e.property === error.property)) {
+      return errorsList
     }
 
     return [...errorsList, error]
@@ -56,9 +143,9 @@ export const transformErrors = (errors: AjvError[]): AjvError[] => {
 }
 
 export const handleErrors = (
-  ref: RefObject<Form<FormProps>>,
+  ref: RefObject<Form<FormProps> | null>,
   errors: FormValidation,
-  handler: (value: boolean) => void
+  handler: (value: boolean) => void,
 ): FormValidation => {
   if (!ref.current) return errors
   const { errors: formErrors } = ref.current?.state as FormProps

@@ -1,10 +1,10 @@
-import { getAddress } from '@ethersproject/address'
+import { getAddress } from 'viem'
 
 export const getChecksumAddressOrOriginal = (address: string): string => {
   try {
     return getAddress(address)
   } catch (error) {
-    console.error('Failed to checksum address:', error);
+    console.error('Failed to checksum address:', error)
     return address
   }
 }
@@ -14,6 +14,8 @@ export const getChecksumAddressOrOriginal = (address: string): string => {
  * @param value (prefixed) address
  * @returns `prefix` and checksummed `address`
  */
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export const parsePrefixedAddress = (value: string) => {
   const [prefix, address] = value.split(':')
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 
 import { Command } from '@cowprotocol/types'
-import { TruncatedText } from '@cowprotocol/ui/pure/TruncatedText'
+import { TruncatedText } from '@cowprotocol/ui'
 
 import { faExchangeAlt, faSpinner } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -37,6 +37,9 @@ interface RowProps {
   isPriceInverted: boolean
   invertLimitPrice: Command
 }
+
+// TODO: Break down this large function into smaller functions
+// TODO: Reduce function complexity by extracting logic
 
 const RowTransaction: React.FC<RowProps> = ({ order, isPriceInverted }) => {
   const {
@@ -108,6 +111,8 @@ const RowTransaction: React.FC<RowProps> = ({ order, isPriceInverted }) => {
     </tr>
   )
 }
+
+// TODO: Break down this large function into smaller functions
 
 const TransactionTable: React.FC<Props> = (props) => {
   const { orders } = props

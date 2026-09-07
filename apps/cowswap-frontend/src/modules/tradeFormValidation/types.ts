@@ -1,9 +1,69 @@
+import { Currency, CurrencyAmount } from '@cowprotocol/currency'
 import { Command } from '@cowprotocol/types'
+import { CowSwapWidgetAppParams } from '@cowprotocol/widget-lib'
 
+import { PriceImpact } from 'legacy/hooks/usePriceImpact'
+
+import { ApprovalState, ApproveRequiredReason } from 'modules/erc20Approve'
 import { TradeDerivedState } from 'modules/trade'
 import { TradeQuoteState } from 'modules/tradeQuote'
 
-import { ApprovalState } from 'common/hooks/useApproveState'
+export interface TradeFormButtonContext {
+  defaultText: string
+  amountToApprove: CurrencyAmount<Currency> | null
+  derivedState: TradeDerivedState
+  quote: TradeQuoteState
+  isSupportedWallet: boolean
+  widgetStandaloneMode?: boolean
+  supportsPartialApprove?: boolean
+  customTokenError?: string
+  minAmountToSignForSwap?: CurrencyAmount<Currency>
+  balancesError: string | null
+  confirmClickEvent?: string
+  approveClickEvent?: string
+  widgetPriceImpactThreshold: number | undefined
+
+  confirmTrade(): void
+
+  connectWallet: Command
+
+  wrapNativeFlow(): Promise<unknown>
+}
+
+export interface TradeFormValidationCommonContext {
+  account: string | undefined
+  derivedTradeState: TradeDerivedState
+  approvalState: ApprovalState
+  tradeQuote: TradeQuoteState
+  recipientEnsAddress: string | null
+  isWrapUnwrap: boolean
+  isBundlingSupported: boolean | null
+  isSupportedWallet: boolean
+  isSwapUnsupported: boolean
+  isSafeReadonlyUser: boolean
+  isApproveRequired: ApproveRequiredReason
+  isInsufficientBalanceOrderAllowed: boolean
+  isProviderNetworkUnsupported: boolean
+  isProviderNetworkDeprecated: boolean
+  isOnline: boolean
+  intermediateTokenToBeImported: boolean
+  isAccountProxyLoading: boolean
+  isProxySetupValid: boolean | null | undefined
+  customTokenError?: string
+  isRestrictedForCountry: boolean
+  isBalancesLoading: boolean
+  balancesError: string | null
+  isInputCurrencyXstock: boolean
+  isOutputCurrencyXstock: boolean
+  injectedWidgetParams: Partial<CowSwapWidgetAppParams>
+  tradePriceImpact: PriceImpact
+  isNonEvmReceiverConfirmed: boolean
+  isRestoringConnection: boolean
+  isCaptchaPending: boolean
+  isCaptchaRequired: boolean
+}
+
+export interface TradeFormValidationContext extends TradeFormValidationCommonContext {}
 
 export enum TradeFormValidation {
   // Wrap/unwrap
@@ -17,53 +77,52 @@ export enum TradeFormValidation {
   WalletNotConnected,
   WalletNotSupported,
   SafeReadonlyUser,
+  WalletCapabilitiesLoading,
+  RestoringWallet,
 
   // Quote request params
   CurrencyNotSet,
   InputAmountNotSet,
   RecipientInvalid,
+  RecipientNotSet,
+  RecipientNotConfirmed,
+  NetworkNotSupported,
+  NetworkDeprecated,
+  BrowserOffline,
 
   // Quote loading indicator
+  CaptchaPending,
+  CaptchaRequired,
   QuoteLoading,
+  ImpactLoading,
   QuoteExpired,
 
   // Balances
+  BalancesLoading,
   BalancesNotLoaded,
   BalanceInsufficient,
 
   // Approve
-  ApproveAndSwap,
+  ApproveAndSwapInBundle,
   ApproveRequired,
 
-  // Native
+  // Intermediate token
+  ImportingIntermediateToken,
+
+  // Native - this should be the last validation, as it overrides all other validations
   SellNativeToken,
-}
 
-export interface TradeFormValidationCommonContext {
-  account: string | undefined
-  derivedTradeState: TradeDerivedState
-  approvalState: ApprovalState
-  tradeQuote: TradeQuoteState
-  recipientEnsAddress: string | null
-  isWrapUnwrap: boolean
-  isBundlingSupported: boolean
-  isSupportedWallet: boolean
-  isSwapUnsupported: boolean
-  isSafeReadonlyUser: boolean
-  isPermitSupported: boolean
-  isInsufficientBalanceOrderAllowed: boolean
-}
+  // Bridging
+  ProxyAccountLoading,
+  ProxyAccountUnknown,
+  CustomTokenError,
 
-export interface TradeFormValidationContext extends TradeFormValidationCommonContext {}
+  // RWA/Geo restrictions
+  RestrictedForCountry,
+  XstockMinimumTradeSize,
 
-export interface TradeFormButtonContext {
-  defaultText: string
-  derivedState: TradeDerivedState
-  quote: TradeQuoteState
-  isSupportedWallet: boolean
-  widgetStandaloneMode?: boolean
-
-  confirmTrade(): void
-  connectWallet: Command
-  wrapNativeFlow(): void
+  // Widget controlled
+  DisableTradeWithUnknownPriceImpact,
+  DisableTradeWithHighPriceImpact,
+  WidgetConstrainedTokenPair,
 }

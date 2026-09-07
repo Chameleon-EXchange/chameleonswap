@@ -1,15 +1,17 @@
+/* eslint-disable @typescript-eslint/no-restricted-imports */ // TODO: Don't use 'modules' import
 import { useSetAtom } from 'jotai'
 import { useEffect, useMemo } from 'react'
 
 import { FractionUtils } from '@cowprotocol/common-utils'
 import { SupportedChainId } from '@cowprotocol/cow-sdk'
+import { Price, Token } from '@cowprotocol/currency'
 import { UiOrderType } from '@cowprotocol/types'
 import { useWalletInfo } from '@cowprotocol/wallet'
-import { Token } from '@uniswap/sdk-core'
 
 import { useCombinedPendingOrders } from 'legacy/state/orders/hooks'
 
 import { updateSpotPricesAtom } from 'modules/orders/state/spotPricesAtom'
+import { getUsdPriceStateKey, UsdPriceState } from 'modules/usdAmount'
 import { useUsdPrices } from 'modules/usdAmount/hooks/useUsdPrice'
 
 import { getUiOrderType } from 'utils/orderUtils/getUiOrderType'
@@ -25,35 +27,6 @@ type MarketRecord = Record<
     outputCurrency: Token
   }
 >
-
-function useMarkets(chainId: SupportedChainId, account: string | undefined): MarketRecord {
-  const pending = useCombinedPendingOrders({ chainId, account })
-
-  return useSafeMemo(() => {
-    return pending.reduce<Record<string, { chainId: number; inputCurrency: Token; outputCurrency: Token }>>(
-      (acc, order) => {
-        // Do not query spot prices for SWAP
-        if (getUiOrderType(order) === UiOrderType.SWAP) return acc
-
-        // Aggregating pending orders per market. No need to query multiple times same market
-        const { marketInverted, marketKey } = getCanonicalMarketChainKey(chainId, order.sellToken, order.buyToken)
-
-        const [inputCurrency, outputCurrency] = marketInverted
-          ? [order.outputToken, order.inputToken]
-          : [order.inputToken, order.outputToken]
-
-        acc[marketKey] = {
-          chainId,
-          inputCurrency,
-          outputCurrency,
-        }
-
-        return acc
-      },
-      {},
-    )
-  }, [pending])
-}
 
 /**
  * Spot Prices Updater
@@ -80,10 +53,10 @@ export function SpotPricesUpdater(): null {
 
   useEffect(() => {
     Object.values(markets).forEach(({ inputCurrency, outputCurrency }) => {
-      const inputPrice = usdPrices[inputCurrency.address.toLowerCase()]
-      const outputPrice = usdPrices[outputCurrency.address.toLowerCase()]
+      const inputPrice = usdPrices[getUsdPriceStateKey(inputCurrency)]
+      const outputPrice = usdPrices[getUsdPriceStateKey(outputCurrency)]
 
-      if (!inputPrice?.price || !outputPrice?.price || !inputPrice?.isLoading || !outputPrice?.isLoading) {
+      if (!isUsdPriceStateReady(inputPrice) || !isUsdPriceStateReady(outputPrice)) {
         return
       }
 
@@ -117,4 +90,39 @@ export function SpotPricesUpdater(): null {
   }, [usdPrices, markets, chainId, updateSpotPrices])
 
   return null
+}
+
+function isUsdPriceStateReady(
+  state: UsdPriceState | null,
+): state is UsdPriceState & { price: Price<Token, Token>; isLoading: false } {
+  return !!state && !!state.price && !state.isLoading
+}
+
+function useMarkets(chainId: SupportedChainId, account: string | undefined): MarketRecord {
+  const pending = useCombinedPendingOrders({ chainId, account })
+
+  return useSafeMemo(() => {
+    return pending.reduce<Record<string, { chainId: number; inputCurrency: Token; outputCurrency: Token }>>(
+      (acc, order) => {
+        // Do not query spot prices for SWAP
+        if (getUiOrderType(order) === UiOrderType.SWAP) return acc
+
+        // Aggregating pending orders per market. No need to query multiple times same market
+        const { marketInverted, marketKey } = getCanonicalMarketChainKey(chainId, order.sellToken, order.buyToken)
+
+        const [inputCurrency, outputCurrency] = marketInverted
+          ? [order.outputToken, order.inputToken]
+          : [order.inputToken, order.outputToken]
+
+        acc[marketKey] = {
+          chainId,
+          inputCurrency,
+          outputCurrency,
+        }
+
+        return acc
+      },
+      {},
+    )
+  }, [pending])
 }

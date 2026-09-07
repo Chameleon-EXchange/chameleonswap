@@ -1,8 +1,4 @@
-import { Currency, CurrencyAmount, Fraction, Price } from '@uniswap/sdk-core'
-
-export type Nullish<T> = T | null | undefined
-
-export type FractionLike = Fraction | Price<Currency, Currency> | CurrencyAmount<Currency>
+import { Currency, CurrencyAmount, Fraction, Price } from '@cowprotocol/currency'
 
 export type ComposableCowInfo = {
   id?: string
@@ -10,6 +6,8 @@ export type ComposableCowInfo = {
   isVirtualPart?: boolean
   isTheLastPart?: boolean
 }
+
+export type FractionLike = Fraction | Price<Currency, Currency> | CurrencyAmount<Currency>
 
 export const BadgeTypes = {
   INFORMATION: 'information',
@@ -21,4 +19,6 @@ export const BadgeTypes = {
 
 export type BadgeType = (typeof BadgeTypes)[keyof typeof BadgeTypes]
 
-export type CowSwapTheme = 'dark' | 'light' | 'darkHalloween' | 'lightChristmas' | 'darkChristmas' 
+export const COW_SWAP_THEMES = ['dark', 'light', 'darkHalloween', 'lightChristmas', 'darkChristmas'] as const
+
+export type CowSwapTheme = (typeof COW_SWAP_THEMES)[number]

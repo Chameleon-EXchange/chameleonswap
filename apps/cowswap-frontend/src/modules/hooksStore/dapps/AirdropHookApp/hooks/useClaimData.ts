@@ -1,30 +1,41 @@
 import { useCallback } from 'react'
 
-import { Airdrop, AirdropAbi } from '@cowprotocol/abis'
-import { formatTokenAmount } from '@cowprotocol/common-utils'
-import { useWalletInfo } from '@cowprotocol/wallet'
-import { Fraction } from '@uniswap/sdk-core'
+import { MessageDescriptor, i18n } from '@lingui/core'
 
+import { formatTokenAmount } from '@cowprotocol/common-utils'
+import { getAddressKey } from '@cowprotocol/cow-sdk'
+import { AirdropAbi } from '@cowprotocol/cowswap-abis'
+import { Fraction } from '@cowprotocol/currency'
+import { useWalletInfo } from '@cowprotocol/wallet'
+
+import { msg, t } from '@lingui/core/macro'
+import { useLingui } from '@lingui/react/macro'
 import useSWR from 'swr'
 
 import { useContract } from 'common/hooks/useContract'
 
 import { AirdropDataInfo, IAirdrop, IClaimData } from '../types'
 
-type IntervalsType = { [key: string]: string }
-
-type ChunkDataType = { [key: string]: AirdropDataInfo[] }
-
 export interface PreviewClaimableTokensParams {
   dataBaseUrl: string
   address: string
 }
 
-export const AIRDROP_PREVIEW_ERRORS = {
-  NO_CLAIMABLE_TOKENS: 'You are not eligible for this airdrop',
-  ERROR_FETCHING_DATA: 'There was an error trying to load claimable tokens',
-  NO_CLAIMABLE_AIRDROPS: 'You possibly have other items to claim, but not Airdrops',
-  UNEXPECTED_WRONG_FORMAT_DATA: 'Unexpected error fetching data: wrong format data',
+/** Legacy contract shape for type narrowing; actual implementation is stub (null). */
+type AirdropContractLike = {
+  isClaimed(index: number): Promise<boolean>
+  interface: { encodeFunctionData(name: string, args: unknown[]): string }
+}
+
+type ChunkDataType = { [key: string]: AirdropDataInfo[] }
+
+type IntervalsType = { [key: string]: string }
+
+export const AIRDROP_PREVIEW_ERRORS: Record<string, MessageDescriptor> = {
+  NO_CLAIMABLE_TOKENS: msg`You are not eligible for this airdrop`,
+  ERROR_FETCHING_DATA: msg`There was an error trying to load claimable tokens`,
+  NO_CLAIMABLE_AIRDROPS: msg`You possibly have other items to claim, but not Airdrops`,
+  UNEXPECTED_WRONG_FORMAT_DATA: msg`Unexpected error fetching data: wrong format data`,
 }
 
 /*
@@ -87,40 +98,44 @@ const fetchAddressIsEligible = async ({
   const intervalKey = findIntervalKey(address, intervals)
 
   // Interval key is undefined (user address is not in intervals)
-  if (!intervalKey) throw new Error(AIRDROP_PREVIEW_ERRORS.NO_CLAIMABLE_TOKENS)
+  if (!intervalKey) throw new Error(i18n._(AIRDROP_PREVIEW_ERRORS.NO_CLAIMABLE_TOKENS))
 
   const chunkData = await fetchChunk(dataBaseUrl, intervalKey)
 
-  const addressLowerCase = address.toLowerCase()
+  const addressLowerCase = getAddressKey(address)
 
   // The user address is not listed in chunk
-  if (!(addressLowerCase in chunkData)) throw new Error(AIRDROP_PREVIEW_ERRORS.NO_CLAIMABLE_TOKENS)
+  if (!(addressLowerCase in chunkData)) throw new Error(i18n._(AIRDROP_PREVIEW_ERRORS.NO_CLAIMABLE_TOKENS))
 
   const airDropData = chunkData[addressLowerCase]
   // The user has other kind of tokens, but not airdrops
-  if (airDropData.length < 1) throw new Error(AIRDROP_PREVIEW_ERRORS.NO_CLAIMABLE_AIRDROPS)
+  if (airDropData.length < 1) throw new Error(i18n._(AIRDROP_PREVIEW_ERRORS.NO_CLAIMABLE_TOKENS))
 
   return airDropData[0]
 }
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export const useClaimData = (tokenToClaimData?: IAirdrop) => {
   const { account } = useWalletInfo()
-  const { contract: airdropContract, chainId: airdropChainId } = useContract<Airdrop>(
-    tokenToClaimData?.address,
-    AirdropAbi,
-  )
+  const { i18n } = useLingui()
+  const {
+    contract: airdropContract,
+    address: airdropAddress,
+    chainId: airdropChainId,
+  } = useContract<AirdropContractLike>(tokenToClaimData?.address, AirdropAbi)
 
   const fetchPreviewClaimableTokens = useCallback(
     async ({ dataBaseUrl, address }: PreviewClaimableTokensParams): Promise<IClaimData> => {
       const isEligibleData = await fetchAddressIsEligible({ dataBaseUrl, address })
       if (!isEligibleData || !airdropContract || !isEligibleData.index || !tokenToClaimData || !account) {
-        throw new Error(AIRDROP_PREVIEW_ERRORS.ERROR_FETCHING_DATA)
+        throw new Error(i18n._(AIRDROP_PREVIEW_ERRORS.ERROR_FETCHING_DATA))
       }
 
       const { chainId: tokenToClaimChainId, token: tokenToClaim } = tokenToClaimData
       if (airdropChainId !== tokenToClaimChainId) {
         throw new Error(
-          `Airdrop token chain (${tokenToClaimChainId}) and airdrop contract chain (${airdropChainId}) should match`,
+          t`Airdrop token chain (${tokenToClaimChainId}) and airdrop contract chain (${airdropChainId}) should match`,
         )
       }
 
@@ -140,20 +155,20 @@ export const useClaimData = (tokenToClaimData?: IAirdrop) => {
       return {
         ...isEligibleData,
         isClaimed,
-        callData,
-        contract: airdropContract,
+        callData: callData as `0x${string}`,
+        contractAddress: airdropAddress ?? '',
         token: tokenToClaim,
         formattedAmount,
       }
     },
-    [account, airdropContract, tokenToClaimData, airdropChainId],
+    [airdropContract, airdropAddress, tokenToClaimData, account, airdropChainId, i18n],
   )
 
   return useSWR<IClaimData | undefined, Error>(
     tokenToClaimData && account
       ? {
           dataBaseUrl: tokenToClaimData.dataBaseUrl,
-          address: account.toLowerCase(),
+          address: getAddressKey(account),
         }
       : null,
     fetchPreviewClaimableTokens,

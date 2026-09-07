@@ -1,19 +1,23 @@
+/* eslint-disable @typescript-eslint/no-restricted-imports */ // TODO: Don't use 'modules' import
 import React, { ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
 
 import { NATIVE_CURRENCIES } from '@cowprotocol/common-const'
 import { formatInputAmount, getIsNativeToken } from '@cowprotocol/common-utils'
 import { SupportedChainId } from '@cowprotocol/cow-sdk'
-import { TokenAmount, HoverTooltip } from '@cowprotocol/ui'
-import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
+import { Currency, CurrencyAmount } from '@cowprotocol/currency'
+import { TEST_IDS } from '@cowprotocol/test-ids'
+import { HoverTooltip, TokenAmount } from '@cowprotocol/ui'
+
+import { Trans } from '@lingui/react/macro'
+import { Nullish } from 'types'
 
 import { BalanceAndSubsidy } from 'legacy/hooks/useCowBalanceAndSubsidy'
 import { PriceImpact } from 'legacy/hooks/usePriceImpact'
 import { Field } from 'legacy/state/types'
 
-import { setMaxSellTokensAnalytics } from 'modules/analytics'
-import { ReceiveAmount } from 'modules/swap/pure/ReceiveAmount'
 import { useUsdAmount } from 'modules/usdAmount'
 
+import { CowSwapAnalyticsCategory, toCowSwapGtmEvent } from 'common/analytics/types'
 import { CurrencyInfo } from 'common/pure/CurrencyInputPanel/types'
 import { CurrencySelectButton } from 'common/pure/CurrencySelectButton'
 import { FiatValue } from 'common/pure/FiatValue'
@@ -21,21 +25,21 @@ import { FiatValue } from 'common/pure/FiatValue'
 import * as styledEl from './styled'
 
 import { useConvertUsdToTokenValue } from '../../hooks/useConvertUsdToTokenValue'
-
-interface BuiltItProps {
-  className: string
-}
+import { ReceiveAmount } from '../ReceiveAmount'
 
 export interface CurrencyInputPanelProps extends Partial<BuiltItProps> {
   id: string
   chainId: SupportedChainId | undefined
   areCurrenciesLoading: boolean
   bothCurrenciesSet: boolean
-  isChainIdUnsupported: boolean
+  isProviderNetworkUnsupported: boolean
+  isProviderNetworkDeprecated: boolean
+  isBridging?: boolean
   disabled?: boolean
   inputDisabled?: boolean
   tokenSelectorDisabled?: boolean
   displayTokenName?: boolean
+  displayChainName?: boolean
   inputTooltip?: string
   showSetMax?: boolean
   maxBalance?: CurrencyAmount<Currency> | undefined
@@ -45,17 +49,27 @@ export interface CurrencyInputPanelProps extends Partial<BuiltItProps> {
   subsidyAndBalance?: BalanceAndSubsidy
   onCurrencySelection: (field: Field, currency: Currency) => void
   onUserInput: (field: Field, typedValue: string) => void
+  isInvalid?: boolean
+
   openTokenSelectWidget(
-    selectedToken: string | undefined,
+    selectedToken: Nullish<Currency>,
     field: Field | undefined,
     onCurrencySelection: (currency: Currency) => void,
   ): void
+
   topLabel?: string
   topContent?: ReactNode
   customSelectTokenButton?: ReactNode
 }
 
-export function CurrencyInputPanel(props: CurrencyInputPanelProps) {
+interface BuiltItProps {
+  className: string
+}
+
+// TODO: Break down this large function into smaller functions
+// TODO: Reduce function complexity by extracting logic
+// eslint-disable-next-line max-lines-per-function, complexity
+export function CurrencyInputPanel(props: CurrencyInputPanelProps): ReactNode {
   const {
     id,
     areCurrenciesLoading,
@@ -65,13 +79,16 @@ export function CurrencyInputPanel(props: CurrencyInputPanelProps) {
     bothCurrenciesSet,
     showSetMax = false,
     maxBalance,
+    isBridging = false,
     inputDisabled = false,
     tokenSelectorDisabled = false,
     displayTokenName = false,
+    displayChainName = false,
     inputTooltip,
     onUserInput,
     allowsOffchainSigning,
-    isChainIdUnsupported,
+    isProviderNetworkUnsupported,
+    isProviderNetworkDeprecated,
     openTokenSelectWidget,
     onCurrencySelection,
     subsidyAndBalance = {
@@ -83,6 +100,7 @@ export function CurrencyInputPanel(props: CurrencyInputPanelProps) {
     topLabel,
     topContent,
     customSelectTokenButton,
+    isInvalid,
   } = props
 
   const {
@@ -95,7 +113,7 @@ export function CurrencyInputPanel(props: CurrencyInputPanelProps) {
     receiveAmountInfo,
     isUsdValuesMode = false,
   } = currencyInfo
-  const disabled = !!props.disabled || isChainIdUnsupported
+  const disabled = !!props.disabled || isProviderNetworkUnsupported || isProviderNetworkDeprecated
 
   const { value: usdAmount } = useUsdAmount(amount)
   const { value: maxBalanceUsdAmount } = useUsdAmount(maxBalance)
@@ -105,6 +123,7 @@ export function CurrencyInputPanel(props: CurrencyInputPanelProps) {
 
   const convertUsdToTokenValue = useConvertUsdToTokenValue(currency)
 
+  // TODO: Numerical input rerenders because this function changes due to some dep change.
   const onUserInputDispatch = useCallback(
     (typedValue: string, currencyValue?: string) => {
       // Always pass through empty string to allow clearing
@@ -114,26 +133,37 @@ export function CurrencyInputPanel(props: CurrencyInputPanelProps) {
         return
       }
 
-      setTypedValue(typedValue)
+      // For tokens with 0 decimals (not in USD mode), strip any decimal portion
+      let sanitizedTypedValue = typedValue
+      if (!isUsdValuesMode && currency?.decimals === 0 && typedValue.includes('.')) {
+        sanitizedTypedValue = typedValue.split('.')[0]
+      }
+
+      setTypedValue(sanitizedTypedValue)
       // Avoid converting from USD if currencyValue is already provided
-      const value = currencyValue || convertUsdToTokenValue(typedValue, isUsdValuesMode)
+      const value = currencyValue || convertUsdToTokenValue(sanitizedTypedValue, isUsdValuesMode)
       onUserInput(field, value)
     },
-    [onUserInput, field, convertUsdToTokenValue, isUsdValuesMode],
+    [onUserInput, field, convertUsdToTokenValue, isUsdValuesMode, currency?.decimals],
   )
 
-  const handleMaxInput = useCallback(() => {
-    if (!maxBalance) {
-      return
-    }
+  const handleMaxInput = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault()
+      e.stopPropagation()
 
-    const value = isUsdValuesMode ? maxBalanceUsdAmount : maxBalance
+      if (!maxBalance) {
+        return
+      }
 
-    if (value) {
-      onUserInputDispatch(value.toExact(), isUsdValuesMode ? maxBalance.toExact() : undefined)
-      setMaxSellTokensAnalytics()
-    }
-  }, [maxBalance, onUserInputDispatch, isUsdValuesMode, maxBalanceUsdAmount])
+      const value = isUsdValuesMode ? maxBalanceUsdAmount : maxBalance
+
+      if (value) {
+        onUserInputDispatch(value.toExact(), isUsdValuesMode ? maxBalance.toExact() : undefined)
+      }
+    },
+    [maxBalance, onUserInputDispatch, isUsdValuesMode, maxBalanceUsdAmount],
+  )
 
   useEffect(() => {
     // Compare the actual string values to preserve trailing decimals
@@ -161,10 +191,10 @@ export function CurrencyInputPanel(props: CurrencyInputPanelProps) {
 
   const numericalInput = (
     <styledEl.NumericalInput
-      className="token-amount-input"
+      data-testid={TEST_IDS.tokenAmountInput}
       prependSymbol={isUsdValuesMode ? '$' : ''}
-      value={isChainIdUnsupported ? '' : typedValue}
-      readOnly={inputDisabled}
+      value={isProviderNetworkUnsupported || isProviderNetworkDeprecated ? '' : typedValue}
+      readOnly={inputDisabled || disabled}
       onUserInput={onUserInputDispatch}
       $loading={areCurrenciesLoading}
     />
@@ -173,14 +203,22 @@ export function CurrencyInputPanel(props: CurrencyInputPanelProps) {
   const balanceView = (
     <div>
       {balance && !disabled && (
-        <styledEl.BalanceText>
+        <styledEl.BalanceText data-testid={TEST_IDS.currencyBalanceText}>
           {isUsdValuesMode ? (
-            <FiatValue fiatValue={balanceUsdAmount} />
+            <FiatValue fiatValue={balanceUsdAmount} isBridging={isBridging} />
           ) : (
             <TokenAmount amount={balance} defaultValue="0" tokenSymbol={currency} />
           )}
           {showSetMax && balance.greaterThan(0) && (
-            <styledEl.SetMaxBtn onClick={handleMaxInput}>Max</styledEl.SetMaxBtn>
+            <styledEl.SetMaxBtn
+              data-click-event={toCowSwapGtmEvent({
+                category: CowSwapAnalyticsCategory.TRADE,
+                action: 'Set Maximum Sell Tokens',
+              })}
+              onClick={handleMaxInput}
+            >
+              <Trans>Max</Trans>
+            </styledEl.SetMaxBtn>
           )}
         </styledEl.BalanceText>
       )}
@@ -198,8 +236,8 @@ export function CurrencyInputPanel(props: CurrencyInputPanelProps) {
   }, [_priceImpactParams, bothCurrenciesSet])
 
   const onTokenSelectClick = useCallback(() => {
-    openTokenSelectWidget(selectedTokenAddress, field, (currency) => onCurrencySelection(field, currency))
-  }, [openTokenSelectWidget, selectedTokenAddress, onCurrencySelection, field])
+    openTokenSelectWidget(currency, field, (currency) => onCurrencySelection(field, currency))
+  }, [openTokenSelectWidget, currency, onCurrencySelection, field])
 
   return (
     <styledEl.OuterWrapper>
@@ -223,7 +261,7 @@ export function CurrencyInputPanel(props: CurrencyInputPanelProps) {
         </styledEl.TopRow>
 
         {topContent}
-        <styledEl.CurrencyInputBox>
+        <styledEl.CurrencyInputBox isInvalid={isInvalid}>
           <div>
             {inputTooltip ? (
               <HoverTooltip wrapInContainer content={inputTooltip}>
@@ -240,6 +278,7 @@ export function CurrencyInputPanel(props: CurrencyInputPanelProps) {
               loading={areCurrenciesLoading || disabled}
               readonlyMode={tokenSelectorDisabled}
               displayTokenName={displayTokenName}
+              displayChainName={displayChainName}
               customSelectTokenButton={customSelectTokenButton}
             />
           </div>
@@ -248,8 +287,8 @@ export function CurrencyInputPanel(props: CurrencyInputPanelProps) {
         <styledEl.CurrencyInputBox>
           <div>
             {amount && !isUsdValuesMode && (
-              <styledEl.FiatAmountText>
-                <FiatValue priceImpactParams={priceImpactParams} fiatValue={fiatAmount} />
+              <styledEl.FiatAmountText data-testid={TEST_IDS.fiatAmount}>
+                <FiatValue priceImpactParams={priceImpactParams} fiatValue={fiatAmount} isBridging={isBridging} />
               </styledEl.FiatAmountText>
             )}
           </div>
@@ -260,7 +299,6 @@ export function CurrencyInputPanel(props: CurrencyInputPanelProps) {
       {receiveAmountInfo && currency && (
         <ReceiveAmount
           allowsOffchainSigning={allowsOffchainSigning}
-          currency={currency}
           receiveAmountInfo={receiveAmountInfo}
           subsidyAndBalance={subsidyAndBalance}
         />

@@ -1,20 +1,33 @@
-import { SupportedChainId } from '@cowprotocol/cow-sdk'
-import { Web3Provider } from '@ethersproject/providers'
+import type { Config } from 'wagmi'
+import { readContract } from 'wagmi/actions'
+
+import { SupportedChainId, ZERO_ADDRESS } from '@cowprotocol/cow-sdk'
+import { GPv2SettlementAbi } from '@cowprotocol/cowswap-abis'
 
 import { extensibleFallbackSetupTxs } from './extensibleFallbackSetupTxs'
 
 import { ExtensibleFallbackContext } from '../hooks/useExtensibleFallbackContext'
 
+jest.mock('wagmi/actions', () => ({
+  readContract: jest.fn(),
+}))
+
+const mockReadContract = readContract as jest.MockedFunction<typeof readContract>
+
 describe('extensibleFallbackSetupTxs - service to generate transactions for ExtensibleFallback setup', () => {
   it('Should create a bundle of two transactions: setFallbackHandler and setDomainVerifier', async () => {
     const context: ExtensibleFallbackContext = {
       chainId: SupportedChainId.SEPOLIA,
+      config: {} as Config,
       safeAddress: '0xA12D770028d7072b80BAEb6A1df962cccfd1dddd',
       settlementContract: {
-        callStatic: { domainSeparator: () => '0xa5b986c2f5845d520bcb903639360b147735589732066cea24a3a59678025c94' },
-      } as any,
-      provider: new Web3Provider(() => Promise.resolve(null)),
+        abi: GPv2SettlementAbi,
+        address: ZERO_ADDRESS,
+        chainId: 1,
+      },
     }
+
+    mockReadContract.mockResolvedValue('0xa5b986c2f5845d520bcb903639360b147735589732066cea24a3a59678025c94')
 
     const result = await extensibleFallbackSetupTxs(context)
 

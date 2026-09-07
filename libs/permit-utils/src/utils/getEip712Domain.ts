@@ -1,25 +1,12 @@
-import { getAddress } from '@ethersproject/address'
-import type { JsonRpcProvider } from '@ethersproject/providers'
+import { Address } from 'viem'
+import { Config } from 'wagmi'
+import { readContract } from 'wagmi/actions'
 
-
-import { getContract } from './getContract'
-
-import Erc20Abi from '../abi/erc20.json'
+import Erc20Abi from '../abi/erc20'
 
 // See https://eips.ethereum.org/EIPS/eip-5267
 
-export async function getEip712Domain(
-  tokenAddress: string,
-  chainId: number,
-  provider: JsonRpcProvider
-): Promise<Eip712Domain> {
-  const formattedAddress = getAddress(tokenAddress)
-  const erc20Contract = getContract(formattedAddress, Erc20Abi, provider)
-
-  const eip5267Domain: Required<Eip5267Return> = await erc20Contract.callStatic['eip712Domain']()
-
-  return processDomain(eip5267Domain, chainId, tokenAddress)
-}
+export type Eip712Domain = Omit<Eip5267Return, 'fields' | 'extensions'>
 
 type Eip5267Return = {
   fields: string
@@ -31,7 +18,24 @@ type Eip5267Return = {
   extensions?: string[]
 }
 
-export type Eip712Domain = Omit<Eip5267Return, 'fields' | 'extensions'>
+export async function getEip712Domain(tokenAddress: Address, chainId: number, config: Config): Promise<Eip712Domain> {
+  const [fields, name, version, domainChainId, verifyingContract, salt, extensions] = await readContract(config, {
+    abi: Erc20Abi,
+    address: tokenAddress,
+    functionName: 'eip712Domain',
+  })
+  const eip5267Domain: Required<Eip5267Return> = {
+    fields,
+    name,
+    version,
+    chainId: domainChainId.toString(),
+    verifyingContract,
+    salt,
+    extensions: extensions.map((e: unknown) => String(e)),
+  }
+
+  return processDomain(eip5267Domain, chainId, tokenAddress)
+}
 
 /** Retrieves the EIP-712 domain of a contract using EIP-5267 without extensions.
  *

@@ -1,0 +1,86 @@
+import React from 'react'
+
+import { BalancesAndAllowances } from '@cowprotocol/balances-and-allowances'
+import { SupportedChainId } from '@cowprotocol/cow-sdk'
+import { Token } from '@cowprotocol/currency'
+
+import { OrderStatus } from 'legacy/state/orders/actions'
+
+import { ParsedOrder } from 'utils/orderUtils/parseOrder'
+
+import { getOrderParams } from '../../../../utils/getOrderParams'
+import { WarningReason } from '../../../OrderEstimatedExecutionPrice/orderEstimatedExecutionPrice.constants'
+import { OrderEstimatedExecutionPrice } from '../../../OrderEstimatedExecutionPrice/OrderEstimatedExecutionPrice.pure'
+
+interface OrderRowWarningEstimatedPriceProps {
+  chainId: SupportedChainId
+  balancesAndAllowances: BalancesAndAllowances
+  order: ParsedOrder
+  isTwapTable?: boolean
+  isChild?: boolean
+  isInverted: boolean
+  childOrders?: ParsedOrder[]
+  withAllowanceWarning?: boolean
+
+  approveOrderToken(token: Token): void
+}
+
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export function OrderRowWarningEstimatedPrice(props: OrderRowWarningEstimatedPriceProps) {
+  const { order, isInverted, withAllowanceWarning, approveOrderToken } = props
+  const warningChildWithParams = findWarningChildWithParams(props)
+
+  if (!warningChildWithParams?.params) return null
+
+  return (
+    <OrderEstimatedExecutionPrice
+      amount={undefined}
+      tokenSymbol={undefined}
+      isInverted={isInverted}
+      isUnfillable={true}
+      canShowWarning={true}
+      warningReason={
+        warningChildWithParams.params.hasEnoughAllowance === false
+          ? WarningReason.Allowance
+          : warningChildWithParams.params.hasEnoughBalance === false
+            ? WarningReason.Balance
+            : undefined
+      }
+      onApprove={
+        warningChildWithParams.params.hasEnoughAllowance === false
+          ? () => approveOrderToken(warningChildWithParams.order.inputToken)
+          : withAllowanceWarning
+            ? () => approveOrderToken(order.inputToken)
+            : undefined
+      }
+    />
+  )
+}
+
+// TODO: Reduce function complexity by extracting logic
+
+const findWarningChildWithParams = ({
+  isChild,
+  childOrders,
+  isTwapTable,
+  chainId,
+  balancesAndAllowances,
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+}: OrderRowWarningEstimatedPriceProps) => {
+  if (!isTwapTable || isChild || !childOrders) return null
+
+  for (const childOrder of childOrders) {
+    if (
+      childOrder.status !== OrderStatus.FULFILLED &&
+      (childOrder.status === OrderStatus.SCHEDULED || childOrder.status === OrderStatus.PENDING)
+    ) {
+      const childParams = getOrderParams(chainId, balancesAndAllowances, childOrder)
+      if (childParams?.hasEnoughBalance === false || childParams?.hasEnoughAllowance === false) {
+        return { order: childOrder, params: childParams }
+      }
+    }
+  }
+  return null
+}

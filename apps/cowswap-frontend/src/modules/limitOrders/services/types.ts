@@ -1,7 +1,7 @@
-import { Erc20, GPv2Settlement } from '@cowprotocol/abis'
+import type { Config } from 'wagmi'
+
 import { SupportedChainId } from '@cowprotocol/cow-sdk'
 import type { SendBatchTxCallback } from '@cowprotocol/wallet'
-import { Web3Provider } from '@ethersproject/providers'
 
 import { AppDispatch } from 'legacy/state'
 import { PostOrderParams } from 'legacy/utils/trade'
@@ -10,27 +10,32 @@ import { TypedAppDataHooks } from 'modules/appData'
 import { GeneratePermitHook, IsTokenPermittableResult, useGetCachedPermit } from 'modules/permit'
 import type { TradeQuoteState } from 'modules/tradeQuote'
 
-export interface TradeFlowContext {
-  // signer changes creates redundant re-renders
-  // validTo must be calculated just before signing of an order
-  postOrderParams: Omit<PostOrderParams, 'validTo' | 'signer'>
-  typedHooks?: TypedAppDataHooks
-  settlementContract: GPv2Settlement
-  chainId: SupportedChainId
-  dispatch: AppDispatch
-  rateImpact: number
-  provider: Web3Provider
-  allowsOffchainSigning: boolean
-  permitInfo: IsTokenPermittableResult
-  generatePermitHook: GeneratePermitHook
-  getCachedPermit: ReturnType<typeof useGetCachedPermit>
-  quoteState: TradeQuoteState
-}
+import type { SettlementContractData } from 'common/hooks/useContract'
 
 export interface SafeBundleFlowContext extends TradeFlowContext {
-  erc20Contract: Erc20
   spender: string
   sendBatchTransactions: SendBatchTxCallback
 }
 
+export interface TradeFlowContext {
+  // signer changes creates redundant re-renders
+  // validTo must be calculated just before signing of an order
+  postOrderParams: Omit<PostOrderParams, 'validTo' | 'config'>
+  typedHooks?: TypedAppDataHooks
+  settlementContract: SettlementContractData
+  chainId: SupportedChainId
+  dispatch: AppDispatch
+  rateImpact: number
+  config: Config
+  allowsOffchainSigning: boolean
+  permitInfo: IsTokenPermittableResult
+  generatePermitHook: GeneratePermitHook
+  permitAmountToSign?: bigint
+  amountToApprove?: bigint
+  getCachedPermit: ReturnType<typeof useGetCachedPermit>
+  quoteState: TradeQuoteState
+}
+
 export class PriceImpactDeclineError extends Error {}
+
+export { WidgetHookDeclineError } from 'modules/injectedWidget'

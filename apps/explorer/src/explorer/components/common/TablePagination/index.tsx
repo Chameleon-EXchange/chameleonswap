@@ -1,15 +1,16 @@
 import React, { Context, useContext } from 'react'
 
-import { Media } from '@cowprotocol/ui'
+import { Color, Media, UI } from '@cowprotocol/ui'
 
-import { faChevronRight, faChevronLeft } from '@fortawesome/free-solid-svg-icons'
+import { faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { WrapperExtraComponents } from 'components/orders/OrderDetails/styled'
 import styled, { css } from 'styled-components/macro'
 
 import { Dropdown, DropdownOption } from '../Dropdown'
 
 const PaginationTextCSS = css`
-  color: ${({ theme }): string => theme.textPrimary1};
+  color: ${Color.neutral100};
   font-size: ${({ theme }): string => theme.fontSizeDefault};
   font-weight: normal;
   white-space: nowrap;
@@ -17,7 +18,6 @@ const PaginationTextCSS = css`
 
 export const PaginationWrapper = styled.span`
   ${PaginationTextCSS};
-
   align-items: center;
   display: flex;
   justify-content: center;
@@ -56,12 +56,14 @@ const PaginationItem = styled(DropdownOption)`
 const Icon = styled(FontAwesomeIcon)`
   width: 2rem !important;
   height: 2rem;
-  color: ${({ theme }): string => theme.textSecondary1};
+  color: ${Color.explorer_textSecondary1};
   .fill {
-    color: ${({ theme }): string => theme.textActive1};
+    color: ${Color.explorer_textActive};
   }
 `
-const PaginationButton = styled.button`
+const PaginationButton = styled.button.attrs<{ disabled?: boolean }>((props) => ({
+  disabled: props.disabled ?? true,
+}))`
   align-items: center;
   background: none;
   border: none;
@@ -77,7 +79,7 @@ const PaginationButton = styled.button`
 
   &:hover {
     .fill {
-      color: ${({ theme }): string => theme.textActive1};
+      color: ${Color.explorer_textActive};
     }
   }
 
@@ -86,11 +88,10 @@ const PaginationButton = styled.button`
     cursor: not-allowed;
     opacity: 0.5;
     .fill {
-      color: ${({ theme }): string => theme.textSecondary1};
+      color: ${Color.explorer_textSecondary1};
     }
   }
 `
-PaginationButton.defaultProps = { disabled: true }
 
 const DropdownPagination = styled(Dropdown)`
   .dropdown-options {
@@ -99,11 +100,11 @@ const DropdownPagination = styled(Dropdown)`
 `
 const PaginationDropdownButton = styled.button`
   ${PaginationTextCSS};
-
   background: none;
   border: none;
-  white-space: nowrap;
   cursor: pointer;
+  color: var(${UI.COLOR_NEUTRAL_100});
+
   &.selected {
     background-color: transparent;
     cursor: not-allowed;
@@ -111,7 +112,7 @@ const PaginationDropdownButton = styled.button`
     pointer-events: none;
   }
   &:hover span {
-    color: ${({ theme }): string => theme.textActive1};
+    color: ${Color.explorer_textActive};
   }
 `
 
@@ -122,6 +123,9 @@ type PaginationProps<T> = {
   fixedResultsPerPage?: boolean
 }
 
+// TODO: Replace any with proper type definitions
+// TODO: Break down this large function into smaller functions
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const TablePagination: React.FC<PaginationProps<any>> = ({ context, fixedResultsPerPage }) => {
   const {
     isLoading,
@@ -155,37 +159,39 @@ const TablePagination: React.FC<PaginationProps<any>> = ({ context, fixedResults
   const hasPreviousPage = !isLoading && pageOffset > 0
 
   return (
-    <PaginationWrapper>
-      {!fixedResultsPerPage && (
-        <>
-          <PaginationText>Rows per page:</PaginationText>
-          <DropdownPagination
-            disabled={isLoading}
-            dropdownButtonContent={
-              <PaginationDropdownButton>
-                {pageSize} <span>▼</span>
-              </PaginationDropdownButton>
-            }
-            dropdownButtonContentOpened={
-              <PaginationDropdownButton className="selected">{pageSize} ▲</PaginationDropdownButton>
-            }
-            currentItem={quantityPerPage.findIndex((option) => option === pageSize)}
-            items={quantityPerPage.map((pageOption) => (
-              <PaginationItem key={pageOption} onClick={(): void => setPageSize(pageOption)}>
-                {pageOption}
-              </PaginationItem>
-            ))}
-          />
-        </>
-      )}
-      <PaginationText className="legend">{renderPageLegend()}</PaginationText>{' '}
-      <PaginationButton disabled={!hasPreviousPage} onClick={handlePreviousPage}>
-        <Icon icon={faChevronLeft} className="fill" />
-      </PaginationButton>
-      <PaginationButton disabled={!hasNextPage} onClick={handleNextPage}>
-        <Icon icon={faChevronRight} className="fill" />
-      </PaginationButton>
-    </PaginationWrapper>
+    <WrapperExtraComponents>
+      <PaginationWrapper>
+        {!fixedResultsPerPage && (
+          <>
+            <PaginationText>Rows per page:</PaginationText>
+            <DropdownPagination
+              disabled={isLoading}
+              dropdownButtonContent={
+                <PaginationDropdownButton>
+                  {pageSize} <span>▼</span>
+                </PaginationDropdownButton>
+              }
+              dropdownButtonContentOpened={
+                <PaginationDropdownButton className="selected">{pageSize} ▲</PaginationDropdownButton>
+              }
+              currentItem={quantityPerPage.findIndex((option) => option === pageSize)}
+              items={quantityPerPage.map((pageOption) => (
+                <PaginationItem key={pageOption} onClick={(): void => setPageSize(pageOption)}>
+                  {pageOption}
+                </PaginationItem>
+              ))}
+            />
+          </>
+        )}
+        <PaginationText className="legend">{renderPageLegend()}</PaginationText>{' '}
+        <PaginationButton disabled={!hasPreviousPage} onClick={handlePreviousPage}>
+          <Icon icon={faChevronLeft} className="fill" />
+        </PaginationButton>
+        <PaginationButton disabled={!hasNextPage} onClick={handleNextPage}>
+          <Icon icon={faChevronRight} className="fill" />
+        </PaginationButton>
+      </PaginationWrapper>
+    </WrapperExtraComponents>
   )
 }
 

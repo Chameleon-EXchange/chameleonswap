@@ -3,7 +3,6 @@ import { getCacheKeyForURL as getCacheKeyForURLMock, matchPrecache as matchPreca
 
 import { CachedDocument, handleDocument, matchDocument } from './document'
 
-jest.mock('workbox-navigation-preload', () => ({ enable: jest.fn() }))
 jest.mock('workbox-precaching', () => ({
   getCacheKeyForURL: jest.fn(),
   matchPrecache: jest.fn(),
@@ -20,10 +19,17 @@ describe('document', () => {
       [{ request: { mode: 'navigate' }, url: { hostname: 'localhost', pathname: '' } }, true],
       [{ request: { mode: 'navigate' }, url: { hostname: 'localhost', pathname: '/#/swap' } }, true],
       [{ request: { mode: 'navigate' }, url: { hostname: 'localhost', pathname: '/asset.gif' } }, false],
+      [
+        { request: { mode: 'navigate' }, url: { hostname: 'swap.cow.fi', pathname: '/dev-hook-review-fixture/' } },
+        false,
+      ],
+      [
+        { request: { mode: 'navigate' }, url: { hostname: 'swap.cow.fi', pathname: '/dev-hook-review-fixture' } },
+        false,
+      ],
     ] as [RouteMatchCallbackOptions, boolean][]
 
     it.each(TEST_DOCUMENTS)('%j', (document: RouteMatchCallbackOptions, expected: boolean) => {
-      jest.spyOn(window, 'location', 'get').mockReturnValue({ hostname: document.url.hostname } as Location)
       expect(matchDocument(document)).toBe(expected)
     })
   })
@@ -88,7 +94,7 @@ describe('document', () => {
         expect(response).toBeInstanceOf(CachedDocument)
         expect(response.headers.get('Content-Type')).toBe('text/html; charset=utf-8')
         expect(await response.text()).toBe(
-          '<html><head></head><body><script>window.__isDocumentCached=true</script>mock</body></html>'
+          '<html><head></head><body><script>window.__isDocumentCached=true</script>mock</body></html>',
         )
       })
 
@@ -136,7 +142,7 @@ describe('document', () => {
             expect(response).toBeInstanceOf(CachedDocument)
             expect(response.headers.get('Content-Type')).toBe('text/html; charset=utf-8')
             expect(await response.text()).toBe(
-              '<html><head></head><body><script>window.__isDocumentCached=true</script>mock</body></html>'
+              '<html><head></head><body><script>window.__isDocumentCached=true</script>mock</body></html>',
             )
           })
         })

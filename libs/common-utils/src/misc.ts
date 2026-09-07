@@ -1,14 +1,18 @@
-import { SupportedChainId as ChainId, OrderKind } from '@cowprotocol/cow-sdk'
-import { Percent } from '@uniswap/sdk-core'
+import { OrderKind, SupportedChainId as ChainId } from '@cowprotocol/cow-sdk'
+import { Percent } from '@cowprotocol/currency'
 
 import { isSellOrder } from './isSellOrder'
+import { createCowLogger } from './logger'
 
 interface Market<T = string> {
   baseToken: T
   quoteToken: T
 }
 
-const PROVIDER_REJECT_REQUEST_CODES = [4001, -32000] // See https://eips.ethereum.org/EIPS/eip-1193
+// 4001 is the standard EIP-1193 user rejection code.
+// -32000 is a generic server error used by nodes for things like "intrinsic gas too low";
+// it is NOT included here because relying on it alone causes node errors to be silently swallowed.
+const PROVIDER_REJECT_REQUEST_CODES = [4001] // See https://eips.ethereum.org/EIPS/eip-1193
 const PROVIDER_REJECT_REQUEST_ERROR_MESSAGES = [
   'User denied message signature',
   'User rejected',
@@ -17,22 +21,38 @@ const PROVIDER_REJECT_REQUEST_ERROR_MESSAGES = [
   'Transaction was rejected',
 ]
 
+// Raw JSON-RPC messages returned by nodes (geth/erigon/anvil) when an account can't cover
+// `gas * gas price + value`. Viem wraps these into an `InsufficientFundsError` (matched by name
+// below) with its own reworded shortMessage, so the raw substrings only apply to unwrapped
+// provider errors (e.g. a wallet returning the node message directly).
+const INSUFFICIENT_FUNDS_ERROR_MESSAGES = ['insufficient funds', 'exceeds transaction sender account balance']
+
+// Cap recursion when walking the error.cause chain, in case a provider produces a cyclic
+// or pathologically deep chain.
+const MAX_ERROR_CAUSE_DEPTH = 8
+
 export const isTruthy = <T>(value: T | null | undefined | false): value is T => !!value
 
 export const delay = <T = void>(ms = 100, result?: T): Promise<T> =>
   new Promise((resolve) => setTimeout(resolve, ms, result))
 
-export function withTimeout<T>(promise: Promise<T>, ms: number, context?: string): Promise<T> {
-  const failOnTimeout = delay(ms).then(() => {
-    const errorMessage = 'Timeout after ' + ms + ' ms'
-    throw new Error(context ? `${context}. ${errorMessage}` : errorMessage)
-  })
-
-  return Promise.race([promise, failOnTimeout])
+interface TimeoutOptions {
+  timeout: number
+  timeoutMessage: string
 }
 
+type WindowWithMapping = Window & typeof globalThis & Record<string, unknown>
+
+export class TimeoutError extends Error {}
+
+// TODO: Add proper return type annotation
+// TODO: Replace any with proper type definitions
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type, @typescript-eslint/no-explicit-any
 export function debounce<F extends (...args: any) => any>(func: F, wait = 200) {
   let timeout: NodeJS.Timeout
+  // TODO: Replace any with proper type definitions
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-function-return-type
   const debounced = (...args: any) => {
     clearTimeout(timeout)
     timeout = setTimeout(() => func(args), wait)
@@ -41,32 +61,42 @@ export function debounce<F extends (...args: any) => any>(func: F, wait = 200) {
   return debounced
 }
 
-export function isPromiseFulfilled<T>(
-  promiseResult: PromiseSettledResult<T>
-): promiseResult is PromiseFulfilledResult<T> {
-  return promiseResult.status === 'fulfilled'
-}
-
 // To properly handle PromiseSettleResult which returns and object
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function getPromiseFulfilledValue<T, E = undefined>(
   promiseResult: PromiseSettledResult<T>,
-  nonFulfilledReturn: E
+  nonFulfilledReturn: E,
 ) {
   return isPromiseFulfilled(promiseResult) ? promiseResult.value : nonFulfilledReturn
 }
 
-export const registerOnWindow = (registerMapping: Record<string, any>) => {
-  Object.entries(registerMapping).forEach(([key, value]) => {
-    ;(window as any)[key] = value
+export function isPromiseFulfilled<T>(
+  promiseResult: PromiseSettledResult<T>,
+): promiseResult is PromiseFulfilledResult<T> {
+  return promiseResult.status === 'fulfilled'
+}
+
+export async function withTimeout<T>(promise: Promise<T>, options: TimeoutOptions): Promise<T> {
+  const { timeout, timeoutMessage } = options
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+
+  const failOnTimeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new TimeoutError(timeoutMessage)), timeout)
+  })
+
+  return Promise.race([promise, failOnTimeout]).finally(() => {
+    clearTimeout(timeoutId)
   })
 }
 
-export function getChainIdValues(): ChainId[] {
-  const ChainIdList = Object.values(ChainId)
+export const registerOnWindow = (registerMapping: Record<string, unknown>): void => {
+  if (typeof window === 'undefined') return
 
-  // cut in half as enums are always represented as key/value and then inverted
-  // https://stackoverflow.com/a/51536142
-  return ChainIdList.slice(ChainIdList.length / 2) as ChainId[]
+  Object.entries(registerMapping).forEach(([key, value]) => {
+    ;(window as WindowWithMapping)[key] = value
+    createCowLogger('AppMeta').info(key, value)
+  })
 }
 
 export interface CanonicalMarketParams<T> {
@@ -77,6 +107,14 @@ export interface CanonicalMarketParams<T> {
 
 export interface TokensFromMarketParams<T> extends Market<T> {
   kind: OrderKind
+}
+
+/**
+ * Helper function that transforms Basis Points (BPS) into a percentage
+ * @param percent
+ */
+export function bpsToPercent(bps: number): Percent {
+  return new Percent(bps, 10000)
 }
 
 export function getCanonicalMarket<T>({ sellToken, buyToken, kind }: CanonicalMarketParams<T>): Market<T> {
@@ -91,6 +129,31 @@ export function getCanonicalMarket<T>({ sellToken, buyToken, kind }: CanonicalMa
       quoteToken: sellToken,
     }
   }
+}
+
+export function getChainIdValues(): ChainId[] {
+  const ChainIdList = Object.values(ChainId)
+
+  // cut in half as enums are always represented as key/value and then inverted
+  // https://stackoverflow.com/a/51536142
+  return ChainIdList.slice(ChainIdList.length / 2) as ChainId[]
+}
+
+/**
+ * Convenient method to get the error message from the error raised by a provider.
+ *
+ * Some providers return some description in the error.message, and some others the error message is itself a String
+ * with the error message
+ */
+export function getProviderErrorMessage(error: unknown): string | undefined {
+  if (typeof error === 'string') return error
+  if (error && typeof error === 'object') {
+    // Prefer viem's shortMessage (concise, human-readable) over the full message
+    // which includes verbose request arguments and hex data.
+    if ('shortMessage' in error && typeof error.shortMessage === 'string') return error.shortMessage
+    if ('message' in error && typeof error.message === 'string') return error.message
+  }
+  return error?.toString()
 }
 
 export function getTokensFromMarket<T>({
@@ -129,15 +192,34 @@ export function hashCode(text: string): number {
 }
 
 /**
- * Convenient method to get the error message from the error raised by a provider.
+ * @param error Optional error object returned by a provider when a transaction fails to submit
+ * because the account can't cover `gas * gas price + value` — e.g. selling ~100% of an ETH
+ * balance and picking a low gas setting, leaving nothing to pay for gas.
  *
- * Some providers return some description in the error.message, and some others the error message is itself a String
- * with the error message
+ * @returns true if the error is an "insufficient funds for gas/value" failure
  */
-export function getProviderErrorMessage(error: unknown): string | undefined {
-  if (typeof error === 'string') return error
-  if (error && typeof error === 'object' && 'message' in error) return error.message as string
-  return error?.toString()
+export function isInsufficientFundsProviderError(error: unknown, depth = 0): boolean {
+  if (!error || depth > MAX_ERROR_CAUSE_DEPTH) {
+    return false
+  }
+
+  // Viem's `InsufficientFundsError` rewords the raw node message into its own shortMessage,
+  // so it's matched by name rather than by string content.
+  if (getErrorName(error) === 'InsufficientFundsError') {
+    return true
+  }
+
+  const message = getProviderErrorMessage(error)
+  if (message && matchesInsufficientFundsMessage(message)) {
+    return true
+  }
+
+  const cause = getErrorCause(error)
+  if (cause !== undefined && cause !== error) {
+    return isInsufficientFundsProviderError(cause, depth + 1)
+  }
+
+  return false
 }
 
 /**
@@ -149,22 +231,33 @@ export function getProviderErrorMessage(error: unknown): string | undefined {
  *
  * @returns true if the user rejected the request in their wallet
  */
-export function isRejectRequestProviderError(error: any) {
-  if (error) {
-    // Check the error code is the user rejection as described in eip-1193
-    if (PROVIDER_REJECT_REQUEST_CODES.includes(error.code)) {
-      return true
-    }
+// TODO: Replace any with proper type definitions
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function isRejectRequestProviderError(error: any, depth = 0): boolean {
+  if (!error || depth > MAX_ERROR_CAUSE_DEPTH) {
+    return false
+  }
 
-    // Check for some specific messages returned by some wallets when rejecting requests
-    const message = getProviderErrorMessage(error)
-    if (
-      PROVIDER_REJECT_REQUEST_ERROR_MESSAGES.some(
-        (rejectMessage) => message && rejectMessage && message.toLowerCase().includes(rejectMessage.toLowerCase())
-      )
-    ) {
-      return true
-    }
+  // Check the error code is the user rejection as described in eip-1193
+  if (PROVIDER_REJECT_REQUEST_CODES.includes(error.code)) {
+    return true
+  }
+
+  // Check for some specific messages returned by some wallets when rejecting requests
+  const message = getProviderErrorMessage(error)
+  if (
+    PROVIDER_REJECT_REQUEST_ERROR_MESSAGES.some(
+      (rejectMessage) => message && rejectMessage && message.toLowerCase().includes(rejectMessage.toLowerCase()),
+    )
+  ) {
+    return true
+  }
+
+  // Some wallets (e.g. Safe/WalletConnect via viem) wrap the real 4001 rejection inside a
+  // TransactionExecutionError whose top-level shortMessage is "An unknown RPC error occurred.".
+  // The rejection code/message only lives on error.cause, so walk the chain.
+  if (error.cause !== undefined && error.cause !== error) {
+    return isRejectRequestProviderError(error.cause, depth + 1)
   }
 
   return false
@@ -178,10 +271,15 @@ export function percentToBps(percent: Percent): number {
   return Number(percent.multiply('100').toSignificant())
 }
 
-/**
- * Helper function that transforms Basis Points (BPS) into a percentage
- * @param percent
- */
-export function bpsToPercent(bps: number): Percent {
-  return new Percent(bps, 10000)
+function getErrorCause(error: unknown): unknown {
+  return typeof error === 'object' && error !== null && 'cause' in error ? error.cause : undefined
+}
+
+function getErrorName(error: unknown): unknown {
+  return typeof error === 'object' && error !== null && 'name' in error ? error.name : undefined
+}
+
+function matchesInsufficientFundsMessage(message: string): boolean {
+  const lowerCaseMessage = message.toLowerCase()
+  return INSUFFICIENT_FUNDS_ERROR_MESSAGES.some((needle) => lowerCaseMessage.includes(needle))
 }

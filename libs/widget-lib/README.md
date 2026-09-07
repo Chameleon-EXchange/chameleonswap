@@ -1,4 +1,4 @@
-# Chameleon swap Widget Library
+# CoW Swap Widget Library
 
 Integrate the power of `CowSwap` into your product!
 With the widget, you can create an incredible trading interface. Specify the required pair of currencies, customize the
@@ -16,10 +16,6 @@ You can find a detailed description of all widget parameters in the [documentati
 
 ```
 npm install @cowprotocol/widget-lib --save
-```
-
-```
-yarn add @cowprotocol/widget-lib
 ```
 
 Create a container somewhere in your website, the widget will be rendered inside it:
@@ -48,7 +44,7 @@ const params: CowSwapWidgetParams = {
 const {updateParams} = createCowSwapWidget(
   widgetContainer,
   // Optionally, you can provide some additional params to customise your widget
-  {params, provider}
+  {params, provider, onReady: () => console.log('Widget ready')}
 )
 
 // You also can change widget configuration on the fly

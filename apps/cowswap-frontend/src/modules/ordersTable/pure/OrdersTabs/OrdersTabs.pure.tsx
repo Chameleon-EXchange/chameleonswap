@@ -1,0 +1,78 @@
+import { useAtomValue } from 'jotai'
+import { ReactNode, ChangeEvent } from 'react'
+
+import svgFilledInfoCircleSrc from '@cowprotocol/assets/cow-swap/filled-info-circle.svg'
+import svgOrderPresignaturePendingSrc from '@cowprotocol/assets/cow-swap/order-presignature-pending.svg'
+import { TEST_IDS } from '@cowprotocol/test-ids'
+import { useWalletInfo } from '@cowprotocol/wallet'
+
+import { t } from '@lingui/core/macro'
+import { useLingui } from '@lingui/react/macro'
+import { OrderTabId } from 'entities/routes/routes.atom'
+import SVG from 'react-inlinesvg'
+
+import { ordersTableTabsAtom } from 'modules/ordersTable/state/params/ordersTableParams.atom'
+
+import { useNavigate } from 'common/hooks/useNavigate'
+
+import * as styledEl from './OrdersTabs.styled'
+
+import { useGetBuildOrdersTableUrl } from '../../hooks/url/useGetBuildOrdersTableUrl'
+import { ordersTableTabIdAtom } from '../../state/params/ordersTableParams.atom'
+
+export function OrdersTabs(): ReactNode {
+  const { i18n } = useLingui()
+  const { account } = useWalletInfo()
+  const buildOrdersTableUrl = useGetBuildOrdersTableUrl()
+  const navigate = useNavigate()
+
+  const tabs = useAtomValue(ordersTableTabsAtom)
+  const currentTabId = useAtomValue(ordersTableTabIdAtom)
+
+  const handleSelectChange = (event: ChangeEvent<HTMLSelectElement>): void => {
+    const tabId = event.target.value as OrderTabId
+    navigate(buildOrdersTableUrl({ tabId, pageNumber: 1 }))
+  }
+
+  return (
+    <>
+      <styledEl.SelectContainer>
+        <styledEl.Select value={currentTabId || undefined} onChange={handleSelectChange}>
+          {tabs.map((tab) => {
+            const isUnfillable = tab.id === 'unfillable'
+            const isSigning = tab.id === 'signing'
+            return (
+              <option key={tab.id} value={tab.id}>
+                {isUnfillable && '⚠️ '}
+                {isSigning && '⏳ '}
+                {i18n._(tab.title)} {account && `(${tab.count})`}
+              </option>
+            )
+          })}
+        </styledEl.Select>
+      </styledEl.SelectContainer>
+
+      <styledEl.Tabs>
+        {tabs.map((tab) => {
+          const isUnfillable = tab.id === 'unfillable'
+          const isSigning = tab.id === 'signing'
+          return (
+            <styledEl.TabButton
+              data-testid={TEST_IDS.ordersTableTab}
+              key={tab.id}
+              $isActive={tab.id === currentTabId}
+              $isUnfillable={isUnfillable}
+              $isSigning={isSigning}
+              $isDisabled={!account}
+              to={buildOrdersTableUrl({ tabId: tab.id, pageNumber: 1 })}
+            >
+              {isUnfillable && <SVG src={svgFilledInfoCircleSrc} description={t`warning`} />}
+              {isSigning && <SVG src={svgOrderPresignaturePendingSrc} description={t`signing`} />}
+              {i18n._(tab.title)} {account && <span>({tab.count})</span>}
+            </styledEl.TabButton>
+          )
+        })}
+      </styledEl.Tabs>
+    </>
+  )
+}

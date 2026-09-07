@@ -1,25 +1,34 @@
-import { getMulticallContract } from '@cowprotocol/multicall'
-import { useWalletProvider } from '@cowprotocol/wallet-provider'
-import { BigNumber } from '@ethersproject/bignumber'
+import type { Address } from 'viem'
+import { useBalance, UseBalanceReturnType } from 'wagmi'
+
+import { isSolanaChain } from '@cowprotocol/cow-sdk'
+import { useSolanaNativeBalance } from '@cowprotocol/wallet'
 
 import ms from 'ms.macro'
-import useSWR, { SWRConfiguration, SWRResponse } from 'swr'
 
-const SWR_CONFIG = { refreshInterval: ms`11s` }
+const BALANCE_REFETCH_INTERVAL = ms`11s`
 
-export function useNativeTokenBalance(
-  account: string | undefined,
-  swrConfig: SWRConfiguration = SWR_CONFIG,
-): SWRResponse<BigNumber> {
-  const provider = useWalletProvider()
+/**
+ * Chain-agnostic native-balance hook. Detects the active network and delegates to the EVM
+ * (wagmi) or Solana watcher; the other stays disabled. Both return a `UseBalanceReturnType`,
+ * so consumers read `data.value` without knowing which chain is active.
+ */
+export function useNativeTokenBalance(account?: string, chainId?: number): UseBalanceReturnType {
+  const isSolana = !!chainId && isSolanaChain(chainId)
 
-  return useSWR(
-    account && provider ? ['useNativeTokenBalance', account, provider] : null,
-    async ([, _account, _provider]) => {
-      const contract = getMulticallContract(_provider)
-
-      return contract.callStatic.getEthBalance(_account)
+  const evmBalance = useBalance({
+    address: account as Address | undefined,
+    chainId,
+    query: {
+      enabled: !!account && !isSolana,
+      refetchInterval: BALANCE_REFETCH_INTERVAL,
     },
-    swrConfig,
-  )
+  })
+
+  const solanaBalance = useSolanaNativeBalance({
+    account,
+    enabled: !!account && isSolana,
+  })
+
+  return isSolana ? solanaBalance : evmBalance
 }

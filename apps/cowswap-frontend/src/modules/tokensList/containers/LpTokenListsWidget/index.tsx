@@ -1,7 +1,6 @@
 import { ReactNode, useMemo } from 'react'
 
 import { useTokensBalances } from '@cowprotocol/balances-and-allowances'
-import { TokenWithLogo } from '@cowprotocol/common-const'
 import {
   getTokenSearchFilter,
   LP_TOKEN_LIST_CATEGORIES,
@@ -10,6 +9,9 @@ import {
   useAllLpTokens,
 } from '@cowprotocol/tokens'
 import { ProductLogo, ProductVariant, UI } from '@cowprotocol/ui'
+
+import { t } from '@lingui/core/macro'
+import { Trans } from '@lingui/react/macro'
 
 import { usePoolsInfo } from 'modules/yield/shared'
 
@@ -23,15 +25,16 @@ interface LpTokenListsProps<T = TokenListCategory[] | null> {
   children: ReactNode
   search: string
   disableErc20?: boolean
-  onSelectToken(token: TokenWithLogo): void
   openPoolPage(poolAddress: string): void
   tokenListCategoryState: [T, (category: T) => void]
 }
 
-const tabs = [
-  { id: 'all', title: 'All', value: null },
-  { id: 'pool', title: 'Pool tokens', value: LP_TOKEN_LIST_CATEGORIES },
-  { id: 'cow-amm', title: (
+const getTabs = (): { id: string; title: string | ReactNode; value: null | TokenListCategory[] }[] => [
+  { id: 'all', title: t`All`, value: null },
+  { id: 'pool', title: t`Pool tokens`, value: LP_TOKEN_LIST_CATEGORIES },
+  {
+    id: 'cow-amm',
+    title: (
       <>
         <ProductLogo
           variant={ProductVariant.CowAmm}
@@ -40,20 +43,22 @@ const tabs = [
           theme="dark"
           logoIconOnly
         />{' '}
-        CoW AMM only
+        <Trans>CoW AMM only</Trans>
       </>
-    ), value: LP_TOKEN_LIST_COW_AMM_ONLY },
+    ),
+    value: LP_TOKEN_LIST_COW_AMM_ONLY,
+  },
 ]
 
 export function LpTokenListsWidget({
   account,
   search,
   children,
-  onSelectToken,
   openPoolPage,
   tokenListCategoryState,
   disableErc20,
-}: LpTokenListsProps) {
+}: LpTokenListsProps): ReactNode {
+  const tabs = getTabs()
   const [listsCategories, setListsCategories] = tokenListCategoryState
   const lpTokens = useAllLpTokens(listsCategories)
   const balancesState = useTokensBalances()
@@ -90,7 +95,6 @@ export function LpTokenListsWidget({
           displayCreatePoolBanner={listsCategories === tabs[2].value}
           balancesState={balancesState}
           lpTokens={sortedTokens}
-          onSelectToken={onSelectToken}
           openPoolPage={openPoolPage}
           poolsInfo={poolsInfo}
         />

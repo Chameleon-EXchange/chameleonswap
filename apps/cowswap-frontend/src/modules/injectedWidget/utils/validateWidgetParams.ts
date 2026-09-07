@@ -1,13 +1,15 @@
 import { CowSwapWidgetAppParams } from '@cowprotocol/widget-lib'
 
-import { validatePartnerFee } from './validatePartnerFee'
+import { WidgetParamsErrors } from 'entities/injectedWidget'
 
-import { WidgetParamsErrors } from '../state/injectedWidgetParamsAtom'
+import { validatePartnerFee } from './validatePartnerFee'
+import { validateSlippage } from './validateSlippage'
 
 type Keys = keyof CowSwapWidgetAppParams
 
 const VALIDATIONS: Partial<{ [key in Keys]: (param: CowSwapWidgetAppParams[key]) => string[] | undefined }> = {
   partnerFee: validatePartnerFee,
+  slippage: validateSlippage,
 }
 
 export function validateWidgetParams(params: CowSwapWidgetAppParams): WidgetParamsErrors {

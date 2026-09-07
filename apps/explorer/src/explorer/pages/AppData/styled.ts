@@ -1,9 +1,9 @@
-import { Media } from '@cowprotocol/ui'
+import { Color, Media, UI } from '@cowprotocol/ui'
 
 import { transparentize } from 'polished'
 import styled from 'styled-components/macro'
 
-import AppDataWrapper from '../../../components/common/AppDataWrapper'
+import { AppDataWrapper } from '../../../components/common/AppDataWrapper'
 import ExplorerTabs from '../../components/common/ExplorerTabs/ExplorerTabs'
 import { ContentCard as Content, Wrapper as WrapperTemplate } from '../styled'
 
@@ -12,8 +12,6 @@ export const StyledExplorerTabs = styled(ExplorerTabs)`
 `
 
 export const Wrapper = styled(WrapperTemplate)`
-  max-width: 118rem;
-
   .disclaimer {
     font-size: 1.2rem;
     line-height: 1.3;
@@ -35,13 +33,13 @@ export const Wrapper = styled(WrapperTemplate)`
 
     &.box {
       padding: 3rem 4rem;
-      background: ${({ theme }): string => theme.background};
+      background: ${Color.explorer_bg2};
       border-radius: 0.4rem;
     }
 
     a {
       margin: 0 0.5rem 0 0.5rem;
-      color: ${({ theme }): string => theme.orange};
+      color: ${Color.explorer_orange1};
     }
 
     &.inner-form {
@@ -92,7 +90,7 @@ export const Wrapper = styled(WrapperTemplate)`
       }
 
       &.error {
-        background: ${({ theme }): string => transparentize(0.8, theme.error)};
+        background: ${transparentize(0.8, Color.explorer_textError)};
       }
     }
 
@@ -103,16 +101,16 @@ export const Wrapper = styled(WrapperTemplate)`
       line-height: 1.6;
 
       &:not(.error) {
-        background: ${({ theme }): string => theme.greyOpacity};
+        background: ${Color.explorer_greyOpacity};
       }
     }
 
     .appData-hash {
       margin: 0 0 1rem 0;
       max-width: 55rem;
-      border: 1px solid ${({ theme }): string => theme.tableRowBorder};
+      border: 1px solid ${Color.explorer_tableRowBorder};
       padding: 0.75rem;
-      background: ${({ theme }): string => theme.tableRowBorder};
+      background: ${Color.explorer_tableRowBorder};
       border-radius: 0.5rem;
 
       ${Media.upToSmall()} {
@@ -171,6 +169,8 @@ export const Wrapper = styled(WrapperTemplate)`
     }
 
     .hidden-content {
+      width: 100%;
+
       h2 {
         margin: 2rem 0 2rem 0;
         font-size: 2rem;
@@ -179,13 +179,11 @@ export const Wrapper = styled(WrapperTemplate)`
       ${Media.LargeAndUp()} {
         position: sticky;
         top: 2.8rem;
-        width: 30vw;
       }
 
       ${Media.MediumAndUp()} {
         position: sticky;
         top: 3rem;
-        width: 35vw;
       }
 
       ${Media.upToSmall()} {
@@ -198,7 +196,6 @@ export const Wrapper = styled(WrapperTemplate)`
       ${Media.LargeAndUp()} {
         position: sticky;
         top: 4rem;
-        width: 60rem;
       }
     }
   }
@@ -259,7 +256,7 @@ export const Wrapper = styled(WrapperTemplate)`
     height: 5rem;
     width: 100%;
     flex: 1 1 auto;
-    background: ${({ theme }): string => theme.greyOpacity};
+    background: ${Color.explorer_greyOpacity};
     font-weight: ${({ theme }): string => theme.fontMedium};
     font-size: 1.6rem;
     border-radius: 0.6rem;
@@ -268,7 +265,7 @@ export const Wrapper = styled(WrapperTemplate)`
     outline: 0;
     appearance: none;
     align-items: center;
-    color: ${({ theme }): string => theme.greyShade};
+    color: ${Color.explorer_greyShade};
     padding: 1.6rem;
     box-sizing: border-box;
     border: 0.1rem solid transparent;
@@ -280,7 +277,7 @@ export const Wrapper = styled(WrapperTemplate)`
     }
 
     &:focus {
-      border: 0.1rem solid ${({ theme }): string => theme.borderPrimary};
+      border: 0.1rem solid ${Color.explorer_borderPrimary};
     }
   }
   .btn.btn-info {
@@ -292,9 +289,9 @@ export const Wrapper = styled(WrapperTemplate)`
     font-size: 1.5rem;
     margin-bottom: 1rem;
     width: 100%;
-    color: ${({ theme }): string => theme.orange1};
-    border: 1px solid ${({ theme }): string => theme.orange1};
-    background-color: ${({ theme }): string => theme.orangeOpacity};
+    color: ${Color.explorer_orange1};
+    border: 1px solid ${Color.explorer_orange1};
+    background-color: ${Color.explorer_orangeOpacity};
     border-radius: 0.4rem;
     padding: 0.8rem 1.5rem;
     transition-duration: 0.2s;
@@ -306,7 +303,7 @@ export const Wrapper = styled(WrapperTemplate)`
 
     :hover {
       opacity: 0.8;
-      color: ${({ theme }): string => theme.white};
+      color: var(${UI.COLOR_NEUTRAL_100});
       text-decoration: none;
     }
   }
@@ -314,7 +311,8 @@ export const Wrapper = styled(WrapperTemplate)`
     fieldset {
       padding: 0.6rem 1rem;
       border-radius: 0.6rem;
-      border: 1px solid ${({ theme }): string => theme.borderPrimary};
+      border: 1px solid ${Color.explorer_borderPrimary};
+
       legend {
         padding: 0.5rem;
       }
@@ -338,7 +336,7 @@ export const Wrapper = styled(WrapperTemplate)`
       li {
         list-style: none;
         line-height: normal;
-        color: ${({ theme }): string => theme.error};
+        color: ${Color.explorer_textError};
         font-size: 1.3rem;
       }
     }
@@ -402,11 +400,11 @@ export const IpfsWrapper = styled.div`
   .form-group:first-child {
     margin-top: -0.7rem;
     label {
-      background: ${({ theme }): string => theme.paper};
+      background: ${Color.explorer_paperCustom};
       padding: 0 0.2rem;
     }
     svg {
-      background: ${({ theme }): string => theme.paper};
+      background: ${Color.explorer_paperCustom};
       width: 2.2rem;
     }
   }

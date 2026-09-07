@@ -2,8 +2,7 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import React, { useCallback, useEffect } from 'react'
 
 import { isFractionFalsy } from '@cowprotocol/common-utils'
-import { SmallVolumeWarningBanner } from '@cowprotocol/ui'
-import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
+import { Currency, CurrencyAmount } from '@cowprotocol/currency'
 
 import styled from 'styled-components/macro'
 import { Nullish } from 'types'
@@ -15,17 +14,18 @@ import {
   limitOrdersWarningsAtom,
   updateLimitOrdersWarningsAtom,
 } from 'modules/limitOrders/state/limitOrdersWarningsAtom'
-import { SellNativeWarningBanner } from 'modules/trade/containers/SellNativeWarningBanner'
 import { useGetTradeFormValidation } from 'modules/tradeFormValidation'
 import { TradeFormValidation } from 'modules/tradeFormValidation/types'
 import { useTradeQuote } from 'modules/tradeQuote'
+import { SellNativeWarningBanner } from 'modules/tradeWidgetAddons'
 
 import { HIGH_FEE_WARNING_PERCENTAGE } from 'common/constants/common'
 import { calculatePercentageInRelationToReference } from 'utils/orderUtils/calculatePercentageInRelationToReference'
 
 import { RateImpactWarning } from '../../pure/RateImpactWarning'
+import { SmallVolumeWarningBanner } from '../../pure/SmallVolumeWarningBanner'
 
-const FORM_STATES_TO_SHOW_BUNDLE_BANNER = [TradeFormValidation.ApproveAndSwap]
+const FORM_STATES_TO_SHOW_BUNDLE_BANNER = [TradeFormValidation.ApproveAndSwapInBundle]
 
 export interface LimitOrdersWarningsProps {
   feeAmount?: Nullish<CurrencyAmount<Currency>>
@@ -43,6 +43,9 @@ const StyledRateImpactWarning = styled(RateImpactWarning)`
   margin: 10px auto 0;
 `
 
+// TODO: Add proper return type annotation
+// TODO: Reduce function complexity by extracting logic
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function LimitOrdersWarnings(props: LimitOrdersWarningsProps) {
   const { feeAmount, isConfirmScreen = false, className } = props
 
@@ -97,7 +100,6 @@ export function LimitOrdersWarnings(props: LimitOrdersWarningsProps) {
         />
       )}
 
-      {/*// TODO: must be replaced by <NotificationBanner>*/}
       {showHighFeeWarning && <SmallVolumeWarningBanner feeAmount={feeAmount} feePercentage={feePercentage} />}
       {showNativeSellWarning && <SellNativeWarningBanner />}
     </Wrapper>

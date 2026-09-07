@@ -1,28 +1,37 @@
-import { reportPermitWithDefaultSigner } from '@cowprotocol/common-utils'
-import { isSupportedPermitInfo } from '@cowprotocol/permit-utils'
+import type { Hex } from 'viem'
+import { sendTransaction } from 'wagmi/actions'
+
+import { captureError, ERROR_TYPES, normalizeError, reportPermitWithDefaultSigner } from '@cowprotocol/common-utils'
+import { SigningScheme } from '@cowprotocol/cow-sdk'
+import { Percent } from '@cowprotocol/currency'
 import { Command, UiOrderType } from '@cowprotocol/types'
-import { Percent } from '@uniswap/sdk-core'
+
+import { tradingSdk } from 'tradingSdk/tradingSdk'
 
 import { PriceImpact } from 'legacy/hooks/usePriceImpact'
 import { partialOrderUpdate } from 'legacy/state/orders/utils'
-import { signAndPostOrder } from 'legacy/utils/trade'
+import { mapUnsignedOrderToOrder, wrapErrorInOperatorError } from 'legacy/utils/trade'
 
 import { LOW_RATE_THRESHOLD_PERCENT } from 'modules/limitOrders/const/trade'
-import { PriceImpactDeclineError, TradeFlowContext } from 'modules/limitOrders/services/types'
+import { PriceImpactDeclineError, TradeFlowContext, WidgetHookDeclineError } from 'modules/limitOrders/services/types'
 import { LimitOrdersSettingsState } from 'modules/limitOrders/state/limitOrdersSettingsAtom'
 import { calculateLimitOrdersDeadline } from 'modules/limitOrders/utils/calculateLimitOrdersDeadline'
 import { emitPostedOrderEvent } from 'modules/orders'
 import { callDataContainsPermitSigner, handlePermit } from 'modules/permit'
 import { addPendingOrderStep } from 'modules/trade/utils/addPendingOrderStep'
 import { logTradeFlow } from 'modules/trade/utils/logger'
-import { getSwapErrorMessage } from 'modules/trade/utils/swapErrorHelper'
-import { tradeFlowAnalytics, TradeFlowAnalyticsContext } from 'modules/trade/utils/tradeFlowAnalytics'
-import { presignOrderStep } from 'modules/tradeFlow/services/swapFlow/steps/presignOrderStep'
+import type { TradeFlowAnalyticsContext } from 'modules/trade/utils/tradeFlowAnalytics'
+import { TradeFlowAnalytics } from 'modules/trade/utils/tradeFlowAnalytics'
 
+import { getSwapErrorMessage } from 'common/utils/getSwapErrorMessage'
+
+// TODO: Break down this large function into smaller functions
+// eslint-disable-next-line max-lines-per-function
 export async function tradeFlow(
   params: TradeFlowContext,
   priceImpact: PriceImpact,
   settingsState: LimitOrdersSettingsState,
+  analytics: TradeFlowAnalytics,
   confirmPriceImpactWithoutFee: (priceImpact: Percent) => Promise<boolean>,
   beforePermit: () => Promise<void>,
   beforeTrade: Command,
@@ -32,12 +41,13 @@ export async function tradeFlow(
     typedHooks,
     rateImpact,
     permitInfo,
-    provider,
     chainId,
     allowsOffchainSigning,
-    settlementContract,
     dispatch,
     generatePermitHook,
+    permitAmountToSign,
+    quoteState,
+    config,
   } = params
   const { account, recipientAddressOrName, sellToken, buyToken, appData, isSafeWallet, inputAmount, outputAmount } =
     postOrderParams
@@ -58,19 +68,21 @@ export async function tradeFlow(
     throw new PriceImpactDeclineError()
   }
 
-  const validTo = calculateLimitOrdersDeadline(settingsState, params.quoteState)
+  const validTo = calculateLimitOrdersDeadline(settingsState, quoteState)
 
   try {
     logTradeFlow('LIMIT ORDER FLOW', 'STEP 2: handle permit')
-    if (isSupportedPermitInfo(permitInfo)) await beforePermit()
-
     postOrderParams.appData = await handlePermit({
       permitInfo,
       inputToken: sellToken,
-      account,
+      account: account as `0x${string}`,
       appData,
       typedHooks,
+      amount: permitAmountToSign,
       generatePermitHook,
+      // Cache lookup, the ON_BEFORE_APPROVAL veto and the "requesting permit signature" UI all fire
+      // inside `generatePermitHook` on a genuine cache miss now; `beforePermit` flags the step.
+      preSignCallback: beforePermit,
     })
 
     if (callDataContainsPermitSigner(postOrderParams.appData.fullAppData)) {
@@ -78,15 +90,65 @@ export async function tradeFlow(
     }
 
     logTradeFlow('LIMIT ORDER FLOW', 'STEP 3: send transaction')
-    tradeFlowAnalytics.trade(swapFlowAnalyticsContext)
+    analytics.trade({
+      ...swapFlowAnalyticsContext,
+      quoteId: postOrderParams.quoteId,
+      allowsOffchainSigning: postOrderParams.allowsOffchainSigning,
+    })
 
     beforeTrade()
 
     logTradeFlow('LIMIT ORDER FLOW', 'STEP 4: sign and post order')
-    const { id: orderId, order } = await signAndPostOrder({
-      ...postOrderParams,
-      signer: provider.getSigner(),
-      validTo,
+
+    const {
+      orderId,
+      signature,
+      signingScheme,
+      orderToSign: unsignedOrder,
+    } = await wrapErrorInOperatorError(() =>
+      tradingSdk.postLimitOrder(
+        {
+          sellAmount: postOrderParams.inputAmount.quotient.toString(),
+          buyAmount: postOrderParams.outputAmount.quotient.toString(),
+          sellToken: postOrderParams.sellToken.address,
+          buyToken: postOrderParams.buyToken.address,
+          sellTokenDecimals: postOrderParams.sellToken.decimals,
+          buyTokenDecimals: postOrderParams.buyToken.decimals,
+          kind: postOrderParams.kind,
+          partiallyFillable: postOrderParams.partiallyFillable,
+          receiver: postOrderParams.recipient,
+          validTo,
+          quoteId: postOrderParams.quoteId,
+        },
+        {
+          appData: postOrderParams.appData.doc,
+          additionalParams: {
+            signingScheme: postOrderParams.allowsOffchainSigning ? SigningScheme.EIP712 : SigningScheme.PRESIGN,
+          },
+        },
+      ),
+    )
+
+    let presignTxHash: string | null = null
+
+    if (!postOrderParams.allowsOffchainSigning) {
+      const presignTx = await tradingSdk.getPreSignTransaction({ orderUid: orderId })
+
+      presignTxHash = await sendTransaction(config, {
+        to: presignTx.to as `0x${string}`,
+        value: BigInt(presignTx.value),
+        data: presignTx.data as Hex,
+      })
+    }
+
+    const order = mapUnsignedOrderToOrder({
+      unsignedOrder,
+      additionalParams: {
+        ...postOrderParams,
+        orderId,
+        signingScheme,
+        signature,
+      },
     })
 
     logTradeFlow('LIMIT ORDER FLOW', 'STEP 5: add pending order step')
@@ -103,19 +165,14 @@ export async function tradeFlow(
       dispatch,
     )
 
-    logTradeFlow('LIMIT ORDER FLOW', 'STEP 6: presign order (optional)')
-    const presignTx = await (allowsOffchainSigning
-      ? Promise.resolve(null)
-      : presignOrderStep(orderId, settlementContract))
-
-    logTradeFlow('LIMIT ORDER FLOW', 'STEP 7: unhide SC order (optional)')
-    if (presignTx) {
+    logTradeFlow('LIMIT ORDER FLOW', 'STEP 6: unhide SC order (optional)')
+    if (presignTxHash) {
       partialOrderUpdate(
         {
           chainId,
           order: {
             id: order.id,
-            presignGnosisSafeTxHash: isSafeWallet ? presignTx.hash : undefined,
+            presignGnosisSafeTxHash: isSafeWallet ? presignTxHash : undefined,
             isHidden: false,
           },
           isSafeWallet,
@@ -128,6 +185,7 @@ export async function tradeFlow(
       chainId,
       id: orderId,
       kind: postOrderParams.kind,
+      quoteId: postOrderParams.quoteId,
       receiver: recipientAddressOrName,
       inputAmount,
       outputAmount,
@@ -136,14 +194,22 @@ export async function tradeFlow(
     })
 
     logTradeFlow('LIMIT ORDER FLOW', 'STEP 8: Sign order')
-    tradeFlowAnalytics.sign(swapFlowAnalyticsContext)
+    analytics.sign(swapFlowAnalyticsContext)
 
     return orderId
-  } catch (error: any) {
-    logTradeFlow('LIMIT ORDER FLOW', 'STEP 9: ERROR: ', error)
-    const swapErrorMessage = getSwapErrorMessage(error)
+  } catch (err: unknown) {
+    const error = normalizeError(err)
 
-    tradeFlowAnalytics.error(error, swapErrorMessage, swapFlowAnalyticsContext)
+    // Expected abort path: skip generic swap-error analytics so widget-hook declines don't pollute telemetry.
+    if (error instanceof WidgetHookDeclineError) {
+      throw error
+    }
+
+    logTradeFlow('LIMIT ORDER FLOW', 'STEP 9: ERROR: ', error)
+    const swapErrorMessage = getSwapErrorMessage(error, chainId)
+
+    captureError(error, ERROR_TYPES.ON_SWAP, { swapErrorMessage })
+    analytics.error(error, swapErrorMessage, swapFlowAnalyticsContext)
 
     throw error
   }

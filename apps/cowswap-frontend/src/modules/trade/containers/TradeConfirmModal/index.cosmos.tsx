@@ -2,6 +2,7 @@ import { useSetAtom } from 'jotai'
 import { useEffect } from 'react'
 
 import { SupportedChainId } from '@cowprotocol/cow-sdk'
+import { UiOrderType } from '@cowprotocol/types'
 import { walletInfoAtom } from '@cowprotocol/wallet'
 
 import { inputCurrencyInfoMock, outputCurrencyInfoMock, priceImpactMock } from 'mocks/tradeStateMock'
@@ -30,9 +31,11 @@ const confirmationState: TradeConfirmationProps = {
   outputCurrencyInfo: outputCurrencyInfoMock,
   priceImpact: priceImpactMock,
   isConfirmDisabled: false,
-  refreshInterval: 10_000,
+  isSmartContractWallet: false,
+  appData: null,
+  isCurrentTradeBridging: false,
   recipient: null,
-  onConfirm() {
+  async onConfirm() {
     console.log('onConfirm')
   },
   onDismiss() {
@@ -40,6 +43,8 @@ const confirmationState: TradeConfirmationProps = {
   },
 }
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 function Custom({ stateValue }: { stateValue: string }) {
   const updateWalletInfo = useSetAtom(walletInfoAtom)
   const actions = useTradeConfirmActions()
@@ -68,7 +73,7 @@ function Custom({ stateValue }: { stateValue: string }) {
   }, [updateWalletInfo])
 
   return (
-    <TradeConfirmModal title="Swap">
+    <TradeConfirmModal orderType={UiOrderType.SWAP}>
       <TradeConfirmation {...confirmationState} onDismiss={console.log}>
         {() => <span>Some content</span>}
       </TradeConfirmation>
@@ -77,10 +82,10 @@ function Custom({ stateValue }: { stateValue: string }) {
 }
 
 const Fixtures = {
-  default: <Custom stateValue="default" />,
-  pending: <Custom stateValue="pending" />,
-  error: <Custom stateValue="error" />,
-  success: <Custom stateValue="success" />,
+  default: () => <Custom stateValue="default" />,
+  pending: () => <Custom stateValue="pending" />,
+  error: () => <Custom stateValue="error" />,
+  success: () => <Custom stateValue="success" />,
 }
 
 export default Fixtures

@@ -1,21 +1,25 @@
 import { atom } from 'jotai'
 
 import { getCurrencyAddress } from '@cowprotocol/common-utils'
+import { getAddressKey } from '@cowprotocol/cow-sdk'
 import { walletInfoAtom } from '@cowprotocol/wallet'
-import { resolveFlexibleConfig, TradeType as WidgetTradeType } from '@cowprotocol/widget-lib'
+import { resolveFlexibleConfig } from '@cowprotocol/widget-lib'
 
-import { injectedWidgetPartnerFeeAtom } from 'modules/injectedWidget'
+import { correlatedTokensAtom } from 'entities/correlatedTokens'
+import { injectedWidgetPartnerFeeAtom } from 'entities/injectedWidget'
+
 import { derivedTradeStateAtom, tradeTypeAtom } from 'modules/trade'
-import { TradeType } from 'modules/trade/types/TradeType'
+import { tradeQuotesAtom } from 'modules/tradeQuote'
 
-import { correlatedTokensAtom } from './correlatedTokensAtom'
-import { cowSwapFeeAtom } from './cowswapFeeAtom'
+import { TradeTypeToWidgetTradeTypeMap } from 'common/modules/tradeNavigation'
+import { getBridgeIntermediateTokenAddress } from 'common/utils/getBridgeIntermediateTokenAddress'
+
+import { isCorrelatedTrade } from './isCorrelatedTrade'
 import { safeAppFeeAtom } from './safeAppFeeAtom'
 
 import { VolumeFee } from '../types'
 
 export const volumeFeeAtom = atom<VolumeFee | undefined>((get) => {
-  const cowSwapFee = get(cowSwapFeeAtom)
   const widgetPartnerFee = get(widgetPartnerFeeAtom)
   const safeAppFee = get(safeAppFeeAtom)
   const shouldSkipFee = get(shouldSkipFeeAtom)
@@ -24,38 +28,30 @@ export const volumeFeeAtom = atom<VolumeFee | undefined>((get) => {
     return undefined
   }
 
-  // Chameleon swap Fee won't be enabled when in Widget mode, thus it takes precedence here
-  return safeAppFee || cowSwapFee || widgetPartnerFee
+  // CoW Swap Fee won't be enabled when in Widget mode, thus it takes precedence here
+  return safeAppFee || widgetPartnerFee
 })
 
 const shouldSkipFeeAtom = atom<boolean>((get) => {
   const { chainId } = get(walletInfoAtom)
-  const tradeState = get(derivedTradeStateAtom)
-  const correlatedTokensState = get(correlatedTokensAtom)
+  const { inputCurrency, outputCurrency } = get(derivedTradeStateAtom) || {}
+  const correlatedTokens = get(correlatedTokensAtom)[chainId]
 
-  if (!tradeState) return false
+  if (!inputCurrency || !outputCurrency || !correlatedTokens) return false
 
-  const correlatedTokens = correlatedTokensState[chainId]
+  const inputCurrencyAddress = getAddressKey(getCurrencyAddress(inputCurrency))
 
-  if (!correlatedTokens) return false
+  let outputCurrencyAddress = getAddressKey(getCurrencyAddress(outputCurrency))
 
-  const { inputCurrency, outputCurrency } = tradeState
+  if (inputCurrency.chainId !== outputCurrency.chainId) {
+    const tradeQuotes = get(tradeQuotesAtom)
+    const bridgeQuote = tradeQuotes[inputCurrencyAddress]?.bridgeQuote ?? null
 
-  if (!inputCurrency || !outputCurrency) return false
+    const bridgeOutputAddr = getBridgeIntermediateTokenAddress(bridgeQuote)
+    outputCurrencyAddress = bridgeOutputAddr ? getAddressKey(bridgeOutputAddr) : ''
+  }
 
-  const inputCurrencyAddress = getCurrencyAddress(inputCurrency).toLowerCase()
-  const outputCurrencyAddress = getCurrencyAddress(outputCurrency).toLowerCase()
-
-  return correlatedTokens.some((tokens) => {
-    // If there is only one asset in the list, it means that it is a global correlated token
-    const addresses = Object.keys(tokens)
-    if (addresses.length === 1) {
-      return addresses[0] === inputCurrencyAddress || addresses[0] === outputCurrencyAddress
-      // If there are two tokens in the list, it means that it is a pair correlated token
-    } else {
-      return tokens[inputCurrencyAddress] && tokens[outputCurrencyAddress]
-    }
-  })
+  return isCorrelatedTrade(inputCurrencyAddress, outputCurrencyAddress, correlatedTokens)
 })
 
 const widgetPartnerFeeAtom = atom<VolumeFee | undefined>((get) => {
@@ -67,20 +63,13 @@ const widgetPartnerFeeAtom = atom<VolumeFee | undefined>((get) => {
     return undefined
   }
 
-  const bps = resolveFlexibleConfig(partnerFee.bps, chainId, TradeTypeMap[tradeType])
-  const recipient = resolveFlexibleConfig(partnerFee.recipient, chainId, TradeTypeMap[tradeType])
+  const bps = resolveFlexibleConfig(partnerFee.bps, chainId, TradeTypeToWidgetTradeTypeMap[tradeType])
+  const recipient = resolveFlexibleConfig(partnerFee.recipient, chainId, TradeTypeToWidgetTradeTypeMap[tradeType])
 
   if (!bps || !recipient) return undefined
 
   return {
-    bps,
+    volumeBps: bps,
     recipient,
   }
 })
-
-const TradeTypeMap: Record<TradeType, WidgetTradeType> = {
-  [TradeType.SWAP]: WidgetTradeType.SWAP,
-  [TradeType.LIMIT_ORDER]: WidgetTradeType.LIMIT,
-  [TradeType.ADVANCED_ORDERS]: WidgetTradeType.ADVANCED,
-  [TradeType.YIELD]: WidgetTradeType.YIELD,
-}

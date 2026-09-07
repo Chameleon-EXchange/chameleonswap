@@ -1,6 +1,36 @@
 import * as Sentry from '@sentry/browser'
 
-export function reportPermitWithDefaultSigner(params: Record<any, any>): void {
+export enum ERROR_TYPES {
+  ON_SWAP = 'onSwap',
+  ON_APPROVE = 'onApprove',
+}
+
+export enum SentryTag {
+  DISCONNECTED = 'DISCONNECTED',
+  UNKNOWN = 'UNKNOWN',
+}
+
+export function captureError(
+  error: Error,
+  errorType?: ERROR_TYPES,
+  params?: Record<string, unknown>,
+  extraTags?: Record<string, string>,
+): void {
+  const tags = {
+    captureType: 'manual',
+    ...(errorType ? { errorType } : undefined),
+    ...extraTags,
+  }
+
+  Sentry.captureException(error, {
+    tags,
+    contexts: {
+      params,
+    },
+  })
+}
+
+export function reportPermitWithDefaultSigner(params: Record<string, unknown>): void {
   // report this to sentry if we ever use the default signer in the permit
   Sentry.captureException('User signed the permit using PERMIT_SIGNER instead of their account', {
     tags: { errorType: 'permitWithDefaultSigner' },
@@ -8,15 +38,7 @@ export function reportPermitWithDefaultSigner(params: Record<any, any>): void {
   })
 }
 
-export function reportAppDataWithHooks(params: Record<any, any>): void {
-  // report to sentry if we ever use hooks in the app data
-  Sentry.captureException("Hooks are present in the app data when it shouldn't", {
-    tags: { errorType: 'appDataWithHooks' },
-    contexts: { params },
-  })
-}
-
-export function reportPlaceOrderWithExpiredQuote(params: Record<any, any>): void {
+export function reportPlaceOrderWithExpiredQuote(params: Record<string, unknown>): void {
   Sentry.captureException('Attempt to place order with expired quote', {
     tags: { errorType: 'placeOrderWithExpiredQuote' },
     contexts: { params },

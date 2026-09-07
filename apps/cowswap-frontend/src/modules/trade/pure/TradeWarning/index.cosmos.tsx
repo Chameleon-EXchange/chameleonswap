@@ -1,4 +1,6 @@
-import { TradeWarning, TradeWarningType } from './index'
+import { TradeWarningType } from './constants'
+
+import { TradeWarning } from './index'
 
 const text = (
   <span>
@@ -19,7 +21,7 @@ const tooltipContent = (
 )
 
 const Fixtures = {
-  default: (
+  default: () => (
     <TradeWarning type={TradeWarningType.LOW} text={text} tooltipContent={tooltipContent} withoutAccepting={false} />
   ),
 }

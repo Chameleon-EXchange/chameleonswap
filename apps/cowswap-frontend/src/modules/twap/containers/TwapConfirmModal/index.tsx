@@ -1,59 +1,43 @@
-import { useAtomValue } from 'jotai'
-import React from 'react'
+import { useCallback, ReactNode } from 'react'
 
-import { useWalletDetails, useWalletInfo } from '@cowprotocol/wallet'
+import { UiOrderType } from '@cowprotocol/types'
+import { useWalletInfo } from '@cowprotocol/wallet'
+
+import { t } from '@lingui/core/macro'
+import styled from 'styled-components/macro'
 
 import { useAdvancedOrdersDerivedState } from 'modules/advancedOrders'
-import { TradeConfirmation, TradeConfirmModal, useTradeConfirmActions, useTradePriceImpact } from 'modules/trade'
-import { TradeBasicConfirmDetails } from 'modules/trade/containers/TradeBasicConfirmDetails'
-import { DividerHorizontal } from 'modules/trade/pure/Row/styled'
-import { PRICE_UPDATE_INTERVAL } from 'modules/tradeQuote/hooks/useTradeQuotePolling'
+import { useHasEnoughBalanceForAmount } from 'modules/combinedBalances'
+import {
+  TradeConfirmation,
+  TradeConfirmModal,
+  useCommonTradeConfirmContext,
+  useTradeConfirmActions,
+  useTradePriceImpact,
+} from 'modules/trade'
 
 import { useRateInfoParams } from 'common/hooks/useRateInfoParams'
-import { NetworkCostsSuffix } from 'common/pure/NetworkCostsSuffix'
+import { CurrencyPreviewInfo } from 'common/pure/CurrencyAmountPreview'
 
-import { TwapConfirmDetails } from './TwapConfirmDetails'
+import { TwapTradeConfirmationDetails as TwapTradeConfirmationDetailsBase } from './TwapTradeConfirmationDetails'
 
 import { useCreateTwapOrder } from '../../hooks/useCreateTwapOrder'
+import { useEoaTwapFlowUpdater, useEoaTwapSigningStep } from '../../hooks/useEoaTwapSigningStep'
 import { useIsFallbackHandlerRequired } from '../../hooks/useFallbackHandlerVerification'
+import { useScaledReceiveAmountInfo } from '../../hooks/useScaledReceiveAmountInfo'
 import { useTwapFormState } from '../../hooks/useTwapFormState'
+import { useTwapOrder } from '../../hooks/useTwapOrder'
 import { useTwapSlippage } from '../../hooks/useTwapSlippage'
-import { scaledReceiveAmountInfoAtom } from '../../state/scaledReceiveAmountInfoAtom'
-import { twapOrderAtom } from '../../state/twapOrderAtom'
+import { EoaTwapSigningPendingContent } from '../EoaTwapSigningPendingContent/EoaTwapSigningPendingContent'
 import { TwapFormWarnings } from '../TwapFormWarnings'
 
-const CONFIRM_TITLE = 'TWAP'
+const TwapTradeConfirmationDetails = styled(TwapTradeConfirmationDetailsBase)`
+  margin-top: -4px;
+`
 
-const CONFIRM_MODAL_CONFIG = {
-  priceLabel: 'Rate',
-  slippageLabel: 'Price protection',
-  slippageTooltip: (
-    <>
-      <p>
-        Since TWAP orders consist of multiple parts, prices are expected to fluctuate. However, to protect you against
-        bad prices, Chameleon swap will not execute your TWAP if the price dips below this percentage.
-      </p>
-      <p>
-        This percentage only applies to dips; if prices are better than this percentage, Chameleon swap will still
-        execute your order.
-      </p>
-    </>
-  ),
-  limitPriceLabel: 'Limit price (incl. costs)',
-  limitPriceTooltip: (
-    <>
-      If Chameleon swap cannot get this price or better (taking into account fees and price protection tolerance), your
-      TWAP will not execute. Chameleon swap will <strong>always</strong> improve on this price if possible.
-    </>
-  ),
-  minReceivedLabel: 'Minimum receive',
-  minReceivedTooltip:
-    'This is the minimum amount that you will receive across your entire TWAP order, assuming all parts of the order execute.',
-}
-
-export function TwapConfirmModal() {
+export function TwapConfirmModal(): ReactNode {
   const { account } = useWalletInfo()
-  const { ensName, allowsOffchainSigning } = useWalletDetails()
+  const commonTradeConfirmContext = useCommonTradeConfirmContext()
   const {
     inputCurrencyAmount,
     inputCurrencyFiatAmount,
@@ -62,33 +46,44 @@ export function TwapConfirmModal() {
     outputCurrencyFiatAmount,
     outputCurrencyBalance,
     recipient,
+    recipientAddress,
   } = useAdvancedOrdersDerivedState()
-  // TODO: there's some overlap with what's in each atom
-  const twapOrder = useAtomValue(twapOrderAtom)
-  const receiveAmountInfo = useAtomValue(scaledReceiveAmountInfoAtom)
+  // TODO: there's some overlap with what's in each hook (useTwapOrder | useScaledReceiveAmountInfo)
+  const twapOrder = useTwapOrder()
+  const receiveAmountInfo = useScaledReceiveAmountInfo()
   const slippage = useTwapSlippage()
   const localFormValidation = useTwapFormState()
   const tradeConfirmActions = useTradeConfirmActions()
   const createTwapOrder = useCreateTwapOrder()
+  const eoaTwapSigningStep = useEoaTwapSigningStep()
+  const updateEoaTwapFlow = useEoaTwapFlowUpdater()
 
-  const isConfirmDisabled = !!localFormValidation
+  // Re-check the balance against the (frozen) sell amount in case it changed while the modal was open
+  const isInsufficientBalance = !useHasEnoughBalanceForAmount(inputCurrencyAmount)
+  const isConfirmDisabled = !!localFormValidation || isInsufficientBalance
+  const inputSymbol = inputCurrencyAmount?.currency?.symbol || t`token`
 
   const priceImpact = useTradePriceImpact()
   const fallbackHandlerIsNotSet = useIsFallbackHandlerRequired()
+
+  const onDismiss = useCallback(() => {
+    updateEoaTwapFlow(null)
+    tradeConfirmActions.onDismiss()
+  }, [updateEoaTwapFlow, tradeConfirmActions])
 
   const inputCurrencyInfo = {
     amount: inputCurrencyAmount,
     fiatAmount: inputCurrencyFiatAmount,
     balance: inputCurrencyBalance,
-    label: 'Sell amount',
-  }
+    label: t`Sell amount`,
+  } satisfies CurrencyPreviewInfo
 
   const outputCurrencyInfo = {
     amount: outputCurrencyAmount,
     fiatAmount: outputCurrencyFiatAmount,
     balance: outputCurrencyBalance,
-    label: 'Receive (before fees)',
-  }
+    label: t`Receive (before fees)`,
+  } satisfies CurrencyPreviewInfo
 
   const rateInfoParams = useRateInfoParams(inputCurrencyInfo.amount, outputCurrencyInfo.amount)
 
@@ -97,56 +92,54 @@ export function TwapConfirmModal() {
   const partDuration = timeInterval
   const totalDuration = timeInterval && numOfParts ? timeInterval * numOfParts : undefined
 
-  return (
-    <TradeConfirmModal title={CONFIRM_TITLE}>
-      <TradeConfirmation
-        title={CONFIRM_TITLE}
+  const hasSigningPlan = !!eoaTwapSigningStep
+
+  const tradeDetailsElement =
+    receiveAmountInfo && numOfParts ? (
+      <TwapTradeConfirmationDetails
+        rateInfoParams={rateInfoParams}
+        receiveAmountInfo={receiveAmountInfo}
+        slippage={slippage}
+        recipient={recipient}
+        recipientAddress={recipientAddress}
         account={account}
-        ensName={ensName}
+        startTime={twapOrder?.startTime}
+        numOfParts={numOfParts}
+        partDuration={partDuration}
+        totalDuration={totalDuration}
+        isCollapsible={hasSigningPlan}
+      />
+    ) : null
+
+  const twapFormWarningsElement = <TwapFormWarnings localFormValidation={localFormValidation} isConfirmationModal />
+
+  // Actually only rendered if hasSigningPlan / !!eoaTwapSigningStep:
+  const eoaTwapSigningStepElement = <EoaTwapSigningPendingContent />
+
+  return (
+    <TradeConfirmModal orderType={UiOrderType.TWAP} showGetNotifiedMessage>
+      <TradeConfirmation
+        {...commonTradeConfirmContext}
+        title={hasSigningPlan ? t`TWAP order` : t`Review TWAP`}
         inputCurrencyInfo={inputCurrencyInfo}
         outputCurrencyInfo={outputCurrencyInfo}
         onConfirm={() => createTwapOrder(fallbackHandlerIsNotSet)}
-        onDismiss={tradeConfirmActions.onDismiss}
+        onDismiss={onDismiss}
         isConfirmDisabled={isConfirmDisabled}
         priceImpact={priceImpact}
-        buttonText={'Place TWAP order'}
-        refreshInterval={PRICE_UPDATE_INTERVAL}
+        buttonText={isInsufficientBalance ? t`Insufficient ${inputSymbol} balance` : t`Place TWAP order`}
         recipient={recipient}
+        hasSigningPlan={hasSigningPlan}
       >
-        {(warnings) => (
+        {(restContent) => (
           <>
-            {receiveAmountInfo && numOfParts && (
-              <TradeBasicConfirmDetails
-                rateInfoParams={rateInfoParams}
-                receiveAmountInfo={receiveAmountInfo}
-                slippage={slippage}
-                recipient={recipient}
-                account={account}
-                labelsAndTooltips={{
-                  ...CONFIRM_MODAL_CONFIG,
-                  networkCostsSuffix: !allowsOffchainSigning ? <NetworkCostsSuffix /> : null,
-                  networkCostsTooltipSuffix: !allowsOffchainSigning ? (
-                    <>
-                      <br />
-                      <br />
-                      Because you are using a smart contract wallet, you will pay a separate gas cost for signing the
-                      order placement on-chain.
-                    </>
-                  ) : null,
-                }}
-              />
-            )}
-            <DividerHorizontal />
-            <TwapConfirmDetails
-              startTime={twapOrder?.startTime}
-              numOfParts={numOfParts}
-              partDuration={partDuration}
-              totalDuration={totalDuration}
-            />
-            {warnings}
-            <TwapFormWarnings localFormValidation={localFormValidation} isConfirmationModal />
+            {tradeDetailsElement}
+            {restContent}
+            {twapFormWarningsElement}
+            {eoaTwapSigningStepElement}
           </>
         )}
+        {/* hasSigningPlan ? <ConfirmButton .../> : null */}
       </TradeConfirmation>
     </TradeConfirmModal>
   )

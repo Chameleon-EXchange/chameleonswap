@@ -25,15 +25,12 @@ const StyledInput = styled.input<{ error?: boolean; fontSize?: string; align?: s
   ${textStyle}
   width: 0;
   position: relative;
-  outline: none;
-  border: none;
   flex: 1 1 auto;
   background-color: var(${UI.COLOR_PAPER});
   text-align: ${({ align }) => align || 'right'};
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 0px;
   appearance: textfield;
 
   ::-webkit-search-decoration {
@@ -57,6 +54,7 @@ const StyledInput = styled.input<{ error?: boolean; fontSize?: string; align?: s
 // Allow decimal point at any position, including at the end
 const inputRegex = /^(\d*\.?\d*)?$/
 
+// TODO: Break down this large function into smaller functions
 export const Input = React.memo(function InnerInput({
   value,
   readOnly,
@@ -88,6 +86,8 @@ export const Input = React.memo(function InnerInput({
     [stringValue],
   )
 
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   const enforcer = (nextUserInput: string) => {
     // Always allow empty input
     if (nextUserInput === '') {
@@ -104,6 +104,8 @@ export const Input = React.memo(function InnerInput({
     }
   }
 
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   const handlePaste = (event: React.ClipboardEvent<HTMLInputElement>) => {
     const pastedText = event.clipboardData.getData('text')
 

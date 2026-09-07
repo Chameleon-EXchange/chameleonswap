@@ -1,60 +1,79 @@
-import React, { useCallback, useMemo } from 'react'
+import React, { type CSSProperties, ReactNode, useCallback, useMemo } from 'react'
 
-import ICON_ORDERS from '@cowprotocol/assets/svg/orders.svg'
-import { useFeatureFlags } from '@cowprotocol/common-hooks'
-import { isInjectedWidget, maxAmountSpend } from '@cowprotocol/common-utils'
-import { ButtonOutlined, Media, MY_ORDERS_ID, SWAP_HEADER_OFFSET } from '@cowprotocol/ui'
-import { useIsSafeWallet, useWalletDetails, useWalletInfo } from '@cowprotocol/wallet'
-import { Currency } from '@uniswap/sdk-core'
+import svgOrdersSrc from '@cowprotocol/assets/svg/orders.svg'
+import { useFeatureFlags, useMediaQuery, useTheme, useThrottledCallback } from '@cowprotocol/common-hooks'
+import { isInjectedWidget, isSellOrder, maxAmountSpend } from '@cowprotocol/common-utils'
+import { SupportedChainId } from '@cowprotocol/cow-sdk'
+import { Currency } from '@cowprotocol/currency'
+import { ButtonOutlined, Media } from '@cowprotocol/ui'
+import { useIsSafeWallet, useIsSmartContractWallet, useWalletDetails, useWalletInfo } from '@cowprotocol/wallet'
 
-import { t } from '@lingui/macro'
+import { Trans, useLingui } from '@lingui/react/macro'
+import { useInjectedWidgetParams } from 'entities/injectedWidget'
 import SVG from 'react-inlinesvg'
+import { Nullish } from 'types'
 
-import { AccountElement } from 'legacy/components/Header/AccountElement'
-import { upToLarge, useMediaQuery } from 'legacy/hooks/useMediaQuery'
 import { Field } from 'legacy/state/types'
 
 import { useToggleAccountModal } from 'modules/account'
-import { useInjectedWidgetParams } from 'modules/injectedWidget'
-import { SetRecipient } from 'modules/swap/containers/SetRecipient'
 import { useOpenTokenSelectWidget } from 'modules/tokensList'
-import { useIsAlternativeOrderModalVisible } from 'modules/trade/state/alternativeOrder'
 import { TradeFormValidation, useGetTradeFormValidation } from 'modules/tradeFormValidation'
+import { WalletStatusButton } from 'modules/wallet'
 
-import { useCategorizeRecentActivity } from 'common/hooks/useCategorizeRecentActivity'
+import { useIsProviderNetworkDeprecated } from 'common/hooks/useIsProviderNetworkDeprecated'
 import { useIsProviderNetworkUnsupported } from 'common/hooks/useIsProviderNetworkUnsupported'
-import { useThrottleFn } from 'common/hooks/useThrottleFn'
+import { TradeType, useTradeTypeInfoFromUrl } from 'common/modules/tradeNavigation'
 import { CurrencyArrowSeparator } from 'common/pure/CurrencyArrowSeparator'
-import { CurrencyInputPanel } from 'common/pure/CurrencyInputPanel'
+import { CurrencyInputPanel, CurrencyInputPanelProps } from 'common/pure/CurrencyInputPanel'
 import { PoweredFooter } from 'common/pure/PoweredFooter'
 
 import * as styledEl from './styled'
+import { mapCurrencyInfo } from './TradeWidgetForm.utils'
 import { TradeWidgetProps } from './types'
 
-import { useTradeStateFromUrl } from '../../hooks/setupTradeState/useTradeStateFromUrl'
+import { useDerivedTradeState } from '../../hooks/useDerivedTradeState'
+import { useIsCurrentTradeBridging } from '../../hooks/useIsCurrentTradeBridging'
+import { useIsEoaEthFlow } from '../../hooks/useIsEoaEthFlow'
+import { useIsQuoteUpdatePossible } from '../../hooks/useIsQuoteUpdatePossible'
 import { useIsWrapOrUnwrap } from '../../hooks/useIsWrapOrUnwrap'
 import { useLimitOrdersPromoBanner } from '../../hooks/useLimitOrdersPromoBanner'
+import { useResetReceiverConfirmationOnWalletChange } from '../../hooks/useResetReceiverConfirmationOnWalletChange'
+import { useResetRecipientOnChainChange } from '../../hooks/useResetRecipientOnChainChange'
+import { useSetOrdersTableDrawerOpen } from '../../hooks/useSetOrdersTableDrawerOpen'
+import { useShouldHideQuoteAmounts } from '../../hooks/useShouldHideQuoteAmounts'
+import { useSolanaWrapReceiveAmount } from '../../hooks/useSolanaWrapReceiveAmount'
+import { useIsWithRecipient } from '../../hooks/useWithRecipient'
+import { SetRecipient } from '../../pure/SetRecipient'
+import { useIsAlternativeOrderModalVisible } from '../../state/alternativeOrder'
+import { useSetNonEvmReceiverConfirmed } from '../../state/nonEvmReceiverConfirmedAtom.atoms'
 import { LimitOrdersPromoBannerWrapper } from '../LimitOrdersPromoBannerWrapper'
+import { QuotePolingProgress } from '../QuotePolingProgress'
 import { TradeWarnings } from '../TradeWarnings'
 import { TradeWidgetLinks } from '../TradeWidgetLinks'
 import { WrapFlowActionButton } from '../WrapFlowActionButton'
 
-const scrollToMyOrders = () => {
-  const element = document.getElementById(MY_ORDERS_ID)
-  if (element) {
-    const elementTop = element.getBoundingClientRect().top + window.scrollY - SWAP_HEADER_OFFSET
-    window.scrollTo({ top: elementTop, behavior: 'smooth' })
-  }
-}
+const noop: () => void = () => void 0
 
-export function TradeWidgetForm(props: TradeWidgetProps) {
+// TODO: Break down this large function into smaller functions
+// TODO: Reduce function complexity by extracting logic
+// eslint-disable-next-line max-lines-per-function, complexity
+export function TradeWidgetForm(props: TradeWidgetProps): ReactNode {
   const isInjectedWidgetMode = isInjectedWidget()
-  const { standaloneMode, hideOrdersTable } = useInjectedWidgetParams()
+  const { standaloneMode, hideOrdersTable, cardStyle, disableSwitchingTokens } = useInjectedWidgetParams()
   const isMobile = useMediaQuery(Media.upToSmall(false))
 
+  const tradeTypeInfo = useTradeTypeInfoFromUrl()
   const isAlternativeOrderModalVisible = useIsAlternativeOrderModalVisible()
-  const { pendingActivity } = useCategorizeRecentActivity()
+  const isLimitOrderTrade = tradeTypeInfo?.tradeType === TradeType.LIMIT_ORDER
+  const shouldLockForAlternativeOrder = isAlternativeOrderModalVisible && isLimitOrderTrade
   const isWrapOrUnwrap = useIsWrapOrUnwrap()
+  const { isLimitOrdersUpgradeBannerEnabled } = useFeatureFlags()
+  const isCurrentTradeBridging = useIsCurrentTradeBridging()
+  const { orderKind } = useDerivedTradeState() || {}
+  const { darkMode } = useTheme()
+
+  const isSellTrade = !!orderKind && isSellOrder(orderKind)
+  const hideQuoteAmount = useShouldHideQuoteAmounts()
 
   const { slots, actions, params, disableOutput } = props
   const { settingsWidget, lockScreen, topContent, middleContent, bottomContent, outerContent } = slots
@@ -64,45 +83,76 @@ export function TradeWidgetForm(props: TradeWidgetProps) {
     compactView,
     showRecipient,
     isTradePriceUpdating,
-    isEoaEthFlow = false,
     priceImpact,
     recipient,
     hideTradeWarnings,
     enableSmartSlippage,
     displayTokenName = false,
+    displayChainName = isCurrentTradeBridging,
     isMarketOrderWidget = false,
+    isSellingEthSupported = false,
+    isPriceStatic = false,
   } = params
 
-  const inputCurrencyInfo = useMemo(
-    () => (isWrapOrUnwrap ? { ...props.inputCurrencyInfo, receiveAmountInfo: null } : props.inputCurrencyInfo),
-    [isWrapOrUnwrap, props.inputCurrencyInfo],
-  )
+  const inputCurrencyInfo = useMemo(() => {
+    const info = isPriceStatic
+      ? props.inputCurrencyInfo
+      : mapCurrencyInfo(props.inputCurrencyInfo, !isSellTrade, hideQuoteAmount)
 
-  const outputCurrencyInfo = useMemo(
-    () =>
-      isWrapOrUnwrap
-        ? { ...props.outputCurrencyInfo, amount: props.inputCurrencyInfo.amount, receiveAmountInfo: null }
-        : props.outputCurrencyInfo,
-    [isWrapOrUnwrap, props.outputCurrencyInfo, props.inputCurrencyInfo.amount],
-  )
+    if (isWrapOrUnwrap) {
+      return { ...info, receiveAmountInfo: null }
+    }
+
+    return info
+  }, [isWrapOrUnwrap, props.inputCurrencyInfo, hideQuoteAmount, isSellTrade, isPriceStatic])
+
+  const solanaWrapReceiveAmount = useSolanaWrapReceiveAmount()
+
+  const outputCurrencyInfo = useMemo(() => {
+    const info = isPriceStatic
+      ? props.outputCurrencyInfo
+      : mapCurrencyInfo(props.outputCurrencyInfo, isSellTrade, hideQuoteAmount)
+
+    if (isWrapOrUnwrap) {
+      // Wrap/unwrap has no quote to mirror, and on Solana the amount can differ from the input — see
+      // `useSolanaWrapReceiveAmount`. Fall back to the input while that's still being previewed.
+      return { ...info, amount: solanaWrapReceiveAmount ?? props.inputCurrencyInfo.amount, receiveAmountInfo: null }
+    }
+
+    return info
+  }, [
+    isWrapOrUnwrap,
+    props.outputCurrencyInfo,
+    props.inputCurrencyInfo.amount,
+    solanaWrapReceiveAmount,
+    hideQuoteAmount,
+    isSellTrade,
+    isPriceStatic,
+  ])
 
   const { chainId, account } = useWalletInfo()
   const { allowsOffchainSigning } = useWalletDetails()
-  const isChainIdUnsupported = useIsProviderNetworkUnsupported()
+  const isProviderNetworkUnsupported = useIsProviderNetworkUnsupported()
+  const isProviderNetworkDeprecated = useIsProviderNetworkDeprecated()
   const isSafeWallet = useIsSafeWallet()
+  const isSmartContractWallet = useIsSmartContractWallet()
+  const isSmartContractWalletBridging = !!isSmartContractWallet && isCurrentTradeBridging
   const openTokenSelectWidget = useOpenTokenSelectWidget()
-  const tradeStateFromUrl = useTradeStateFromUrl()
-  const alternativeOrderModalVisible = useIsAlternativeOrderModalVisible()
   const primaryFormValidation = useGetTradeFormValidation()
   const { shouldBeVisible: isLimitOrdersPromoBannerVisible } = useLimitOrdersPromoBanner()
-  const { isLimitOrdersUpgradeBannerEnabled } = useFeatureFlags()
+  const isEoaEthFlow = useIsEoaEthFlow()
+  const isQuoteUpdatePossible = useIsQuoteUpdatePossible()
+  const handleNonEvmConfirm = useSetNonEvmReceiverConfirmed()
+
+  useResetReceiverConfirmationOnWalletChange()
 
   const sellToken = inputCurrencyInfo.currency
-  const areCurrenciesLoading = !sellToken && !outputCurrencyInfo.currency
-  const bothCurrenciesSet = !!sellToken && !!outputCurrencyInfo.currency
+  const buyToken = outputCurrencyInfo.currency
+  useResetRecipientOnChainChange(buyToken?.chainId, recipient || '', onChangeRecipient)
+  const areCurrenciesLoading = !sellToken && !buyToken
+  const bothCurrenciesSet = !!sellToken && !!buyToken
 
-  const hasRecipientInUrl = !!tradeStateFromUrl?.recipient
-  const withRecipient = !isWrapOrUnwrap && (showRecipient || hasRecipientInUrl)
+  const withRecipient = useIsWithRecipient(showRecipient)
   const maxBalance = maxAmountSpend(inputCurrencyInfo.balance || undefined, isSafeWallet)
   const showSetMax = maxBalance?.greaterThan(0) && !inputCurrencyInfo.amount?.equalTo(maxBalance)
 
@@ -113,72 +163,97 @@ export function TradeWidgetForm(props: TradeWidgetProps) {
     primaryFormValidation === TradeFormValidation.WrapUnwrapFlow
 
   // Disable too frequent tokens switching
-  const throttledOnSwitchTokens = useThrottleFn(onSwitchTokens, 500)
+  const throttledOnSwitchTokens = useThrottledCallback(onSwitchTokens, 500)
 
-  const isUpToLarge = useMediaQuery(upToLarge)
+  const isUpToLarge = useMediaQuery(Media.upToLarge(false))
 
   const isConnectedMarketOrderWidget = !!account && isMarketOrderWidget
 
   const shouldShowMyOrdersButton =
-    !alternativeOrderModalVisible &&
+    !shouldLockForAlternativeOrder &&
     (!isInjectedWidgetMode && isConnectedMarketOrderWidget ? isUpToLarge : true) &&
     (isConnectedMarketOrderWidget || !hideOrdersTable) &&
-    ((isConnectedMarketOrderWidget && standaloneMode !== true) || (!isMarketOrderWidget && isUpToLarge && !lockScreen))
+    ((isConnectedMarketOrderWidget && standaloneMode !== true && !lockScreen) ||
+      (!isMarketOrderWidget && isUpToLarge && !lockScreen))
 
   const showDropdown = shouldShowMyOrdersButton || isInjectedWidgetMode || isMobile
 
   const currencyInputCommonProps = {
-    isChainIdUnsupported,
+    isProviderNetworkUnsupported,
+    isProviderNetworkDeprecated,
     chainId,
     areCurrenciesLoading,
     bothCurrenciesSet,
     onCurrencySelection,
     onUserInput,
     allowsOffchainSigning,
-    tokenSelectorDisabled: alternativeOrderModalVisible,
+    tokenSelectorDisabled: shouldLockForAlternativeOrder,
     displayTokenName,
-  }
+    displayChainName,
+    isBridging: isCurrentTradeBridging,
+  } as const satisfies Partial<CurrencyInputPanelProps>
 
   const openSellTokenSelect = useCallback(
-    (selectedToken: string | undefined, field: Field | undefined, onSelectToken: (currency: Currency) => void) => {
-      openTokenSelectWidget(selectedToken, field, outputCurrencyInfo.currency || undefined, onSelectToken)
+    (selectedToken: Nullish<Currency>, field: Field | undefined, onSelectToken: (currency: Currency) => void) => {
+      openTokenSelectWidget(selectedToken, field, buyToken || undefined, onSelectToken)
     },
-    [openTokenSelectWidget, outputCurrencyInfo.currency],
+    [openTokenSelectWidget, buyToken],
   )
 
   const openBuyTokenSelect = useCallback(
-    (selectedToken: string | undefined, field: Field | undefined, onSelectToken: (currency: Currency) => void) => {
+    (selectedToken: Nullish<Currency>, field: Field | undefined, onSelectToken: (currency: Currency) => void) => {
       openTokenSelectWidget(selectedToken, field, sellToken || undefined, onSelectToken)
     },
     [openTokenSelectWidget, sellToken],
   )
 
   const toggleAccountModal = useToggleAccountModal()
+  const setOrdersTableDrawerOpen = useSetOrdersTableDrawerOpen()
 
   const handleMyOrdersClick = useCallback(() => {
     if (isMarketOrderWidget) {
       toggleAccountModal()
     } else {
-      scrollToMyOrders()
+      setOrdersTableDrawerOpen(true)
     }
-  }, [isMarketOrderWidget, toggleAccountModal])
+  }, [isMarketOrderWidget, setOrdersTableDrawerOpen, toggleAccountModal])
+
+  const isOutputTokenUnsupported = !!buyToken && !(buyToken.chainId in SupportedChainId)
+
+  const { t } = useLingui()
+
+  const disableTokensSwitching =
+    shouldLockForAlternativeOrder ||
+    isOutputTokenUnsupported ||
+    isProviderNetworkUnsupported ||
+    isProviderNetworkDeprecated ||
+    disableSwitchingTokens === true
 
   return (
     <>
-      <styledEl.ContainerBox>
+      <styledEl.ContainerBox id="card" style={isInjectedWidgetMode ? (cardStyle as CSSProperties) : undefined}>
         <styledEl.Header>
-          {isAlternativeOrderModalVisible ? <div></div> : <TradeWidgetLinks isDropdown={showDropdown} />}
-          {isInjectedWidgetMode && standaloneMode && (
-            <AccountElement standaloneMode pendingActivities={pendingActivity} />
+          {shouldLockForAlternativeOrder ? <div></div> : <TradeWidgetLinks isDropdown={showDropdown} />}
+          {isInjectedWidgetMode && standaloneMode !== false && (
+            <WalletStatusButton variant="widget" onWalletClick={toggleAccountModal} />
           )}
 
           {shouldShowMyOrdersButton && (
             <ButtonOutlined margin={'0 16px 0 auto'} onClick={handleMyOrdersClick}>
-              My orders <SVG src={ICON_ORDERS} />
+              <Trans>
+                My orders <SVG src={svgOrdersSrc} />
+              </Trans>
             </ButtonOutlined>
           )}
 
-          {!lockScreen && settingsWidget}
+          <styledEl.HeaderRight>
+            {!lockScreen && (
+              <>
+                {!isPriceStatic && !showDropdown && isQuoteUpdatePossible && <QuotePolingProgress />}
+                {settingsWidget}
+              </>
+            )}
+          </styledEl.HeaderRight>
         </styledEl.Header>
 
         <LimitOrdersPromoBannerWrapper>
@@ -207,18 +282,24 @@ export function TradeWidgetForm(props: TradeWidgetProps) {
                   <CurrencyArrowSeparator
                     isCollapsed={compactView}
                     hasSeparatorLine={!compactView}
-                    onSwitchTokens={isChainIdUnsupported ? () => void 0 : throttledOnSwitchTokens}
+                    onSwitchTokens={disableTokensSwitching ? noop : throttledOnSwitchTokens}
                     isLoading={Boolean(sellToken && outputCurrencyInfo.currency && isTradePriceUpdating)}
-                    disabled={isAlternativeOrderModalVisible}
+                    disabled={disableTokensSwitching}
+                    isDarkMode={darkMode}
                   />
                 </styledEl.CurrencySeparatorBox>
                 <div>
                   <CurrencyInputPanel
                     id="output-currency-input"
-                    inputDisabled={isEoaEthFlow || isWrapOrUnwrap || disableOutput}
+                    inputDisabled={
+                      (isSellingEthSupported && isEoaEthFlow) ||
+                      isWrapOrUnwrap ||
+                      isCurrentTradeBridging ||
+                      disableOutput
+                    }
                     inputTooltip={
-                      isEoaEthFlow
-                        ? t`You cannot edit this field when selling ${inputCurrencyInfo?.currency?.symbol}`
+                      isSellingEthSupported && isEoaEthFlow
+                        ? t`You cannot edit this field when selling` + ` ${inputCurrencyInfo?.currency?.symbol}`
                         : undefined
                     }
                     currencyInfo={outputCurrencyInfo}
@@ -230,8 +311,17 @@ export function TradeWidgetForm(props: TradeWidgetProps) {
                     {...currencyInputCommonProps}
                   />
                 </div>
-                {slots.limitPriceInput}
-                {withRecipient && <SetRecipient recipient={recipient || ''} onChangeRecipient={onChangeRecipient} />}
+                {withRecipient && (
+                  <SetRecipient
+                    key={account}
+                    recipient={recipient || ''}
+                    onChangeRecipient={onChangeRecipient}
+                    targetChainId={buyToken?.chainId}
+                    isBridging={isCurrentTradeBridging}
+                    isSmartContractWalletBridging={isSmartContractWalletBridging}
+                    onNonEvmReceiverConfirmedChange={handleNonEvmConfirm}
+                  />
+                )}
 
                 {isWrapOrUnwrap ? (
                   sellToken ? (

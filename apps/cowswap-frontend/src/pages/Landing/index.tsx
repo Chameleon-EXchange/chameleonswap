@@ -1,6 +1,6 @@
 import React from 'react'
 import { UI, ButtonPrimary } from '@cowprotocol/ui'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import styled from 'styled-components/macro'
 import { 
   FiTrendingUp, 
@@ -895,7 +895,14 @@ const keyframes = {
   `
 }
 
-export function LandingPage(): JSX.Element {
+const SectionDivider = styled.div`
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08) 20%, rgba(255, 255, 255, 0.08) 80%, transparent);
+  margin: 48px 0;
+`
+
+export function LandingPage(): React.ReactNode {
   return (
     <FullScreenWrapper>
       <style>{Object.values(keyframes).join('\n')}</style>
@@ -912,7 +919,7 @@ export function LandingPage(): JSX.Element {
             Chameleon Swap routes your trades across competing solver networks, protecting you from sandwich attacks, frontrunning, and slippage exploitation across 10+ chains.
           </p>
           <ButtonGroup>
-            <AnimatedPrimaryButton as={Link} to={Routes.SWAPS}>
+            <AnimatedPrimaryButton as={Link} to={Routes.SWAP}>
               Start Trading <FiArrowRight />
             </AnimatedPrimaryButton>
             <SecondaryButton onClick={() => document.getElementById('trading-suite')?.scrollIntoView({ behavior: 'smooth' })}>
@@ -950,7 +957,7 @@ export function LandingPage(): JSX.Element {
                 Trades are executed by a decentralized network of solvers competing in batch auctions to find you optimal liquidity across Uniswap, PancakeSwap, Curve, Balancer, and private makers.
               </p>
             </div>
-            <Link to={Routes.SWAPS}>
+            <Link to={Routes.SWAP}>
               Start Swapping <FiArrowRight />
             </Link>
           </TopicCard>
@@ -959,19 +966,22 @@ export function LandingPage(): JSX.Element {
             <div>
               <h4><FiShield style={{ color: '#c165ff' }} /> Guaranteed MEV Protection</h4>
               <p>
-                Eliminate sandwich attacks and predatory bots forever. Orders execute off-chain via cryptographic intent signatures with positive slippage captured and rebated directly to you.
+                Eliminate sandwich attacks and predatory frontrunning. Orders are matched off-chain via cryptographic intents and settled in batch blocks.
               </p>
             </div>
-            <a href="https://docs.chameleon.exchange" target="_blank" rel="noopener noreferrer">
-              Read Security Docs <FiArrowUpRight />
-            </a>
+            <Link to={Routes.SWAP}>
+              Trade Protected <FiArrowRight />
+            </Link>
           </TopicCard>
         </TopicList>
 
-        {/* SECTION 1: TRADING ENGINES (Asymmetrical Bento Matrix) */}
+        {/* Section Divider */}
+        <SectionDivider />
+
+        {/* Advanced Trading Suite (Bento Grid Architecture) */}
         <SectionHeader id="trading-suite">
-          <div className="section-tag">Core Execution Infrastructure</div>
-          <h2>Optimized Trading Engines</h2>
+          <div className="section-badge">Next-Gen Architecture</div>
+          <h2>Explore the Chameleon Trading Suite</h2>
           <p>
             Built for traders demanding maximum price efficiency, zero failed transaction costs, and deep liquidity aggregation.
           </p>
@@ -979,7 +989,7 @@ export function LandingPage(): JSX.Element {
 
         <BentoGrid>
           {/* Bento Item 1 (Spanning Hero Card): Instant Swaps */}
-          <BentoHeroCard to={Routes.SWAPS}>
+          <BentoHeroCard to={Routes.SWAP}>
             <div>
               <div className="engine-badge">
                 <FiZap /> Flagship Intent Engine
@@ -1015,7 +1025,7 @@ export function LandingPage(): JSX.Element {
           </BentoHeroCard>
 
           {/* Bento Item 2: Limit Orders */}
-          <BentoSmallCard to={Routes.LIMIT}>
+          <BentoSmallCard to={Routes.LIMIT_ORDERS}>
             <div>
               <div className="card-top">
                 <div className="engine-icon">
@@ -1038,7 +1048,7 @@ export function LandingPage(): JSX.Element {
           </BentoSmallCard>
 
           {/* Bento Item 3: TWAP */}
-          <BentoSmallCard to={Routes.ADVANCED}>
+          <BentoSmallCard to={Routes.ADVANCED_ORDERS}>
             <div>
               <div className="card-top">
                 <div className="engine-icon">
@@ -1235,7 +1245,7 @@ export function LandingPage(): JSX.Element {
             Connect your wallet and experience the fastest, most protected decentralized trading platform on Ethereum, BNB Chain, Base, Arbitrum, and beyond.
           </p>
           <div className="cta-buttons">
-            <AnimatedPrimaryButton as={Link} to={Routes.SWAPS}>
+            <AnimatedPrimaryButton as={Link} to={Routes.SWAP}>
               Launch Chameleon Swap <FiArrowRight />
             </AnimatedPrimaryButton>
             <SecondaryButton as="a" href="https://docs.chameleon.exchange" target="_blank" rel="noopener noreferrer">

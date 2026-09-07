@@ -1,0 +1,35 @@
+import type { TransactionReceipt } from 'viem'
+
+import { SimpleCowEventEmitter } from '@cowprotocol/events'
+
+import type { EnhancedTransactionDetails } from 'legacy/state/enhancedTransactions/reducer'
+
+// Define types for event payloads
+export interface OnchainTxEventPayloadMap {
+  [OnchainTxEvents.BEFORE_TX_FINALIZE]: FinalizeTxPayload
+  [OnchainTxEvents.TX_REPLACED]: TxReplacedPayload
+  [OnchainTxEvents.TX_CANCELLED_NOT_BROADCAST]: TxCancelledNotBroadcastPayload
+}
+
+export enum OnchainTxEvents {
+  BEFORE_TX_FINALIZE = 'BEFORE_TX_FINALIZE',
+  TX_REPLACED = 'TX_REPLACED',
+  TX_CANCELLED_NOT_BROADCAST = 'TX_CANCELLED_NOT_BROADCAST',
+}
+
+interface FinalizeTxPayload {
+  receipt: TransactionReceipt
+  transaction: EnhancedTransactionDetails
+}
+
+interface TxCancelledNotBroadcastPayload {
+  transaction: EnhancedTransactionDetails
+}
+
+interface TxReplacedPayload {
+  transaction: EnhancedTransactionDetails
+}
+
+export const ONCHAIN_TRANSACTIONS_EVENTS = Object.freeze(
+  new SimpleCowEventEmitter<OnchainTxEventPayloadMap, OnchainTxEvents>(),
+)

@@ -1,40 +1,46 @@
 import { useEffect } from 'react'
 
-import { CowWidgetEventListener, CowWidgetEventPayloadMap, CowWidgetEvents } from '@cowprotocol/events'
 import { useAddSnackbar } from '@cowprotocol/snackbars'
-
-import { WIDGET_EVENT_EMITTER } from 'widgetEventEmitter'
 
 import { ORDERS_NOTIFICATION_HANDLERS } from './handlers'
 
-export function OrdersNotificationsUpdater() {
+import { OrderStatusEventListener, OrderStatusEventPayloadMap, OrderStatusEvents } from '../../events/events'
+import { ORDER_STATUS_EVENT_EMITTER } from '../../events/orderStatusEventEmitter'
+
+export function OrdersNotificationsUpdater(): null {
   const addSnackbar = useAddSnackbar()
 
   useEffect(() => {
     const listeners = Object.keys(ORDERS_NOTIFICATION_HANDLERS).map((event) => {
-      const eventTyped = event as CowWidgetEvents
+      const eventTyped = event as OrderStatusEvents
       return {
         event: eventTyped,
-        handler(payload: CowWidgetEventPayloadMap[keyof CowWidgetEventPayloadMap]) {
+        handler(payload: OrderStatusEventPayloadMap[keyof OrderStatusEventPayloadMap]) {
           const { handler, icon } = ORDERS_NOTIFICATION_HANDLERS[eventTyped]
 
           const content = handler(payload as Parameters<typeof handler>[0])
 
           if (!content) return
 
+          const duration =
+            eventTyped === OrderStatusEvents.ON_POSTED_ORDER && 'isEthFlow' in payload && !!payload.isEthFlow
+              ? 20_000
+              : undefined
+
           addSnackbar({
             id: eventTyped,
             icon,
             content,
+            duration,
           })
         },
-      } as CowWidgetEventListener
+      } as OrderStatusEventListener
     })
 
-    listeners.forEach((listener) => WIDGET_EVENT_EMITTER.on(listener))
+    listeners.forEach((listener) => ORDER_STATUS_EVENT_EMITTER.on(listener))
 
     return () => {
-      listeners.forEach((listener) => WIDGET_EVENT_EMITTER.off(listener))
+      listeners.forEach((listener) => ORDER_STATUS_EVENT_EMITTER.off(listener))
     }
   }, [addSnackbar])
 

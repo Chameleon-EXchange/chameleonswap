@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react'
 
-import { Media } from '@cowprotocol/ui'
+import { Media, Color } from '@cowprotocol/ui'
 
 import {
   faDiceFive,
@@ -12,13 +12,13 @@ import {
   IconDefinition,
 } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import Cytoscape from 'cytoscape'
+import Cytoscape, { Ext } from 'cytoscape'
 import fcose from 'cytoscape-fcose'
 import klay from 'cytoscape-klay'
 import noOverlap from 'cytoscape-no-overlap'
 import popper from 'cytoscape-popper'
 import CytoscapeComponent from 'react-cytoscapejs'
-import styled, { useTheme } from 'styled-components/macro'
+import styled from 'styled-components/macro'
 
 import { useCytoscape, useTxBatchData, useVisualization } from './hooks'
 import { LAYOUTS } from './layouts'
@@ -27,24 +27,28 @@ import { LayoutNames, ViewType } from './types'
 import { removePopper } from './utils'
 
 import { Order } from '../../../api/operator'
-import CowLoading from '../../../components/common/CowLoading'
+import { LoadingWrapper } from '../../../components/common/LoadingWrapper'
 import { usePrevious } from '../../../hooks/usePrevious'
 import { Network } from '../../../types'
 import { DropdownOption, DropdownPosition } from '../common/Dropdown'
 
-Cytoscape.use(popper)
+// eslint-disable-next-line react-hooks/rules-of-hooks
+Cytoscape.use(popper as never as Ext)
+// eslint-disable-next-line react-hooks/rules-of-hooks
 Cytoscape.use(noOverlap)
+// eslint-disable-next-line react-hooks/rules-of-hooks
 Cytoscape.use(fcose)
+// eslint-disable-next-line react-hooks/rules-of-hooks
 Cytoscape.use(klay)
 
 const WrapperCytoscape = styled(CytoscapeComponent)`
-  background-color: ${({ theme }): string => theme.paper};
+  background-color: ${Color.explorer_bg};
   font-weight: ${({ theme }): string => theme.fontMedium};
   border-radius: 0.6rem;
-
   padding-top: 3rem;
+
   ${Media.upToMedium()} {
-    border: 0.1rem solid ${({ theme }): string => theme.borderPrimary};
+    border: 0.1rem solid ${Color.explorer_border};
     margin: 1.6rem 0;
   }
 `
@@ -79,6 +83,8 @@ interface GraphBatchTxParams {
   networkId: Network | undefined
 }
 
+// TODO: Break down this large function into smaller functions
+// eslint-disable-next-line max-lines-per-function
 export function TransactionBatchGraph(params: GraphBatchTxParams): React.ReactNode {
   const { orders, networkId, txHash } = params
   const { visualization, onChangeVisualization } = useVisualization()
@@ -108,15 +114,14 @@ export function TransactionBatchGraph(params: GraphBatchTxParams): React.ReactNo
     if (visualizationChanged) setResetZoom(true)
   }, [setResetZoom, visualizationChanged])
 
-  const theme = useTheme()
   const currentLayoutIndex = Object.keys(LayoutNames).findIndex((nameLayout) => nameLayout === layout.name)
 
   const stylesheet = useMemo(() => {
-    return STYLESHEET(theme).concat(tokensStylesheets)
-  }, [tokensStylesheets, theme])
+    return STYLESHEET().concat(tokensStylesheets)
+  }, [tokensStylesheets])
 
   if (isLoading) {
-    return <CowLoading />
+    return <LoadingWrapper message="Loading transaction graph" />
   }
 
   if (failedToLoadGraph) {

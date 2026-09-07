@@ -3,23 +3,26 @@ import { atom } from 'jotai'
 import { USDC } from '@cowprotocol/common-const'
 import { tryParseCurrencyAmount } from '@cowprotocol/common-utils'
 import { SupportedChainId } from '@cowprotocol/cow-sdk'
-import { Fraction, Price, Token } from '@uniswap/sdk-core'
+import { Fraction, Price, Token } from '@cowprotocol/currency'
 
 import { usdRawPricesAtom, UsdRawPriceState } from './usdRawPricesAtom'
+
+import { UsdPriceStateKey } from '../types'
+
+export type UsdPrices = { [key: UsdPriceStateKey]: UsdPriceState }
 
 export interface UsdPriceState extends Omit<UsdRawPriceState, 'price'> {
   price: Price<Token, Token> | null
 }
 
-export type UsdPrices = { [tokenAddress: string]: UsdPriceState }
-
 export const usdTokenPricesAtom = atom((get) => {
   const usdPrices = get(usdRawPricesAtom)
 
-  return Object.keys(usdPrices).reduce<UsdPrices>((acc, tokenAddress) => {
-    const usdPrice = usdPrices[tokenAddress]
+  return Object.keys(usdPrices).reduce<UsdPrices>((acc, _key) => {
+    const key = _key as UsdPriceStateKey
+    const usdPrice = usdPrices[key]
 
-    acc[tokenAddress] = {
+    acc[key] = {
       ...usdPrice,
       price: calculatePrice(usdPrice.currency, usdPrice.price),
     }
@@ -36,6 +39,8 @@ function calculatePrice(currency: Token, price: Fraction | null): Price<Token, T
   }
 
   const usdcToken = USDC[currency.chainId as SupportedChainId]
+
+  if (!usdcToken) return null
 
   if (price.lessThan(MINIMAL_PRICE_VALUE)) {
     console.error('Price is too small, cannot create a Price instance', currency.address, currency, price)

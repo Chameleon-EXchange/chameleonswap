@@ -1,7 +1,13 @@
-import 'workbox-precaching' // defines __WB_MANIFEST
+// Disable workbox verbose logging
+declare const self: ServiceWorkerGlobalScope & { __WB_DISABLE_DEV_LOGS?: boolean }
+self.__WB_DISABLE_DEV_LOGS = true
+
+// eslint-disable-next-line import/no-duplicates -- side-effect import for __WB_MANIFEST; named import below
+import 'workbox-precaching' // defines __WB_MANIFEST (build-injected)
 
 import { clientsClaim, setCacheNameDetails } from 'workbox-core'
 import { ExpirationPlugin } from 'workbox-expiration'
+// eslint-disable-next-line import/no-duplicates -- workbox-precaching: side-effect + named import required
 import { precacheAndRoute } from 'workbox-precaching'
 import { PrecacheEntry } from 'workbox-precaching/_types'
 import { registerRoute, Route } from 'workbox-routing'
@@ -10,12 +16,9 @@ import { CacheFirst } from 'workbox-strategies'
 import { DocumentRoute } from './document'
 import { toURL } from './utils'
 
-// eslint-disable-next-line @nx/enforce-module-boundaries
 import pkg from '../../package.json'
 
 const WEB_VERSION = pkg.version
-
-declare const self: ServiceWorkerGlobalScope
 
 // Set Cache name
 //  See https://dev.to/atonchev/flawless-and-silent-upgrade-of-the-service-worker-2o95
@@ -51,7 +54,7 @@ const { assets, entries } = self.__WB_MANIFEST.reduce<{ assets: { [key: string]:
 
     return acc
   },
-  { assets: {}, entries: [] }
+  { assets: {}, entries: [] },
 )
 
 // Registers the assets' routes for on-demand caching.
@@ -61,8 +64,8 @@ registerRoute(
     new CacheFirst({
       cacheName: 'assets',
       plugins: [new ExpirationPlugin({ maxEntries: 16 })],
-    })
-  )
+    }),
+  ),
 )
 
 // Precaches entries and registers a default route to serve them.

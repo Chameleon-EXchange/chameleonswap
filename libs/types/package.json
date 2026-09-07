@@ -1,23 +1,32 @@
 {
   "name": "@cowprotocol/types",
-  "version": "1.5.1",
-  "type": "commonjs",
-  "description": "Chameleon swap events",
-  "main": "index.js",
-  "exports": {
-    "import": "./index.js",
-    "require": "./index.mjs"
-  },
-  "license": "ISC",
+  "version": "4.9.0",
+  "description": "CoW Swap types",
   "repository": {
     "type": "git",
-    "url": "https://github.com/cowprotocol/cowswap"
+    "url": "https://github.com/cowprotocol/cowswap.git",
+    "directory": "libs/types"
   },
-  "keywords": [
-    "cowprotocol",
-    "types",
-    "cowswap",
-    "dex",
-    "widget-lib"
-  ]
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.d.ts",
+  "license": "ISC",
+  "publishConfig": {
+    "access": "public",
+    "main": "./index.js",
+    "types": "./index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./index.d.ts",
+        "import": "./index.js",
+        "require": "./index.cjs"
+      }
+    }
+  },
+  "dependencies": {
+    "@cowprotocol/cow-sdk": "9.2.8",
+    "@cowprotocol/sdk-bridging": "4.4.4",
+    "@cowprotocol/currency": "workspace:*",
+    "eventemitter3": "4.0.7"
+  }
 }

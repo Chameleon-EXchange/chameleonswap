@@ -1,7 +1,12 @@
 import { useCallback, useMemo } from 'react'
 
+import { useConfig } from 'wagmi'
+import { getTransactionCount } from 'wagmi/actions'
+
+import { isSolanaChain } from '@cowprotocol/cow-sdk'
 import { useWalletInfo, useIsSafeWallet } from '@cowprotocol/wallet'
-import { useWalletProvider } from '@cowprotocol/wallet-provider'
+
+import { SOLANA_UNUSED_NONCE } from 'common/constants/common'
 
 import { useAllTransactions } from './TransactionHooksMod'
 
@@ -14,48 +19,20 @@ export * from './TransactionHooksMod'
 export type AddTransactionHookParams = Omit<AddTransactionParams, 'chainId' | 'from' | 'hashType' | 'nonce'> // The hook requires less params for convenience
 export type TransactionAdder = (params: AddTransactionHookParams) => void
 
-/**
- * Return helpers to add a new pending transaction
- */
-export function useTransactionAdder(): TransactionAdder {
-  const { chainId, account } = useWalletInfo()
-  const provider = useWalletProvider()
-  const dispatch = useAppDispatch()
-  const isSafeWallet = useIsSafeWallet()
-
-  return useCallback(
-    async (addTransactionParams: AddTransactionHookParams) => {
-      if (!account) return
-
-      const hashType = isSafeWallet ? HashType.GNOSIS_SAFE_TX : HashType.ETHEREUM_TX
-
-      if (!addTransactionParams.hash) {
-        throw Error('No transaction hash found')
-      }
-
-      if (!provider) return
-
-      try {
-        const nonce = await provider.getTransactionCount(account)
-
-        dispatch(
-          addTransaction({
-            hashType,
-            from: account,
-            chainId,
-            ...addTransactionParams,
-            nonce,
-          })
-        )
-      } catch (e) {
-        console.error('Cannot add a transaction', e)
-      }
-    },
-    [dispatch, chainId, account, isSafeWallet, provider]
-  )
+type EnhancedTransactionDetailsMap = {
+  [txHash: string]: EnhancedTransactionDetails
 }
 
 type TransactionFilter = (tx: EnhancedTransactionDetails) => boolean
+
+/**
+ * Return all transaction hashes
+ */
+export function useAllTransactionHashes(filter?: TransactionFilter): string[] {
+  const transactions = useAllTransactionsDetails(filter)
+
+  return useMemo(() => transactions.map((tx) => tx.hash), [transactions])
+}
 
 /**
  * Return all transactions details
@@ -71,16 +48,67 @@ export function useAllTransactionsDetails(filter?: TransactionFilter): EnhancedT
 }
 
 /**
- * Return all transaction hashes
+ * Return helpers to add a new pending transaction
  */
-export function useAllTransactionHashes(filter?: TransactionFilter): string[] {
-  const transactions = useAllTransactionsDetails(filter)
+export function useTransactionAdder(): TransactionAdder {
+  const config = useConfig()
+  const { chainId, account } = useWalletInfo()
+  const dispatch = useAppDispatch()
+  const isSafeWallet = useIsSafeWallet()
+  const allTxs = useAllTransactions()
 
-  return useMemo(() => transactions.map((tx) => tx.hash), [transactions])
-}
+  const maxPendingNonce = useMemo(() => {
+    const nonces = Object.values(allTxs).map((tx) => tx.nonce)
+    return nonces.length > 0 ? Math.max(...nonces) : -1
+  }, [allTxs])
 
-type EnhancedTransactionDetailsMap = {
-  [txHash: string]: EnhancedTransactionDetails
+  return useCallback(
+    async (addTransactionParams: AddTransactionHookParams) => {
+      if (!account) return
+
+      if (!addTransactionParams.hash) {
+        throw Error('No transaction hash found')
+      }
+
+      // Solana has no nonce, and asking wagmi for one on a Solana chain id fails outright — which the
+      // catch below would swallow, dropping the transaction from the store entirely.
+      if (isSolanaChain(chainId)) {
+        dispatch(
+          addTransaction({
+            hashType: HashType.SOLANA_TX,
+            from: account,
+            chainId,
+            ...addTransactionParams,
+            nonce: SOLANA_UNUSED_NONCE,
+          }),
+        )
+
+        return
+      }
+
+      const hashType = isSafeWallet ? HashType.GNOSIS_SAFE_TX : HashType.ETHEREUM_TX
+
+      try {
+        // Use 'pending' so the next tx gets the next nonce when multiple txs are sent in quick succession (e.g. wrap then unwrap).
+        // Also account for our own pending txs in case the node hasn't seen them yet.
+        const chainNonce = await getTransactionCount(config, { address: account, blockTag: 'pending' })
+        const nonce = Math.max(chainNonce, maxPendingNonce + 1)
+
+        dispatch(
+          addTransaction({
+            hashType,
+            from: account,
+            chainId,
+            ...addTransactionParams,
+            nonce,
+          }),
+        )
+      } catch (e) {
+        console.error('Cannot add a transaction', e)
+      }
+    },
+    [dispatch, chainId, account, isSafeWallet, config, maxPendingNonce],
+  )
 }
 
 export function useTransactionsByHash({ hashes }: { hashes: string[] }): EnhancedTransactionDetailsMap {
@@ -99,43 +127,3 @@ export function useTransactionsByHash({ hashes }: { hashes: string[] }): Enhance
     }, {})
   }, [allTxs, hashes])
 }
-
-export function useAllClaimingTransactions() {
-  const transactionsMap = useAllTransactions()
-  const transactions = Object.values(transactionsMap)
-
-  return useMemo(() => {
-    return transactions.filter((tx) => !!tx.claim)
-  }, [transactions])
-}
-
-export function useAllClaimingTransactionIndices() {
-  const claimingTransactions = useAllClaimingTransactions()
-  return useMemo(() => {
-    const flattenedClaimingTransactions = claimingTransactions.reduce<number[]>((acc, { claim, receipt }) => {
-      if (claim && claim.indices && !receipt) {
-        acc.push(...claim.indices)
-      }
-      return acc
-    }, [])
-
-    return new Set(flattenedClaimingTransactions)
-  }, [claimingTransactions])
-}
-
-// // watch for submissions to claim
-// // return null if not done loading, return undefined if not found
-// export function useUserHasSubmittedClaim(account?: string): {
-//   claimSubmitted: boolean
-//   claimTxn: EnhancedTransactionDetails | undefined
-// } {
-//   const pendingClaims = useAllClaimingTransactions()
-//   const claimTxn = useMemo(
-//     () =>
-//       // find one that is both the user's claim, AND not mined
-//       pendingClaims.find((claim) => claim.claim?.recipient === account),
-//     [account, pendingClaims]
-//   )
-
-//   return { claimSubmitted: !!claimTxn, claimTxn }
-// }

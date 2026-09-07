@@ -1,8 +1,12 @@
 import { ChangeEventHandler, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { i18n } from '@lingui/core'
+
+import { useExtractText } from '@cowprotocol/common-utils'
 import { ButtonPrimary, ButtonSecondary } from '@cowprotocol/ui'
 
-import { Trans } from '@lingui/macro'
+import { t } from '@lingui/core/macro'
+import { Trans } from '@lingui/react/macro'
 import { Menu } from '@reach/menu-button'
 import { ChevronDown } from 'react-feather'
 
@@ -29,7 +33,7 @@ const CUSTOM_DATE_OPTIONS: Intl.DateTimeFormatOptions = {
 }
 
 export interface DeadlineSelectorProps {
-  deadline: LimitOrderDeadline | undefined
+  deadline?: LimitOrderDeadline
   customDeadline: number | null
   isDeadlineDisabled: boolean
 
@@ -38,9 +42,12 @@ export interface DeadlineSelectorProps {
   selectCustomDeadline(deadline: number | null): void
 }
 
+// TODO: Break down this large function into smaller functions
+// TODO: Add proper return type annotation
+// eslint-disable-next-line max-lines-per-function, @typescript-eslint/explicit-function-return-type
 export function DeadlineSelector(props: DeadlineSelectorProps) {
   const { deadline, customDeadline, isDeadlineDisabled, selectDeadline, selectCustomDeadline } = props
-
+  const { extractTextFromStringOrI18nDescriptor } = useExtractText()
   const currentDeadlineNode = useRef<HTMLButtonElement | null>(null)
   const [[minDate, maxDate], setMinMax] = useState<[Date, Date]>(calculateMinMax)
 
@@ -54,18 +61,20 @@ export function DeadlineSelector(props: DeadlineSelectorProps) {
   useEffect(() => {
     try {
       const newDeadline = new Date(value).getTime()
-      const { timeZone } = Intl.DateTimeFormat().resolvedOptions()
+      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+      const minDateStr = minDate.toLocaleString(i18n.locale)
+      const maxDateStr = maxDate.toLocaleString(i18n.locale)
 
       if (newDeadline < minDate.getTime()) {
-        setError(`Must be after ${minDate.toLocaleString()} ${timeZone}`)
+        setError(t`Must be after ${minDateStr} ${timeZone}`)
       } else if (newDeadline > maxDate.getTime()) {
-        setError(`Must be before ${maxDate.toLocaleString()} ${timeZone}`)
+        setError(t`Must be before ${maxDateStr} ${timeZone}`)
       } else {
         setError(null)
       }
     } catch (e) {
       console.error(`[DeadlineSelector] Failed to parse input value to Date`, value, e)
-      setError(`Failed to parse date and time provided`)
+      setError(t`Failed to parse date and time provided`)
     }
   }, [maxDate, minDate, selectCustomDeadline, value])
 
@@ -75,7 +84,7 @@ export function DeadlineSelector(props: DeadlineSelectorProps) {
     if (!customDeadline) {
       return ''
     }
-    return new Date(customDeadline * 1000).toLocaleString(undefined, CUSTOM_DATE_OPTIONS)
+    return new Date(customDeadline * 1000).toLocaleString(i18n.locale, CUSTOM_DATE_OPTIONS)
   }, [customDeadline])
 
   const setDeadline = useCallback(
@@ -121,7 +130,11 @@ export function DeadlineSelector(props: DeadlineSelectorProps) {
     onDismiss()
   }, [onDismiss, selectCustomDeadline, value])
 
-  const deadlineDisplay = customDeadline ? customDeadlineTitle : deadline?.title
+  const deadlineDisplay = customDeadline
+    ? customDeadlineTitle
+    : deadline
+      ? extractTextFromStringOrI18nDescriptor(deadline.title)
+      : ''
 
   return (
     <styledEl.Wrapper>
@@ -135,6 +148,8 @@ export function DeadlineSelector(props: DeadlineSelectorProps) {
         </div>
       ) : (
         <Menu>
+          {/* TODO: Replace any with proper type definitions */}
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           <styledEl.Current ref={currentDeadlineNode as any} $custom={!!customDeadline}>
             <span>{deadlineDisplay}</span>
             <ChevronDown size="18" />
@@ -143,7 +158,7 @@ export function DeadlineSelector(props: DeadlineSelectorProps) {
             {limitOrderDeadlines.map((item) => (
               <li key={item.value}>
                 <styledEl.ListItem onSelect={() => setDeadline(item)}>
-                  <Trans>{item.title}</Trans>
+                  {extractTextFromStringOrI18nDescriptor(item.title)}
                 </styledEl.ListItem>
               </li>
             ))}
@@ -165,7 +180,7 @@ export function DeadlineSelector(props: DeadlineSelectorProps) {
           </styledEl.ModalHeader>
           <styledEl.ModalContent>
             <styledEl.CustomLabel htmlFor="custom-deadline">
-              <Trans>Choose a custom deadline for your limit order:</Trans>
+              <Trans>Choose a custom deadline for your limit order</Trans>:
               <styledEl.CustomInput
                 type="datetime-local"
                 id="custom-deadline"
@@ -186,14 +201,12 @@ export function DeadlineSelector(props: DeadlineSelectorProps) {
               />
             </styledEl.CustomLabel>
             {/* TODO: style me!!! */}
-            {error && (
-              <div>
-                <Trans>{error}</Trans>
-              </div>
-            )}
+            {error && <div>{error}</div>}
           </styledEl.ModalContent>
           <styledEl.ModalFooter>
-            <ButtonSecondary onClick={onDismiss}>Cancel</ButtonSecondary>
+            <ButtonSecondary onClick={onDismiss}>
+              <Trans>Cancel</Trans>
+            </ButtonSecondary>
             <ButtonPrimary onClick={setCustomDeadline} disabled={!!error}>
               <Trans>Set custom date</Trans>
             </ButtonPrimary>

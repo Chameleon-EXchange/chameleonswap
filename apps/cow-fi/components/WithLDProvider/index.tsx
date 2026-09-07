@@ -1,10 +1,10 @@
-import { PropsWithChildren } from 'react'
+import { JSX, PropsWithChildren } from 'react'
+
+import { withLDProvider } from 'launchdarkly-react-client-sdk'
 
 export const NEXT_PUBLIC_LAUNCH_DARKLY_KEY = process.env.NEXT_PUBLIC_LAUNCH_DARKLY_KEY || ''
 
 console.log('NEXT_PUBLIC_LAUNCH_DARKLY_KEY', NEXT_PUBLIC_LAUNCH_DARKLY_KEY)
-
-import { withLDProvider } from 'launchdarkly-react-client-sdk'
 
 function InnerWithLDProvider({ children }: PropsWithChildren) {
   return children
@@ -12,6 +12,11 @@ function InnerWithLDProvider({ children }: PropsWithChildren) {
 
 export const WithLDProvider = withLDProvider<PropsWithChildren & JSX.IntrinsicAttributes>({
   clientSideID: NEXT_PUBLIC_LAUNCH_DARKLY_KEY,
+  context: {
+    kind: 'user',
+    key: 'cow-fi',
+    name: 'cow-fi',
+  },
   options: {
     bootstrap: 'localStorage',
   },

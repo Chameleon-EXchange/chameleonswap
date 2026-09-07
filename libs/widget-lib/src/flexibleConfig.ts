@@ -4,10 +4,16 @@ import { FlexibleConfig, PerNetworkConfig, PerTradeTypeConfig, TradeType } from 
 
 const TradeTypes = Object.values(TradeType)
 
-export function resolveFlexibleConfig<T extends string | number>(
+export function isPerTradeTypeConfig<T>(config: FlexibleConfig<T>): config is PerTradeTypeConfig<T> {
+  if (typeof config !== 'object') return false
+
+  return Object.keys(config as object).every((key) => TradeTypes.includes(key as TradeType))
+}
+
+export function resolveFlexibleConfig<T>(
   config: FlexibleConfig<T>,
   chainId: SupportedChainId,
-  tradeType: TradeType
+  tradeType: TradeType,
 ): T | undefined {
   if (isPerTradeTypeConfig(config)) {
     const value = config[tradeType]
@@ -24,16 +30,10 @@ export function resolveFlexibleConfig<T extends string | number>(
   return config as T
 }
 
-export function isPerTradeTypeConfig<T>(config: FlexibleConfig<T>): config is PerTradeTypeConfig<T> {
-  if (typeof config !== 'object') return false
-
-  return Object.keys(config as object).every((key) => TradeTypes.includes(key as TradeType))
-}
-
 const D_REGEX = /^\d+$/
 
 export function isPerNetworkConfig<T>(config: FlexibleConfig<T>): config is PerNetworkConfig<T> {
   if (typeof config !== 'object') return false
 
-  return Object.keys(config as object).every((key) => typeof key === 'number' || D_REGEX.test(key))
+  return Object.keys(config as object).every((key) => D_REGEX.test(key))
 }

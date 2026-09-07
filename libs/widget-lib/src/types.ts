@@ -1,45 +1,25 @@
-import type { SupportedChainId } from '@cowprotocol/cow-sdk'
-import { CowWidgetEventListeners, CowWidgetEventPayloadMap, CowWidgetEvents } from '@cowprotocol/events'
+import type { EnrichedOrder, SupportedChainId } from '@cowprotocol/cow-sdk'
+import {
+  CowWidgetEventListeners,
+  CowWidgetEventPayloadMap,
+  CowWidgetEvents,
+  OnTradeParamsPayload,
+} from '@cowprotocol/events'
+
+import type * as CSS from 'csstype'
 
 export type { SupportedChainId } from '@cowprotocol/cow-sdk'
+export type { OnTradeParamsPayload } from '@cowprotocol/events'
 
-export type PerTradeTypeConfig<T> = Partial<Record<TradeType, T>>
-
-export type PerNetworkConfig<T> = Partial<Record<SupportedChainId, T>>
-
-export type FlexibleConfig<T> =
-  | T
-  | PerNetworkConfig<T>
-  | PerTradeTypeConfig<T>
-  | PerTradeTypeConfig<PerNetworkConfig<T>>
-  | PerNetworkConfig<PerTradeTypeConfig<T>>
-
-export enum WidgetMethodsEmit {
-  ACTIVATE = 'ACTIVATE',
-  UPDATE_HEIGHT = 'UPDATE_HEIGHT',
-  SET_FULL_HEIGHT = 'SET_FULL_HEIGHT',
-  EMIT_COW_EVENT = 'EMIT_COW_EVENT',
-  PROVIDER_RPC_REQUEST = 'PROVIDER_RPC_REQUEST',
-  INTERCEPT_WINDOW_OPEN = 'INTERCEPT_WINDOW_OPEN',
-}
-
-export enum WidgetMethodsListen {
-  UPDATE_PARAMS = 'UPDATE_PARAMS',
-  UPDATE_APP_DATA = 'UPDATE_APP_DATA',
-  PROVIDER_RPC_RESPONSE = 'PROVIDER_RPC_RESPONSE',
-  PROVIDER_ON_EVENT = 'PROVIDER_ON_EVENT',
-}
+export type CowSwapTheme = 'dark' | 'light'
 
 export interface CowSwapWidgetProps {
   params: CowSwapWidgetParams
   provider?: EthereumProvider
   listeners?: CowWidgetEventListeners
-}
-
-export interface JsonRpcRequest {
-  id: number
-  method: string
-  params: unknown[]
+  onReady?(): void
+  onLoadingError?(): void
+  enableSafeSdkBridge?: boolean
 }
 
 // https://eips.ethereum.org/EIPS/eip-1193
@@ -57,43 +37,29 @@ export interface EthereumProvider {
    * @returns A promise that resolves with the response.
    */
   request<T>(params: JsonRpcRequest): Promise<T>
-
-  /**
-   * Requests permission to connect to the Ethereum provider.
-   * @returns A promise that resolves once permission is granted.
-   */
-  enable(): Promise<void>
 }
 
-export type CowSwapTheme = 'dark' | 'light'
-
-/**
- *Trade asset parameters, for example:
- * { asset: 'WBTC', amount: 12 }
- * or
- * { asset: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' } // USDC
- */
-interface TradeAsset {
-  /** The asset symbol or identifier. */
-  asset: string
-  /**
-   * The amount of the asset (optional).
-   * If specified, represents the quantity or value of the asset.
-   */
-  amount?: string
-}
+export type FlexibleConfig<T> =
+  | T
+  | PerNetworkConfig<T>
+  | PerTradeTypeConfig<T>
+  | PerTradeTypeConfig<PerNetworkConfig<T>>
+  | PerNetworkConfig<PerTradeTypeConfig<T>>
 
 export type ForcedOrderDeadline = FlexibleConfig<number>
 
-export enum TradeType {
-  SWAP = 'swap',
-  LIMIT = 'limit',
-  /**
-   * Currently it means only TWAP orders.
-   * But in the future it can be extended to support other order types.
-   */
-  ADVANCED = 'advanced',
-  YIELD = 'yield',
+export interface JsonRpcRequest {
+  id: number
+  method: string
+  params: unknown[]
+}
+
+export interface OnApprovalPayload {
+  chainId: SupportedChainId
+  sellToken: TokenInfo
+  sellAmount: string
+  walletAddress: string
+  spenderAddress: string
 }
 
 /**
@@ -111,6 +77,10 @@ export interface PartnerFee {
   recipient: FlexibleConfig<string>
 }
 
+export type PerNetworkConfig<T> = Partial<Record<SupportedChainId, T>>
+
+export type PerTradeTypeConfig<T> = Partial<Record<TradeType, T>>
+
 /**
  * ERC-20 token information
  */
@@ -121,6 +91,90 @@ export type TokenInfo = {
   decimals: number
   symbol: string
   logoURI?: string
+}
+
+/**
+ * A single forbidden sell→buy token combination for the widget.
+ *
+ * Used as an entry in {@link CowSwapWidgetParams.tokenPairConstraints} to
+ * prevent users from creating orders that swap the given `sell` token for
+ * the given `buy` token (in that direction). Reversing the direction —
+ * trading `buy` for `sell` — is **not** blocked unless an explicit entry
+ * for the reverse pair is also supplied.
+ *
+ * Addresses are matched case-insensitively against the user's selected
+ * tokens; `chainId` must match the active widget chain for the entry to
+ * apply.
+ *
+ * @example
+ * ```ts
+ * tokenPairConstraints: [
+ *   {
+ *     sell: { address: '0xA0b8...eB48', chainId: SupportedChainId.MAINNET },
+ *     buy:  { address: '0xdAC1...1ec7', chainId: SupportedChainId.MAINNET },
+ *   },
+ * ]
+ * ```
+ */
+export type TokenPairConstraint = {
+  sell: { address: string; chainId: SupportedChainId }
+  buy: { address: string; chainId: SupportedChainId }
+}
+
+export type WidgetHookResult = Promise<boolean> | boolean
+
+export enum TradeType {
+  SWAP = 'swap',
+  LIMIT = 'limit',
+  /**
+   * Currently it means only TWAP orders.
+   * But in the future it can be extended to support other order types.
+   */
+  ADVANCED = 'advanced',
+  YIELD = 'yield',
+}
+
+export enum WidgetHookEvents {
+  ON_BEFORE_APPROVAL = 'ON_BEFORE_APPROVAL',
+  ON_BEFORE_TRADE = 'ON_BEFORE_TRADE',
+  ON_BEFORE_WRAP_UNWRAP = 'ON_BEFORE_WRAP_UNWRAP',
+  ON_BEFORE_ORDER_CANCEL = 'ON_BEFORE_ORDER_CANCEL',
+  ON_BEFORE_ORDERS_CANCEL = 'ON_BEFORE_ORDERS_CANCEL',
+}
+
+export enum WidgetMethodsEmit {
+  ACTIVATE = 'ACTIVATE',
+  READY = 'READY',
+  UPDATE_HEIGHT = 'UPDATE_HEIGHT',
+  SET_FULL_HEIGHT = 'SET_FULL_HEIGHT',
+  EMIT_COW_EVENT = 'EMIT_COW_EVENT',
+  PROVIDER_RPC_REQUEST = 'PROVIDER_RPC_REQUEST',
+  INTERCEPT_WINDOW_OPEN = 'INTERCEPT_WINDOW_OPEN',
+  PROCESS_HOOK = 'PROCESS_HOOK',
+}
+
+export enum WidgetMethodsListen {
+  UPDATE_PARAMS = 'UPDATE_PARAMS',
+  UPDATE_APP_DATA = 'UPDATE_APP_DATA',
+  PROVIDER_RPC_RESPONSE = 'PROVIDER_RPC_RESPONSE',
+  PROVIDER_ON_EVENT = 'PROVIDER_ON_EVENT',
+  HOOK_RESULT = 'HOOK_RESULT',
+}
+
+/**
+ *Trade asset parameters, for example:
+ * { asset: 'WBTC', amount: 12 }
+ * or
+ * { asset: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' } // USDC
+ */
+interface TradeAsset {
+  /** The asset symbol or identifier. */
+  asset: string
+  /**
+   * The amount of the asset (optional).
+   * If specified, represents the quantity or value of the asset.
+   */
+  amount?: string
 }
 
 export const WIDGET_PALETTE_COLORS = [
@@ -135,30 +189,17 @@ export const WIDGET_PALETTE_COLORS = [
   'success',
 ] as const
 
-export type CowSwapWidgetPaletteColors = (typeof WIDGET_PALETTE_COLORS)[number]
+export interface BaseJsonRpcResponseMessage {
+  // Required but null if not identified in request
+  id: number
+  jsonrpc: '2.0'
+}
 
-export type CowSwapWidgetPaletteParams = { [K in CowSwapWidgetPaletteColors]: string }
+export type CowSwapWidgetAppParams = Omit<CowSwapWidgetParams, 'theme' | 'hooks' | 'rootStyle'>
 
-export type CowSwapWidgetPalette = { baseTheme: CowSwapTheme } & CowSwapWidgetPaletteParams
-
-export interface CowSwapWidgetSounds {
-  /**
-   * The sound to play when the order is executed. Defaults to world wide famous Chameleon swap moooooooooo!
-   * Alternatively, you can use a URL to a custom sound file, or set to null to disable the sound.
-   */
-  postOrder?: string | null
-
-  /**
-   * The sound to play when the order is executed. Defaults to world wide famous Chameleon swap happy moooooooooo!
-   * Alternatively, you can use a URL to a custom sound file, or set to null to disable the sound.
-   */
-  orderExecuted?: string | null
-
-  /**
-   * The sound to play when the order is executed. Defaults to world wide famous Chameleon swap unhappy moooooooooo!
-   * Alternatively, you can use a URL to a custom sound file, or set to null to disable the sound.
-   */
-  orderError?: string | null
+export interface CowSwapWidgetContent {
+  feeLabel?: string
+  feeTooltipMarkdown?: string
 }
 
 export interface CowSwapWidgetImages {
@@ -169,10 +210,21 @@ export interface CowSwapWidgetImages {
   emptyOrders?: string | null
 }
 
-export interface CowSwapWidgetContent {
-  feeLabel?: string
-  feeTooltipMarkdown?: string
-}
+export type CowSwapWidgetPalette = {
+  baseTheme: CowSwapTheme
+
+  /**
+   * Overrides the main widget card shadow.
+   * Accepts any valid CSS box-shadow value, for example `none` or `0 12px 24px rgba(0, 0, 0, 0.12)`.
+   *
+   * @deprecated Use cardStyle.boxShadow instead.
+   */
+  boxShadow?: string
+} & CowSwapWidgetPaletteParams
+
+export type CowSwapWidgetPaletteColors = (typeof WIDGET_PALETTE_COLORS)[number]
+
+export type CowSwapWidgetPaletteParams = { [K in CowSwapWidgetPaletteColors]: string }
 
 export interface CowSwapWidgetParams {
   /**
@@ -182,27 +234,91 @@ export interface CowSwapWidgetParams {
   appCode: string
 
   /**
-   * The width of the widget in pixels. Default: 400px
+   * The width of the outer iframe element. Accepts CSS width values such as `450px` or `100%`.
+   * Default: `450px`
+   *
+   * @deprecated Use rootStyle.width instead.
    */
   width?: string
   /**
-   * The height of the widget in pixels. Default: 600px
+   * The height of the outer iframe element. Accepts CSS height values such as `640px`.
+   * Default: `640px`
+   *
+   * @deprecated Use rootStyle.height instead.
    */
   height?: string
 
   /**
    * The maximum height of the widget in pixels. Default: body.offsetHeight
+   *
+   * @deprecated Use rootStyle.maxHeight instead.
    */
   maxHeight?: number
+
+  /**
+   * Extra inline styles for the outer container element (host page only; not sent into the iframe app).
+   * Applied after width/height attributes. Use e.g. `backgroundColor`, `borderRadius`, `boxShadow`, `border`.
+   * The injected iframe fills this container. Use `height: 'var(--dynamicHeight)'` here for dynamic height.
+   */
+  rootStyle?: CSS.Properties
+
+  /**
+   * Inline styles for the body wrapper (inside the iframe).
+   */
+  bodyWrapperStyle?: CSS.Properties
+
+  /**
+   * Inline styles for the main trade widget card (inside the iframe).
+   */
+  cardStyle?: CSS.Properties
 
   /**
    * Network ID.
    */
   chainId?: SupportedChainId
+
   /**
-   * The token lists urls to use in the widget
+   * An id of a network to bridge the output token.
+   */
+  targetChainId?: number
+
+  /**
+   * The token lists (as urls) enabled for the widget.
+   * These lists are available to both sell and buy selectors.
    */
   tokenLists?: string[]
+
+  /**
+   * The token lists (as urls) to use in the sell selector.
+   * Note: these lists also contribute to the widget's globally enabled list set.
+   * If omitted, the sell selector falls back to the globally enabled lists.
+   */
+  sellTokenLists?: string[]
+
+  /**
+   * The token lists (as urls) to use in the buy selector.
+   * Note: these lists also contribute to the widget's globally enabled list set.
+   * If omitted, the buy selector falls back to the globally enabled lists.
+   */
+  buyTokenLists?: string[]
+
+  /**
+   * Forces the widget locale.
+   * Serialized as the `lng` query param used by the frontend locale resolver.
+   * Accepts supported locales like `en-US` and fuzzy values like `en`.
+   */
+  locale?: string
+
+  /**
+   * Control the "Recent tokens" section displaying in the token selector
+   */
+  hideRecentTokens?: boolean
+
+  /**
+   * Control the "Favorite tokens" section displaying in the token selector
+   */
+  hideFavoriteTokens?: boolean
+
   /**
    * Swap, Limit or Advanced (Twap).
    */
@@ -211,9 +327,20 @@ export interface CowSwapWidgetParams {
   /**
    * The base url of the widget implementation
    * The parameter can have the URL directly, or an object with the environment property,
-   * The base URL will default to the production environment if not specified, so it will use https://chameleon.exchange by default.
+   * The base URL will default to the production environment if not specified, so it will use https://swap.cow.fi by default.
+   *
+   * For security, values are validated before loading the iframe: only `https` origins are accepted,
+   * except `http` on local dev hosts (localhost, 127.0.0.1, ::1, *.localhost). Invalid URLs
+   * (unparsable, credentials, or disallowed scheme/host) either throw or log and fall back to the
+   * production host, depending on `SHOULD_THROW_IF_INVALID_URL` exported from `@cowprotocol/widget-lib`.
    */
   baseUrl?: string
+
+  /**
+   * Overrides the origin trusted for postMessage communication with the widget iframe.
+   * Defaults to the origin derived from `baseUrl` / iframe src.
+   */
+  trustedOrigin?: string
 
   /**
    * Sell token, and optionally the amount.
@@ -247,6 +374,42 @@ export interface CowSwapWidgetParams {
   partnerFee?: PartnerFee
 
   /**
+   * Disables cross-chain swaps (bridging)
+   * Defaults to false.
+   */
+  disableCrossChainSwap?: boolean
+
+  /**
+   * Disable setting custom recipient for all trading widgets (swap,limit,twap)
+   * Important! Cross-chain swaps are based on custom recipient functionality!
+   * If you want always having recipient === order owner, then set disableCrossChainSwap=true as well
+   */
+  disableCustomRecipient?: boolean
+
+  /**
+   * Disables adding custom tokens and custom token lists.
+   * Defaults to false.
+   */
+  disableTokenImport?: boolean
+  /**
+   * Disables the EIP-2612 permit signing flow. When `true`, the widget will
+   * never sign an off-chain permit and will always send an on-chain approval
+   * transaction — even for tokens that support permit.
+   *
+   * Defaults to false.
+   */
+  disableEIP2612Permits?: boolean
+
+  /**
+   * Disables infinite (MAX_UINT256) ERC-20 approvals. When `true`, every
+   * approval transaction approves only the exact trade-size amount, and the
+   * "Partial approval" toggle in Settings is shown but locked on.
+   *
+   * Defaults to false.
+   */
+  disableInfiniteApprove?: boolean
+
+  /**
    * Disables showing the confirmation modal you get after posting an order.
    * Defaults to false.
    */
@@ -262,11 +425,38 @@ export interface CowSwapWidgetParams {
   disableProgressBar?: boolean
 
   /**
+   * Disabled switching tokens places by clicking to the arrow between them
+   */
+  disableSwitchingTokens?: boolean
+
+  /**
+   * Hides scrollbars inside the widget iframe (`overflow: hidden` on the document).
+   * Only use when the host iframe height is driven by `var(--dynamicHeight)` and not constrained (e.g. no max-height).
+   *
+   * Defaults to false.
+   */
+  disableScrollbars?: boolean
+
+  /**
+   * Disables CoW Swap educational tips shown after a trade completes when no surplus message is available.
+   * Defaults to false.
+   */
+  disablePostTradeTips?: boolean
+
+  /**
    * Disables showing the toast messages.
    * Some UI might want to disable it and subscribe to WidgetMethodsEmit.ON_TOAST_MESSAGE event to handle the toast messages itself.
    * Defaults to false.
    */
   disableToastMessages?: boolean
+
+  /**
+   * When `true`, the host page will not use `window.open` to open links requested by the widget,
+   * and the widget iframe sandbox will not allow direct popups.
+   * Requires `standaloneMode: false`.
+   * Defaults to `false`.
+   */
+  disableWindowOpen?: boolean
 
   /**
    * Option to hide the logo in the widget.
@@ -323,31 +513,111 @@ export interface CowSwapWidgetParams {
    * Customizable labels and content for the widget.
    */
   content?: CowSwapWidgetContent
+
+  /**
+   * Customizable slippage settings for the widget.
+   */
+  slippage?: FlexibleSlippageConfig
+
+  /**
+   * Conditions to control the ability to trade
+   */
+  disableTrade?: {
+    whenPriceImpactIsUnknown?: boolean
+    whenPriceImpactIsHigherThan?: number
+  }
+
+  /**
+   * Disables trading of specific token pair
+   */
+  tokenPairConstraints?: TokenPairConstraint[]
+
+  hooks?: Partial<{
+    onBeforeApproval(payload: OnApprovalPayload): WidgetHookResult
+    onBeforeWrapOrUnwrap(payload: OnTradeParamsPayload): WidgetHookResult
+    onBeforeTrade(payload: OnTradeParamsPayload): WidgetHookResult
+    onBeforeOrderCancel(payload: EnrichedOrder): WidgetHookResult
+    onBeforeOrdersCancel(payload: EnrichedOrder[]): WidgetHookResult
+  }>
 }
 
-// Define types for event payloads
-export interface WidgetMethodsEmitPayloadMap {
-  [WidgetMethodsEmit.ACTIVATE]: void
-  [WidgetMethodsEmit.EMIT_COW_EVENT]: EmitCowEventPayload<CowWidgetEvents>
-  [WidgetMethodsEmit.UPDATE_HEIGHT]: UpdateWidgetHeightPayload
-  [WidgetMethodsEmit.SET_FULL_HEIGHT]: SetWidgetFullHeightPayload
-  [WidgetMethodsEmit.PROVIDER_RPC_REQUEST]: ProviderRpcRequestPayload
-  [WidgetMethodsEmit.INTERCEPT_WINDOW_OPEN]: WindowOpenPayload
+export interface CowSwapWidgetSounds {
+  /**
+   * The sound to play when the order is executed. Defaults to world wide famous CoW Swap moooooooooo!
+   * Alternatively, you can use a URL to a custom sound file, or set to null to disable the sound.
+   */
+  postOrder?: string | null
+
+  /**
+   * The sound to play when the order is executed. Defaults to world wide famous CoW Swap happy moooooooooo!
+   * Alternatively, you can use a URL to a custom sound file, or set to null to disable the sound.
+   */
+  orderExecuted?: string | null
+
+  /**
+   * The sound to play when the order is executed. Defaults to world wide famous CoW Swap unhappy moooooooooo!
+   * Alternatively, you can use a URL to a custom sound file, or set to null to disable the sound.
+   */
+  orderError?: string | null
 }
 
-export interface WidgetMethodsListenPayloadMap {
-  [WidgetMethodsListen.UPDATE_APP_DATA]: UpdateAppDataPayload
-  [WidgetMethodsListen.UPDATE_PARAMS]: UpdateParamsPayload
-  [WidgetMethodsListen.PROVIDER_RPC_RESPONSE]: ProviderRpcResponsePayload
-  [WidgetMethodsListen.PROVIDER_ON_EVENT]: ProviderOnEventPayload
+export interface EmitCowEventPayload<T extends CowWidgetEvents> {
+  event: T
+  payload: CowWidgetEventPayloadMap[T]
 }
 
-export type WidgetEventsPayloadMap = WidgetMethodsEmitPayloadMap & WidgetMethodsListenPayloadMap
+export type FlexibleSlippageConfig = FlexibleConfig<SlippageConfig>
 
-export type WidgetMethodsEmitPayloads = WidgetMethodsEmitPayloadMap[WidgetMethodsEmit]
-export type WidgetMethodsListenPayloads = WidgetMethodsListenPayloadMap[WidgetMethodsListen]
+export interface JsonRpcError<TData = unknown> {
+  code: number
+  message: string
+  data?: TData
+}
 
-export type CowSwapWidgetAppParams = Omit<CowSwapWidgetParams, 'theme'>
+export interface JsonRpcErrorResponseMessage<TErrorData = unknown> extends BaseJsonRpcResponseMessage {
+  error: JsonRpcError<TErrorData>
+}
+export interface JsonRpcRequestMessage {
+  jsonrpc: '2.0'
+  // Optional in the request.
+  id?: number
+  method: string
+  params: unknown[]
+}
+
+export type JsonRpcResponse = JsonRpcRequestMessage | JsonRpcErrorResponseMessage | JsonRpcSucessfulResponseMessage
+
+export interface JsonRpcSucessfulResponseMessage<TResult = unknown> extends BaseJsonRpcResponseMessage {
+  result: TResult
+}
+
+export interface ProviderOnEventPayload {
+  event: string
+  params: unknown
+}
+
+export interface ProviderRpcRequestPayload {
+  rpcRequest: JsonRpcRequestMessage
+}
+
+export type ProviderRpcResponsePayload = {
+  rpcResponse: JsonRpcResponse
+}
+
+export interface SlippageConfig {
+  /** Minimum slippage in basis points (e.g., 10 = 0.1%) */
+  min?: number
+  /** Maximum slippage in basis points (e.g., 5000 = 50%) - 5000 is max value for dApp */
+  max?: number
+  /** Default slippage value in basis points (e.g., 50 = 0.5%) - min <= defaultValue <= max */
+  defaultValue?: number
+}
+
+export interface UpdateAppDataPayload {
+  metaData?: {
+    appCode: string
+  }
+}
 
 export interface UpdateParamsPayload {
   urlParams: {
@@ -359,78 +629,67 @@ export interface UpdateParamsPayload {
   hasProvider: boolean
 }
 
-export interface UpdateAppDataPayload {
-  metaData?: {
-    appCode: string
-  }
-}
-
 export interface UpdateWidgetHeightPayload {
   height?: number
 }
 
-export interface SetWidgetFullHeightPayload {
-  isUpToSmall?: boolean
+export type WidgetEventsPayloadMap = WidgetMethodsEmitPayloadMap & WidgetMethodsListenPayloadMap
+
+export type WidgetHookId = string
+
+export interface WidgetHookPayload<T extends WidgetHookEvents> {
+  id: WidgetHookId
+  event: T
+  payload: WidgetHookPayloadMap[T]
 }
 
-export interface EmitCowEventPayload<T extends CowWidgetEvents> {
-  event: T
-  payload: CowWidgetEventPayloadMap[T]
+export interface WidgetHookPayloadMap {
+  [WidgetHookEvents.ON_BEFORE_APPROVAL]: OnApprovalPayload
+  [WidgetHookEvents.ON_BEFORE_TRADE]: OnTradeParamsPayload
+  [WidgetHookEvents.ON_BEFORE_WRAP_UNWRAP]: OnTradeParamsPayload
+  [WidgetHookEvents.ON_BEFORE_ORDER_CANCEL]: EnrichedOrder
+  [WidgetHookEvents.ON_BEFORE_ORDERS_CANCEL]: EnrichedOrder[]
 }
+
+export interface WidgetHookResultPayload {
+  id: WidgetHookId
+  result: boolean
+}
+
+export type WidgetMethodHandler<T extends WidgetMethodsEmit> = (payload: WidgetMethodsEmitPayloadMap[T]) => void
 
 export type WidgetMethodsEmitListener<T extends WidgetMethodsEmit> = T extends WidgetMethodsEmit
   ? { event: T; handler: WidgetMethodHandler<T> }
   : never
 
-export type WidgetMethodHandler<T extends WidgetMethodsEmit> = (payload: WidgetMethodsEmitPayloadMap[T]) => void
-
-export interface ProviderRpcRequestPayload {
-  rpcRequest: JsonRpcRequestMessage
+// Define types for event payloads
+export interface WidgetMethodsEmitPayloadMap {
+  [WidgetMethodsEmit.ACTIVATE]: void
+  [WidgetMethodsEmit.READY]: void
+  [WidgetMethodsEmit.EMIT_COW_EVENT]: EmitCowEventPayload<CowWidgetEvents>
+  [WidgetMethodsEmit.UPDATE_HEIGHT]: UpdateWidgetHeightPayload
+  [WidgetMethodsEmit.SET_FULL_HEIGHT]: void
+  [WidgetMethodsEmit.PROVIDER_RPC_REQUEST]: ProviderRpcRequestPayload
+  [WidgetMethodsEmit.INTERCEPT_WINDOW_OPEN]: WindowOpenPayload
+  [WidgetMethodsEmit.PROCESS_HOOK]: WidgetHookPayload<WidgetHookEvents>
 }
+
+export type WidgetMethodsEmitPayloads = WidgetMethodsEmitPayloadMap[WidgetMethodsEmit]
+
+export interface WidgetMethodsListenPayloadMap {
+  [WidgetMethodsListen.UPDATE_APP_DATA]: UpdateAppDataPayload
+  [WidgetMethodsListen.UPDATE_PARAMS]: UpdateParamsPayload
+  [WidgetMethodsListen.PROVIDER_RPC_RESPONSE]: ProviderRpcResponsePayload
+  [WidgetMethodsListen.PROVIDER_ON_EVENT]: ProviderOnEventPayload
+  [WidgetMethodsListen.HOOK_RESULT]: WidgetHookResultPayload
+}
+
+export type WidgetMethodsListenPayloads = WidgetMethodsListenPayloadMap[WidgetMethodsListen]
+
+export type WindowListener = (event: MessageEvent<unknown>) => void
 
 export interface WindowOpenPayload {
   href: string | URL
   target: string
   rel: string
 }
-
-export interface JsonRpcRequestMessage {
-  jsonrpc: '2.0'
-  // Optional in the request.
-  id?: number
-  method: string
-  params: unknown[]
-}
-
-export interface BaseJsonRpcResponseMessage {
-  // Required but null if not identified in request
-  id: number
-  jsonrpc: '2.0'
-}
-
-export interface JsonRpcSucessfulResponseMessage<TResult = unknown> extends BaseJsonRpcResponseMessage {
-  result: TResult
-}
-
-export interface JsonRpcError<TData = unknown> {
-  code: number
-  message: string
-  data?: TData
-}
-
-export interface JsonRpcErrorResponseMessage<TErrorData = unknown> extends BaseJsonRpcResponseMessage {
-  error: JsonRpcError<TErrorData>
-}
-
-export type ProviderRpcResponsePayload = {
-  rpcResponse: JsonRpcResponse
-}
-
-export type JsonRpcResponse = JsonRpcRequestMessage | JsonRpcErrorResponseMessage | JsonRpcSucessfulResponseMessage
-
-export interface ProviderOnEventPayload {
-  event: string
-  params: unknown
-}
-
-export type WindowListener = (event: MessageEvent<unknown>) => void

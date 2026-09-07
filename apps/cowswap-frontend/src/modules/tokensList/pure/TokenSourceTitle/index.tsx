@@ -1,8 +1,7 @@
-import TokenListLogo from '@cowprotocol/assets/svg/tokenlist.svg'
+import svgTokenlistSrc from '@cowprotocol/assets/svg/tokenlist.svg'
 import { HelpTooltip } from '@cowprotocol/ui'
 
 import styled from 'styled-components/macro'
-
 
 const Wrapper = styled.div`
   display: flex;
@@ -25,21 +24,26 @@ const Title = styled.h4`
 
 export interface TokenSourceTitleProps {
   children: string
-  tooltip: string
+  tooltip?: string
 }
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function TokenSourceTitle(props: TokenSourceTitleProps) {
   const { children, tooltip } = props
+  const tooltipText = tooltip?.trim()
 
   return (
     <Wrapper>
       <Title>
-        <img src={TokenListLogo} alt="" />
+        <img src={svgTokenlistSrc} alt="" />
         {children}
       </Title>
-      <div>
-        <HelpTooltip text={tooltip} />
-      </div>
+      {tooltipText ? (
+        <div>
+          <HelpTooltip text={tooltipText} />
+        </div>
+      ) : null}
     </Wrapper>
   )
 }

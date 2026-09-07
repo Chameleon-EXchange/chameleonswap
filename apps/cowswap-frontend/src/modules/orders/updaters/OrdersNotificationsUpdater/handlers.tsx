@@ -1,74 +1,83 @@
+import { ReactElement } from 'react'
+
+import { NATIVE_CURRENCIES } from '@cowprotocol/common-const'
+import { TargetChainId } from '@cowprotocol/cow-sdk'
+import { CurrencyAmount } from '@cowprotocol/currency'
 import {
-  CowEventPayloads,
-  CowWidgetEvents,
+  OnBridgingSuccessPayload,
   OnCancelledOrderPayload,
   OnExpiredOrderPayload,
   OnFulfilledOrderPayload,
-  OnPostedOrderPayload,
   OnPresignedOrderPayload,
   ToastMessageType,
 } from '@cowprotocol/events'
 import { IconType } from '@cowprotocol/snackbars'
 
-import { getUiOrderType } from 'utils/orderUtils/getUiOrderType'
+import { t } from '@lingui/core/macro'
 
+import { BridgingSuccessNotification } from '../../containers/BridgingSuccessNotification'
 import { FulfilledOrderInfo } from '../../containers/FulfilledOrderInfo'
 import { OrderNotification } from '../../containers/OrderNotification'
+import { PostedOrderNotification } from '../../containers/PostedOrderNotification'
+import { OnPostedOrderPayload, OrderStatusEvents, OrderStatusPayloads } from '../../events/events'
 
 type OrdersNotificationsHandler = {
   icon: IconType
-  handler(payload: CowEventPayloads[keyof CowEventPayloads]): JSX.Element | null
+  handler(payload: OrderStatusPayloads): ReactElement | null
 }
 
-export const ORDERS_NOTIFICATION_HANDLERS: Record<CowWidgetEvents, OrdersNotificationsHandler> = {
-  [CowWidgetEvents.ON_POSTED_ORDER]: {
+export const ORDERS_NOTIFICATION_HANDLERS: Record<OrderStatusEvents, OrdersNotificationsHandler> = {
+  [OrderStatusEvents.ON_POSTED_ORDER]: {
     icon: 'success',
     handler: (payload: OnPostedOrderPayload) => {
-      const { chainId, orderUid, orderType, orderCreationHash, isEthFlow } = payload
+      const nativeCurrency = NATIVE_CURRENCIES[payload.inputAmount.currency.chainId as TargetChainId]
+
+      const payloadFixed: OnPostedOrderPayload = {
+        ...payload,
+        // Force inputAmount currency override for Safe "Wrap and Swap" case
+        inputAmount:
+          payload.isEthFlow && nativeCurrency
+            ? CurrencyAmount.fromRawAmount(nativeCurrency, payload.inputAmount.quotient.toString())
+            : payload.inputAmount,
+      }
 
       return (
-        <OrderNotification
-          title="Order submitted"
-          chainId={chainId}
-          orderType={orderType}
-          orderUid={orderUid}
-          orderInfo={payload}
-          transactionHash={orderCreationHash}
-          isEthFlow={isEthFlow}
+        <PostedOrderNotification
+          title={t`Order submitted`}
+          payload={payloadFixed}
           messageType={ToastMessageType.ORDER_CREATED}
         />
       )
     },
   },
-  [CowWidgetEvents.ON_FULFILLED_ORDER]: {
+  [OrderStatusEvents.ON_FULFILLED_ORDER]: {
     icon: 'success',
     handler: (payload: OnFulfilledOrderPayload) => {
-      const { chainId, order } = payload
+      const { chainId, order, bridgeOrder } = payload
 
       return (
         <OrderNotification
-          title="Order filled"
+          title={bridgeOrder ? t`Swap order filled` : t`Order filled`}
           chainId={chainId}
-          orderType={getUiOrderType(order)}
           orderUid={order.uid}
           messageType={ToastMessageType.ORDER_FULFILLED}
+          // Do not display a receiver for bridge order, because it will always by a proxy address
+          hideReceiver={!!bridgeOrder}
         >
           <FulfilledOrderInfo chainId={chainId} orderUid={order.uid} />
         </OrderNotification>
       )
     },
   },
-  [CowWidgetEvents.ON_CANCELLED_ORDER]: {
+  [OrderStatusEvents.ON_CANCELLED_ORDER]: {
     icon: 'success',
     handler: (payload: OnCancelledOrderPayload) => {
       const { chainId, order, transactionHash } = payload
 
       return (
         <OrderNotification
-          title="Order cancelled"
+          title={t`Order cancelled`}
           chainId={chainId}
-          orderInfo={order}
-          orderType={getUiOrderType(order)}
           orderUid={order.uid}
           transactionHash={transactionHash}
           messageType={ToastMessageType.ORDER_CANCELLED}
@@ -76,54 +85,40 @@ export const ORDERS_NOTIFICATION_HANDLERS: Record<CowWidgetEvents, OrdersNotific
       )
     },
   },
-  [CowWidgetEvents.ON_EXPIRED_ORDER]: {
+  [OrderStatusEvents.ON_EXPIRED_ORDER]: {
     icon: 'alert',
     handler: (payload: OnExpiredOrderPayload) => {
       const { chainId, order } = payload
 
       return (
         <OrderNotification
-          title="Order expired"
+          title={t`Order expired`}
           chainId={chainId}
-          orderType={getUiOrderType(order)}
           orderUid={order.uid}
           messageType={ToastMessageType.ORDER_EXPIRED}
         />
       )
     },
   },
-  [CowWidgetEvents.ON_PRESIGNED_ORDER]: {
+  [OrderStatusEvents.ON_PRESIGNED_ORDER]: {
     icon: 'success',
     handler: (payload: OnPresignedOrderPayload) => {
       const { chainId, order } = payload
 
       return (
         <OrderNotification
-          title="Order presigned"
+          title={t`Order presigned`}
           chainId={chainId}
-          orderType={getUiOrderType(order)}
           orderUid={order.uid}
           messageType={ToastMessageType.ORDER_PRESIGNED}
         />
       )
     },
   },
-  [CowWidgetEvents.ON_TOAST_MESSAGE]: {
+  [OrderStatusEvents.ON_BRIDGING_SUCCESS]: {
     icon: 'success',
-    handler: (info) => {
-      console.debug('[ON_TOAST_MESSAGE]', info)
-      return null
+    handler: (payload: OnBridgingSuccessPayload) => {
+      return <BridgingSuccessNotification payload={payload} />
     },
-  },
-  [CowWidgetEvents.ON_ONCHAIN_TRANSACTION]: {
-    icon: 'success',
-    handler: () => {
-      // Handled in OnchainTransactionEventsUpdater
-      return null
-    },
-  },
-  [CowWidgetEvents.ON_CHANGE_TRADE_PARAMS]: {
-    icon: 'success',
-    handler: () => null,
   },
 }

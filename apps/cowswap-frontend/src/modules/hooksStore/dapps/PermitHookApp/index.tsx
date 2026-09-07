@@ -1,26 +1,34 @@
 import { useCallback, useMemo, useState } from 'react'
 
+import type { Hex } from 'viem'
+
 import { isAddress } from '@cowprotocol/common-utils'
 import { isSupportedPermitInfo } from '@cowprotocol/permit-utils'
 import { useTokenBySymbolOrAddress } from '@cowprotocol/tokens'
 import { ButtonPrimary } from '@cowprotocol/ui'
 
+import { t } from '@lingui/core/macro'
+import { Trans } from '@lingui/react/macro'
+
 import { recoverSpenderFromCalldata, useGeneratePermitHook, usePermitInfo } from 'modules/permit'
-import { TradeType } from 'modules/trade'
 
 import { useIsPermitEnabled } from 'common/hooks/featureFlags/useIsPermitEnabled'
+import { TradeType } from 'common/modules/tradeNavigation'
 
 import { ContentWrapper, Row, Wrapper } from './styled'
 
 import { HookDappProps } from '../../types/hooks'
 
+// TODO: Break down this large function into smaller functions
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function PermitHookApp({ context }: HookDappProps) {
   const hookToEdit = context.hookToEdit
   const isPreHook = context.isPreHook
   const [tokenAddress, setTokenAddress] = useState<string>(hookToEdit?.hook.target || '')
   const isPermitEnabled = useIsPermitEnabled()
   const [spenderAddress, setSpenderAddress] = useState<string>(
-    recoverSpenderFromCalldata(hookToEdit?.hook.callData) || '',
+    recoverSpenderFromCalldata(hookToEdit?.hook.callData as Hex) || '',
   )
   const generatePermitHook = useGeneratePermitHook()
   const token = useTokenBySymbolOrAddress(tokenAddress)
@@ -29,8 +37,11 @@ export function PermitHookApp({ context }: HookDappProps) {
   const onButtonClick = useCallback(async () => {
     if (!permitInfo) return
     const hook = await generatePermitHook({
-      inputToken: { address: token?.address || '', name: token?.name || '' },
-      account: context.account,
+      inputToken: {
+        address: (token?.address || '') as `0x${string}`,
+        name: token?.name || '',
+      },
+      account: context.account as `0x${string}` | undefined,
       permitInfo,
       customSpender: spenderAddress,
     })
@@ -45,12 +56,13 @@ export function PermitHookApp({ context }: HookDappProps) {
   }, [generatePermitHook, context, permitInfo, token, spenderAddress, hookToEdit])
 
   const buttonProps = useMemo(() => {
-    if (!context.account) return { message: 'Connect wallet', disabled: true }
-    if (!isPermitEnabled) return { message: 'Unsupported Wallet', disabled: true }
-    const confirmMessage = hookToEdit ? 'Save changes' : `Add ${isPreHook ? 'Pre' : 'Post'}-hook`
+    const hookTypeText = isPreHook ? t`Pre` : t`Post`
+    const confirmMessage = hookToEdit ? t`Save changes` : t`Add ${hookTypeText}-hook`
+    if (!context.account) return { message: t`Connect wallet`, disabled: true }
+    if (!isPermitEnabled) return { message: t`Unsupported Wallet`, disabled: true }
     if (!spenderAddress || !tokenAddress) return { message: confirmMessage, disabled: true }
-    if (!token || !isAddress(spenderAddress)) return { message: 'Invalid parameters', disabled: true }
-    if (!isSupportedPermitInfo(permitInfo)) return { message: 'Token not permittable', disabled: true }
+    if (!token || !isAddress(spenderAddress)) return { message: t`Invalid parameters`, disabled: true }
+    if (!isSupportedPermitInfo(permitInfo)) return { message: t`Token not permittable`, disabled: true }
     return { message: confirmMessage, disabled: false }
   }, [hookToEdit, token, permitInfo, context.account, tokenAddress, spenderAddress, isPermitEnabled, isPreHook])
 
@@ -58,13 +70,17 @@ export function PermitHookApp({ context }: HookDappProps) {
     <Wrapper>
       <ContentWrapper>
         <Row>
-          <label>Token</label>
+          <label>
+            <Trans>Token</Trans>
+          </label>
           <div>
             <input name="token" value={tokenAddress} onChange={(e) => setTokenAddress(e.target.value.trim())} />
           </div>
         </Row>
         <Row>
-          <label>Spender</label>
+          <label>
+            <Trans>Spender</Trans>
+          </label>
           <div>
             <input name="spender" value={spenderAddress} onChange={(e) => setSpenderAddress(e.target.value.trim())} />
           </div>

@@ -1,6 +1,7 @@
 import styled, { css } from 'styled-components/macro'
 
-import { Color, Font } from '../../consts'
+import { Media } from '../../consts'
+import { UI } from '../../enum'
 import { CowSwapTheme } from '../../types'
 import { ProductLogoWrapper } from '../ProductLogo'
 
@@ -26,23 +27,31 @@ export const MenuBarWrapper = styled.div<{
   --height: 56px;
   --width: 100%;
   --bgColor: ${({ theme, bgColorLight, bgColorDark }) =>
-    theme.darkMode ? bgColorDark || Color.neutral10 : bgColorLight || 'rgb(255 248 247 / 40%)'};
+    theme.darkMode ? bgColorDark || `var(${UI.COLOR_NEUTRAL_10})` : bgColorLight || 'rgb(255 248 247 / 40%)'};
   --bgDropdownColor: ${({ theme, bgDropdownColorLight, bgDropdownColorDark }) =>
-    theme.darkMode ? bgDropdownColorDark || Color.neutral10 : bgDropdownColorLight || Color.neutral100};
+    theme.darkMode
+      ? bgDropdownColorDark || `var(${UI.COLOR_NEUTRAL_10})`
+      : bgDropdownColorLight || `var(${UI.COLOR_NEUTRAL_100})`};
   --color: ${({ theme, colorLight, colorDark }) =>
-    theme.darkMode ? colorDark || Color.neutral98 : colorLight || Color.neutral0};
+    theme.darkMode ? colorDark || `var(${UI.COLOR_NEUTRAL_98})` : colorLight || `var(${UI.COLOR_NEUTRAL_0})`};
   --borderRadius: 28px;
   --blur: 16px;
 
   // Elements
   --defaultFill: ${({ theme, defaultFillLight, defaultFillDark }) =>
-    theme.darkMode ? defaultFillDark || Color.neutral60 : defaultFillLight || 'rgb(0 0 0 / 50%)'};
+    theme.darkMode ? defaultFillDark || `var(${UI.COLOR_NEUTRAL_60})` : defaultFillLight || 'rgb(0 0 0 / 50%)'};
   --activeBackground: ${({ theme, activeBackgroundLight, activeBackgroundDark }) =>
-    theme.darkMode ? activeBackgroundDark || Color.neutral30 : activeBackgroundLight || Color.neutral100};
+    theme.darkMode
+      ? activeBackgroundDark || `var(${UI.COLOR_NEUTRAL_30})`
+      : activeBackgroundLight || `var(${UI.COLOR_NEUTRAL_100})`};
   --activeFill: ${({ theme, activeFillLight, activeFillDark }) =>
-    theme.darkMode ? activeFillDark || Color.neutral100 : activeFillLight || Color.neutral0};
+    theme.darkMode
+      ? activeFillDark || `var(${UI.COLOR_NEUTRAL_100})`
+      : activeFillLight || `var(${UI.COLOR_NEUTRAL_0})`};
   --hoverBackground: ${({ theme, hoverBackgroundLight, hoverBackgroundDark }) =>
-    theme.darkMode ? hoverBackgroundDark || Color.neutral20 : hoverBackgroundLight || Color.neutral90};
+    theme.darkMode
+      ? hoverBackgroundDark || `var(${UI.COLOR_NEUTRAL_20})`
+      : hoverBackgroundLight || `var(${UI.COLOR_NEUTRAL_90})`};
 
   display: flex;
   width: 100%;
@@ -199,17 +208,17 @@ export const NavItems = styled.ul<{ mobileMode?: boolean; theme: CowSwapTheme }>
       }
 
       ::-webkit-scrollbar-track {
-        background: ${Color.neutral90};
+        background: var(${UI.COLOR_NEUTRAL_90});
         border-radius: 10px;
       }
 
       ::-webkit-scrollbar-thumb {
-        background: ${Color.neutral70};
+        background: var(${UI.COLOR_NEUTRAL_70});
         border-radius: 10px;
       }
 
       ::-webkit-scrollbar-thumb:hover {
-        background: ${Color.neutral50};
+        background: var(${UI.COLOR_NEUTRAL_50});
       }
 
       > div {
@@ -240,6 +249,48 @@ interface DropdownContentProps {
   isNavItemDropdown?: boolean
 }
 
+export const PortaledDropdownContent = styled.ul<DropdownContentProps & { top?: number; right?: number }>`
+  --dropdownOffset: 8px;
+  --bgDropdownColor: ${({ theme }) => (theme.darkMode ? `var(${UI.COLOR_NEUTRAL_0})` : `var(${UI.COLOR_NEUTRAL_100})`)};
+  --blur: 16px;
+  --hoverBackground: ${({ theme }) => (theme.darkMode ? `var(${UI.COLOR_PAPER})` : `var(${UI.COLOR_NEUTRAL_90})`)};
+  --color: ${({ theme }) => (theme.darkMode ? `var(${UI.COLOR_NEUTRAL_98})` : `var(${UI.COLOR_NEUTRAL_0})`)};
+  --activeBackground: ${({ theme }) =>
+    theme.darkMode ? `var(${UI.COLOR_NEUTRAL_30})` : `var(${UI.COLOR_NEUTRAL_100})`};
+  --activeFill: ${({ theme }) => (theme.darkMode ? `var(${UI.COLOR_NEUTRAL_100})` : `var(${UI.COLOR_NEUTRAL_0})`)};
+  --defaultFill: ${({ theme }) => (theme.darkMode ? `var(${UI.COLOR_NEUTRAL_60})` : 'rgb(0 0 0 / 50%)')};
+
+  display: ${({ isOpen }) => (isOpen ? 'block' : 'none')};
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  background: var(--bgDropdownColor);
+  backdrop-filter: blur(var(--blur));
+  z-index: 1000;
+  padding: 6px;
+  margin: 0;
+  width: 320px;
+  height: auto;
+  border-radius: 28px;
+  position: fixed;
+  top: ${({ top }) => (top ? `${top}px` : 'auto')};
+  right: ${({ right }) => (right !== undefined ? `${right}px` : 'auto')};
+  cursor: pointer;
+  border: 1px solid var(--hoverBackground);
+  list-style: none;
+  color: var(--color);
+
+  ${({ mobileMode }) =>
+    mobileMode &&
+    css`
+      max-width: 100%;
+      width: 100%;
+      position: fixed;
+      border: 0;
+      background: var(--bgDropdownColor, var(${UI.COLOR_PAPER}, var(${UI.COLOR_NEUTRAL_100})));
+    `}
+`
+
 export const DropdownContent = styled.ul<DropdownContentProps>`
   --dropdownOffset: 8px;
 
@@ -253,7 +304,7 @@ export const DropdownContent = styled.ul<DropdownContentProps>`
   z-index: 1000;
   padding: ${({ isThirdLevel }) => (isThirdLevel ? '6px' : '6px')};
   margin: 0;
-  width: ${({ isThirdLevel }) => (isThirdLevel ? '100%' : '320px')};
+  width: ${({ isThirdLevel }) => (isThirdLevel ? '100%' : '340px')};
   height: auto;
   border-radius: 28px;
   position: ${({ isThirdLevel }) => (isThirdLevel ? 'relative' : 'absolute')};
@@ -371,19 +422,24 @@ export const StyledDropdownContentItem = styled.li<{
 
   > a,
   > div {
-    min-height: 56px;
+    align-items: center;
+    color: inherit;
     display: flex;
     flex-flow: row wrap;
-    align-items: center;
+    gap: 12px;
+    min-height: 56px;
     padding: 16px;
+    position: relative;
     text-decoration: none;
-    color: inherit;
     transition:
       background 0.2s ease-in-out,
       color 0.2s ease-in-out;
-    gap: 20px;
-    position: relative;
     width: 100%;
+  }
+
+  > a > ul > li > a,
+  > div > ul > li > a {
+    flex-flow: row nowrap;
   }
 
   ${({ mobileMode }) =>
@@ -394,6 +450,7 @@ export const StyledDropdownContentItem = styled.li<{
 
   &.hasDivider {
     margin: 0 0 12px;
+    position: relative;
 
     &::after {
       content: '';
@@ -464,6 +521,51 @@ export const StyledDropdownContentItem = styled.li<{
   }
 `
 
+export const DropdownContentLanguages = styled(DropdownContent)`
+  max-height: 200px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+
+  /* Firefox-only styles */
+  @supports (-moz-appearance: none) {
+    /* other browsers support ::-webkit-scrollbar, so we need "scrollbar-color" only for Firefox */
+    /* see https://caniuse.com/mdn-css_selectors_-webkit-scrollbar */
+    scrollbar-width: thin;
+    scrollbar-color: var(${UI.COLOR_TEXT_OPACITY_25}) var(${UI.COLOR_TEXT_OPACITY_10});
+  }
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: var(${UI.COLOR_TEXT_OPACITY_10});
+    border-radius: 10px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(${UI.COLOR_TEXT_OPACITY_25});
+    border-radius: 10px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: var(${UI.COLOR_TEXT_OPACITY_50});
+  }
+
+  &::-webkit-scrollbar-button {
+    display: none;
+  }
+
+  &::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  ${StyledDropdownContentItem} {
+    text-transform: capitalize;
+  }
+`
+
 export const DropdownContentItemIcon = styled.img`
   width: 56px;
   height: 56px;
@@ -482,18 +584,25 @@ export const DropdownContentItemImage = styled.div`
 export const DropdownContentItemText = styled.div`
   display: flex;
   flex-flow: column wrap;
-  gap: 4px;
-  white-space: nowrap;
   flex: 1 1 0;
+  gap: 4px;
+  max-width: calc(100% - 20px);
+  white-space: normal;
 `
 
 export const DropdownContentItemTitle = styled.span`
-  font-weight: bold;
-  font-size: 18px;
-  line-height: 1.2;
-  display: flex;
   align-items: center;
+  display: flex;
+  font-size: 18px;
+  font-weight: bold;
   gap: 8px;
+  line-height: 1.2;
+  white-space: normal;
+  word-break: break-word;
+`
+
+export const DropdownContentItemTitleNoWrap = styled(DropdownContentItemTitle)`
+  white-space: nowrap;
 `
 
 export const DropdownContentItemDescription = styled.span`
@@ -511,18 +620,18 @@ export const DropdownContentItemButton = styled(StyledDropdownContentItem)<{
   minHeight?: string
   mobileMode?: boolean
 }>`
-  background: ${({ bgColor }) => bgColor || Color.neutral100};
-  color: ${({ color }) => color || Color.neutral10};
+  background: ${({ bgColor }) => bgColor || `var(${UI.COLOR_NEUTRAL_100})`};
+  color: ${({ color }) => color || `var(${UI.COLOR_NEUTRAL_10})`};
   width: 100%;
   border: 0;
   border-radius: 24px;
 
   &:hover {
-    background: ${({ hoverBgColor }) => hoverBgColor || Color.neutral90};
+    background: ${({ hoverBgColor }) => hoverBgColor || `var(${UI.COLOR_NEUTRAL_90})`};
 
     &:hover {
-      background: ${({ hoverBgColor }) => hoverBgColor || Color.neutral100};
-      color: ${({ hoverColor }) => hoverColor || Color.neutral10};
+      background: ${({ hoverBgColor }) => hoverBgColor || `var(${UI.COLOR_NEUTRAL_100})`};
+      color: ${({ hoverColor }) => hoverColor || `var(${UI.COLOR_NEUTRAL_10})`};
     }
   }
 
@@ -595,7 +704,7 @@ export const RootNavItem = styled.li<{ isOpen?: boolean; mobileMode?: boolean }>
       align-items: center;
       justify-content: left;
       font-size: 21px;
-      font-weight: ${Font.weight.semibold};
+      font-weight: var(${UI.FONT_WEIGHT_SEMIBOLD});
       padding: 12px 16px 12px 6px;
     `}
   > svg {
@@ -695,5 +804,13 @@ export const GlobalSettingsButton = styled.button<{ mobileMode?: boolean }>`
     > svg {
       color: var(--activeFill);
     }
+  }
+`
+
+export const isMobileQuery = Media.upToLarge
+
+export const HideMobile = styled.div`
+  ${isMobileQuery(true)} {
+    display: none;
   }
 `

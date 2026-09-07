@@ -1,9 +1,28 @@
-import { Loader, Media, TokenSymbol } from '@cowprotocol/ui'
-import { UI } from '@cowprotocol/ui'
+import { Loader, Media, TokenSymbol, UI } from '@cowprotocol/ui'
 
-import styled from 'styled-components/macro'
+import styled, { css } from 'styled-components/macro'
 
 import Input from 'legacy/components/NumericalInput'
+
+export const OuterWrapper = styled.label<{ $disabled?: boolean }>`
+  position: relative;
+  width: 100%;
+
+  ${({ $disabled }) =>
+    $disabled &&
+    css`
+      pointer-events: none;
+
+      &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 16px;
+        cursor: not-allowed;
+        pointer-events: auto;
+      }
+    `}
+`
 
 export const Wrapper = styled.div`
   padding: 16px 16px 0;
@@ -52,14 +71,9 @@ export const MarketRateWrapper = styled.div`
 `
 
 export const MarketPriceButton = styled.button`
-  color: inherit;
   white-space: nowrap;
-  border: none;
   font-weight: 500;
-  cursor: pointer;
   font-size: inherit;
-  background: transparent;
-  padding: 0;
   color: var(${UI.COLOR_TEXT});
   transition:
     background var(${UI.ANIMATION_DURATION}) ease-in-out,
@@ -96,7 +110,6 @@ export const NumericalInput = styled(Input)<{ $loading: boolean }>`
   display: flex;
   align-items: center;
   background: none;
-  border: none;
   text-align: left;
   color: inherit;
   font-size: 32px;
@@ -132,8 +145,6 @@ export const ActiveCurrency = styled.button<{ $active?: boolean }>`
   gap: var(--gap);
   font-size: var(--font-size);
   font-weight: var(${UI.FONT_WEIGHT_MEDIUM});
-  border: none;
-  cursor: pointer;
   position: relative;
   height: var(--height);
   border-radius: var(--border-radius);
@@ -192,7 +203,7 @@ export const ActiveCurrency = styled.button<{ $active?: boolean }>`
 `
 
 export const UsdButton = styled(ActiveCurrency)`
-  font-weight: var(${UI.FONT_WEIGHT_BOLD});
+  font-weight: var(${UI.FONT_WEIGHT_SEMIBOLD});
   min-width: 40px;
   justify-content: center;
 
@@ -221,7 +232,7 @@ export const ActiveSymbol = styled.span<{ $active?: boolean }>`
     > div > img {
       opacity: 0.5;
     }
-    
+
     > ${TokenSymbol} {
       color: var(${UI.COLOR_TEXT_OPACITY_50});
     }

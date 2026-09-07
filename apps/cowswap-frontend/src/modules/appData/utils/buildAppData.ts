@@ -1,14 +1,14 @@
-import { stringifyDeterministic } from '@cowprotocol/app-data'
-import { SupportedChainId } from '@cowprotocol/cow-sdk'
+import { UtmParams } from '@cowprotocol/common-utils'
+import { stringifyDeterministic } from '@cowprotocol/cow-sdk'
 
 import { metadataApiSDK } from 'cowSdk'
-import { keccak256, toUtf8Bytes } from 'ethers/lib/utils'
 
-import { UtmParams } from 'modules/utm'
+import { toKeccak256 } from 'common/utils/toKeccak256'
 
 import { filterHooks, HooksFilter } from './appDataFilter'
 import { removePermitHookFromHooks, typedAppDataHooksToAppDataHooks } from './typedHooks'
 
+import { UserConsentsMetadata } from '../hooks/useRwaConsentForAppData'
 import {
   AppDataHooks,
   AppDataInfo,
@@ -22,31 +22,22 @@ import {
 export type BuildAppDataParams = {
   appCode: string
   environment?: string
-  chainId: SupportedChainId
   slippageBips: number
   isSmartSlippage?: boolean
   orderClass: AppDataOrderClass
-  referrerAccount?: string
+  refCode?: string
   utm: UtmParams | undefined
   typedHooks?: TypedAppDataHooks
   widget?: AppDataWidget
   partnerFee?: AppDataPartnerFee
   replacedOrderUid?: string
-}
-
-async function generateAppDataFromDoc(
-  doc: AppDataRootSchema,
-): Promise<Pick<AppDataInfo, 'fullAppData' | 'appDataKeccak256'>> {
-  const fullAppData = await stringifyDeterministic(doc)
-  const appDataKeccak256 = toKeccak256(fullAppData)
-  return { fullAppData, appDataKeccak256 }
+  userConsent?: UserConsentsMetadata
 }
 
 export async function buildAppData({
-  chainId,
   slippageBips,
   isSmartSlippage,
-  referrerAccount,
+  refCode,
   appCode,
   environment,
   orderClass: orderClassName,
@@ -55,9 +46,9 @@ export async function buildAppData({
   widget,
   partnerFee,
   replacedOrderUid,
+  userConsent,
 }: BuildAppDataParams): Promise<AppDataInfo> {
-  const referrerParams =
-    referrerAccount && chainId === SupportedChainId.MAINNET ? { address: referrerAccount } : undefined
+  const referrerParams: AppDataRootSchema['metadata']['referrer'] = refCode ? { code: refCode } : undefined
 
   const quoteParams = {
     slippageBips,
@@ -78,6 +69,7 @@ export async function buildAppData({
       widget,
       partnerFee,
       ...{ replacedOrder },
+      ...(userConsent ? userConsent : {}),
     },
   })
 
@@ -86,8 +78,11 @@ export async function buildAppData({
   return { doc, fullAppData, appDataKeccak256 }
 }
 
-export function toKeccak256(fullAppData: string) {
-  return keccak256(toUtf8Bytes(fullAppData))
+export function removePermitHookFromAppData(
+  appData: AppDataInfo,
+  typedHooks: TypedAppDataHooks | undefined,
+): Promise<AppDataInfo> {
+  return replaceHooksOnAppData(appData, removePermitHookFromHooks(typedHooks))
 }
 
 export async function replaceHooksOnAppData(
@@ -121,9 +116,10 @@ export async function replaceHooksOnAppData(
   }
 }
 
-export function removePermitHookFromAppData(
-  appData: AppDataInfo,
-  typedHooks: TypedAppDataHooks | undefined,
-): Promise<AppDataInfo> {
-  return replaceHooksOnAppData(appData, removePermitHookFromHooks(typedHooks))
+async function generateAppDataFromDoc(
+  doc: AppDataRootSchema,
+): Promise<Pick<AppDataInfo, 'fullAppData' | 'appDataKeccak256'>> {
+  const fullAppData = await stringifyDeterministic(doc)
+  const appDataKeccak256 = toKeccak256(fullAppData)
+  return { fullAppData, appDataKeccak256 }
 }

@@ -1,27 +1,12 @@
-import React, { ReactNode } from 'react'
+import { ReactNode } from 'react'
 
-import ICON_STAR from '@cowprotocol/assets/cow-swap/star-shine.svg'
+import svgStarShineSrc from '@cowprotocol/assets/cow-swap/star-shine.svg'
 import { UI } from '@cowprotocol/ui'
 
 import SVG from 'react-inlinesvg'
-import { Textfit as ReactTextFit } from 'react-textfit'
 
+import { useAutoFitText } from '../../../hooks/useAutoFitText'
 import * as styledEl from '../styled'
-
-interface TextFitProps {
-  children: ReactNode
-  mode: 'single' | 'multi'
-  minFontSize: number
-  maxFontSize: number
-}
-
-export function TextFit({ mode, children, minFontSize, maxFontSize }: TextFitProps) {
-  return (
-    <ReactTextFit mode={mode} forceSingleModeWidth={false} min={minFontSize} max={maxFontSize}>
-      {children}
-    </ReactTextFit>
-  )
-}
 
 interface StarIconProps {
   size: number
@@ -30,10 +15,41 @@ interface StarIconProps {
   right: number
   color?: UI
 }
-export function StarIcon({ size, top, bottom, right, color }: StarIconProps) {
+
+interface TextFitProps {
+  children: ReactNode
+  mode: 'single' | 'multi'
+  minFontSize: number
+  maxFontSize: number
+}
+
+export function StarIcon({ size, top, bottom, right, color }: StarIconProps): ReactNode {
   return (
     <styledEl.StarIcon {...{ size, top, bottom, right, color: color ? `var(${color})` : undefined }}>
-      <SVG src={ICON_STAR} />
+      <SVG src={svgStarShineSrc} />
     </styledEl.StarIcon>
+  )
+}
+
+export function TextFit({ mode, children, minFontSize, maxFontSize }: TextFitProps): ReactNode {
+  const textRef = useAutoFitText<HTMLDivElement>({ min: minFontSize, max: maxFontSize, mode })
+
+  return (
+    <div
+      ref={textRef}
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        alignItems: mode === 'single' ? 'center' : 'flex-start',
+        justifyContent: 'center',
+        overflow: 'hidden',
+        textAlign: 'center',
+        lineHeight: 1.2,
+        whiteSpace: mode === 'single' ? 'nowrap' : 'normal',
+      }}
+    >
+      {children}
+    </div>
   )
 }

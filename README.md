@@ -1,52 +1,88 @@
 [![Tests](https://github.com/cowprotocol/cowswap/workflows/CI/badge.svg)](https://github.com/cowprotocol/cowswap/actions/workflows/ci.yml?query=workflow%3ACI)
 
-Chameleon swap is the first trading interface built on top of CoW Protocol.
+CoW Swap is the first trading interface built on top of CoW Protocol.
 
 It allows you to buy and sell tokens using gasless orders that are settled
 peer-to-peer among its users or into any on-chain liquidity source while
 providing MEV protection.
 
-| **Platform**             | **Link**                                                                                                      |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------- |
-| 🐮 **Chameleon swap** 🐮 | [swap.cow.fi](https://chameleon.exchange/)                                                                    |
-| Chameleon swap (IPFS)    | Every release is deployed automatically to IPFS ([Releases](https://github.com/cowprotocol/cowswap/releases)) |
-| Chameleon swap (ENS)     | [ens://cowswap.eth](ens://cowswap.eth) or ([cowswap.eth.limo](https://cowswap.eth.limo))                      |
-| CoW Protocol             | [cow.fi](https://cow.fi)                                                                                      |
-| Docs                     | [docs.cow.fi](https://docs.cow.fi)                                                                            |
-| Governance (Snapshot)    | [snapshot.org/#/cow.eth](https://snapshot.org/#/cow.eth)                                                      |
-| Stats                    | [dune.com/cowprotocol/cowswap](https://dune.com/cowprotocol/cowswap)                                          |
-| X/Twitter                | [@CoWSwap](https://twitter.com/CoWSwap)                                                                       |
-| Discord                  | [discord.com/invite/cowprotocol](https://discord.com/invite/cowprotocol)                                      |
-| Forum                    | [forum.cow.fi](https://forum.cow.fi)                                                                          |
+| **Platform**          | **Link**                                                                                                      |
+|-----------------------|---------------------------------------------------------------------------------------------------------------|
+| 🐮 **CoW Swap** 🐮    | [swap.cow.fi](https://swap.cow.fi/)                                                                           |
+| CoW Swap (IPFS)       | Every release is deployed automatically to IPFS ([Releases](https://github.com/cowprotocol/cowswap/releases)) |
+| CoW Swap (ENS)        | [ens://cowswap.eth](ens://cowswap.eth) or ([cowswap.eth.limo](https://cowswap.eth.limo))                      |
+| CoW Protocol          | [cow.fi](https://cow.fi)                                                                                      |
+| Docs                  | [docs.cow.fi](https://docs.cow.fi)                                                                            |
+| Governance (Snapshot) | [snapshot.org/#/cow.eth](https://snapshot.org/#/cow.eth)                                                      |
+| Stats                 | [dune.com/cowprotocol/cowswap](https://dune.com/cowprotocol/cow-swap-home)                                    |
+| X/Twitter             | [@CoWSwap](https://twitter.com/CoWSwap)                                                                       |
+| Discord               | [discord.com/invite/cowprotocol](https://discord.com/invite/cowprotocol)                                      |
+| Forum                 | [forum.cow.fi](https://forum.cow.fi)                                                                          |
 
-# 🐮 Run Chameleon swap
+# 🐮 Run CoW Swap
 
 First install Dependencies:
 
 ```bash
-yarn
+pnpm install
 ```
+
+To upgrade `@cowprotocol/cow-sdk` and all `@cowprotocol/sdk-*` packages to the latest published versions:
+
+```bash
+pnpm upgrade-sdk-latest
+pnpm install
+```
+
+Or, if you want to use `@cowprotocol/sdk` preview versions like `"@cowprotocol/cow-sdk": "7.0.4-pr-546-c04641f0.0"`, then:
+
+- run `pnpm upgrade-sdk-preview https://github.com/cowprotocol/cow-sdk/pull/787` with a link to SDK PR with deployed previews
+- run `PACKAGE_READ_AUTH_TOKEN=XXX pnpm run install:ci` instead of just `pnpm install`
+- the token must be generated in GitHub with `read:packages` permissions
 
 ## Run
 
-Start Chameleon swap on `http://localhost:3000`
+Start CoW Swap on `http://localhost:3000`
 
 ```bash
-yarn start
+pnpm start
 ```
+
+Environment selection for `cowswap-frontend` is configured explicitly via `REACT_APP_ENVIRONMENT`
+in the app-level `.env.*` files:
+
+- Supported values:
+  `local`, `development`, `pr`, `staging`, `production`, `ens`
+
+- `apps/cowswap-frontend/.env.development` -> `local`
+- `apps/cowswap-frontend/.env.dev` -> `development`
+- `apps/cowswap-frontend/.env.staging` -> `staging`
+- `apps/cowswap-frontend/.env.production` -> `production`
 
 ## Build
 
 Build the project. The static files will be generated in the `build` folder.
 
 ```bash
-yarn build
+pnpm run build
 ```
+
+### Sentry Sourcemaps
+
+`cowswap-frontend` generates production sourcemaps for Sentry.
+
+- Runtime error reporting still uses `REACT_APP_SENTRY_DSN`.
+- Build-time sourcemap upload uses `SENTRY_AUTH_TOKEN`.
+- `SENTRY_ORG` and `SENTRY_PROJECT` are optional overrides.
+  Defaults:
+  `cowprotocol` and `cowswap`
+
+If `SENTRY_AUTH_TOKEN` is not set, the build still succeeds, but sourcemaps are not uploaded to Sentry.
 
 ## Unit testing
 
 ```bash
-yarn test
+pnpm run test
 ```
 
 # 🔎 Explorer
@@ -58,41 +94,47 @@ Start the Explorer on <http://localhost:4200>
 ### Start
 
 ```bash
-yarn start:explorer
+pnpm run start:explorer
 ```
+
+Explorer environment selection is configured explicitly via `REACT_APP_ENVIRONMENT`.
+See [apps/explorer/.env.example](apps/explorer/.env.example).
 
 ### Build
 
 ```bash
-yarn build:explorer
+pnpm run build:explorer
 ```
 
 # 🐄 cow.fi
 
-Start CoW.fi on <http://localhost:3001>
+Start cow.fi on <http://localhost:3001>
 
 ### Start
 
 ```bash
-yarn start:cowfi
+pnpm run start:cowfi
 ```
+
+`cow-fi` no longer infers its environment from the hostname. Set `NEXT_PUBLIC_ENVIRONMENT`
+explicitly. See [apps/cow-fi/.env.example](apps/cow-fi/.env.example).
 
 ### Build
 
 ```bash
-yarn build:cowfi
+pnpm run build:cowfi
 ```
 
 # 🖼️ Widget Configurator
 
-Start the Widget Configurator on <http://127.0.0.1:4200/widget-configurator>
+Start the Widget Configurator on <http://localhost:4200/widget-configurator>
 
 ```bash
 # Start
-yarn start:widget
+pnpm run start:widget
 
 # Build
-yarn build:widget
+pnpm run build:widget
 ```
 
 # 🌌 Cosmos UI Library
@@ -100,61 +142,121 @@ yarn build:widget
 Start the Cosmos UI Library on <http://localhost:5000>
 
 ```bash
-yarn run cosmos
+pnpm run cosmos
 ```
 
 # 🤓 Development
 
-## Integration test
+## E2E tests
 
-> ⚠️ To run the tests. Make sure you add the required environment varianbles to
-> your `.env.local` file with:
+CoW Swap's e2e suite lives in [`apps/cowswap-e2e-tests`](apps/cowswap-e2e-tests) (Playwright +
+Synpress). See that app's [README](apps/cowswap-e2e-tests/README.md) for the full guide — mocks, page
+objects, wallet fixtures, and troubleshooting.
+
+> ⚠️ Add the required environment variables to your root `.env.local` file:
 >
-> - `INTEGRATION_TEST_PRIVATE_KEY=<your-private-key>`: Private key
-> - `INTEGRATION_TESTS_INFURA_KEY=<your-infura-key>`: Infura key
+> - `INTEGRATION_TEST_PRIVATE_KEY=<a throwaway Sepolia private key>`
+> - `REACT_APP_NETWORK_URL_11155111=<a Sepolia RPC URL>`
 
-To launch it with our development server (so you have live-reloading):
-
-```bash
-yarn start
-yarn cypress
-```
-
-Alternatively, you can build the project and launch the integration test.
+Most specs — including the PR smoke subset run in CI — use a fast mock wallet fixture and need no
+setup beyond the env vars above. A separate Synpress fixture drives a real MetaMask extension for
+scenarios that must exercise actual wallet UI; only specs using *that* fixture need a pre-built
+cache:
 
 ```bash
-yarn build
-yarn integration-test
+pnpm e2e:build-cache
 ```
 
-If we want to use the Cypress UI:
+> Neither the `e2e-pw-smoke` nor `e2e-pw-nightly` CI workflow runs this step — no spec in the
+> suite currently uses the Synpress fixture, so CI never touches `.cache-synpress`. If a spec
+> starts using it, its workflow must build or restore the cache first.
+
+Then run the suite. Playwright builds and serves the app itself, so there's no need to start a dev
+server in a separate terminal:
 
 ```bash
-yarn build
-yarn serve
-yarn cypress
+# Full suite
+pnpm e2e
+
+# PR smoke subset only
+pnpm e2e:smoke
+
+# Playwright UI mode, for interactive debugging
+pnpm e2e:ui
 ```
 
-## Build/test UI Library
+## Analyze build
 
-Chameleon swap has a library of reusable components.
-
-```bash
-yarn ui:build
-yarn ui:test
-```
-
-## Build
-
-```bash
-yarn build
-```
-
-Analyze Chameleon swap bundle:
+Analyze CoW Swap bundle:
 
 ```bash
 # Use one of the following templates: "sunburst" | "treemap" | "network" | "raw-data" | "list";
-ANALYZE_BUNDLE=true ANALYZE_BUNDLE_TEMPLATE=sunburst yarn build
+ANALYZE_BUNDLE=true ANALYZE_BUNDLE_TEMPLATE=sunburst pnpm run build
+```
+
+## Developing against a local `cow-sdk` checkout
+
+Sometimes a feature needs `@cowprotocol/cow-sdk` changes that aren't published yet (e.g. the
+Solana trading support under active development). To develop against a sibling
+[`cow-sdk`](https://github.com/cowprotocol/cow-sdk) checkout instead of the published npm
+packages, clone it next to this repo:
+
+```text
+projects/
+├── cow-sdk/
+└── cowswap/
+```
+
+then build the package(s) you need there:
+
+```bash
+cd ../cow-sdk
+pnpm --filter @cowprotocol/cow-sdk build      # rebuilds @cowprotocol/sdk-trading too (a dependency)
+```
+
+**Two different linking mechanisms are in play, depending on whether the package is already a
+real dependency here:**
+
+- **Packages already in `package.json`** (`@cowprotocol/cow-sdk`, `@cowprotocol/sdk-trading`,
+  …): `pnpm link` doesn't work cleanly in this pnpm version — its `link <dir>` form always
+  requires a positional directory and rewrites `package.json`/the lockfile with a `link:`
+  dependency, which isn't something you want committed on top of an already-published version
+  pin. Instead, symlink the package directly inside the shared pnpm store, bypassing pnpm
+  entirely:
+
+  ```bash
+  # Find the store path pnpm resolved for the published version, e.g.:
+  ls node_modules/.pnpm | grep '@cowprotocol+cow-sdk@'
+  # Then replace that store entry's package folder with a symlink to your local build:
+  rm node_modules/.pnpm/@cowprotocol+cow-sdk@<version>*/node_modules/@cowprotocol/cow-sdk
+  ln -s /path/to/cow-sdk/packages/sdk \
+    node_modules/.pnpm/@cowprotocol+cow-sdk@<version>*/node_modules/@cowprotocol/cow-sdk
+  ```
+
+  This is **local-only and untracked by git** — it lives entirely in `node_modules`, which is
+  gitignored, and it does not survive a fresh `pnpm install` (that restores the normal
+  store-managed symlink back to the published version). Redo it whenever you reinstall.
+
+- **A package that isn't published yet at all** (no npm fallback to preserve): add a real
+  `link:` dependency directly in the consuming app's `package.json`, e.g.:
+
+  ```json
+  "@cowprotocol/sdk-trading-solana": "link:../../../cow-sdk/packages/sdk-trading-solana"
+  ```
+
+  then run `pnpm install`. Unlike the workaround above, this **is** a real, committed manifest
+  change — `pnpm install` honors it going forward, but it also means anyone installing this repo
+  (including CI) needs that exact relative path to resolve to a built `cow-sdk` checkout, or the
+  install fails outright. Only use this for a genuinely new, unpublished dependency, and treat it
+  as a temporary state to replace with a real published version pin before merging to a shared
+  branch.
+
+**After (re)linking either way:** if a dev server is already running, clear Vite's dependency
+cache so it re-bundles against the new code, then restart:
+
+```bash
+rm -rf apps/cowswap-frontend/node_modules/.vite
+pnpm start
 ```
 
 # ⚙️ Configuration
@@ -171,10 +273,16 @@ environment variables:
 
 ```ini
 REACT_APP_NETWORK_URL_1: https://...
-REACT_APP_NETWORK_URL_11155111: https://...
-REACT_APP_NETWORK_URL_100: https://...
-REACT_APP_NETWORK_URL_42161: https://...
+REACT_APP_NETWORK_URL_56: https://...
+REACT_APP_NETWORK_URL_100: https://rpc.gnosis.gateway.fm
+REACT_APP_NETWORK_URL_137: https://...
 REACT_APP_NETWORK_URL_8453: https://...
+REACT_APP_NETWORK_URL_9745: https://rpc.plasma.to
+REACT_APP_NETWORK_URL_42161: https://...
+REACT_APP_NETWORK_URL_43114: https://...
+REACT_APP_NETWORK_URL_57073: https://rpc-ten.inkonchain.com
+REACT_APP_NETWORK_URL_59144: https://rpc.linea.build
+REACT_APP_NETWORK_URL_11155111: https://...
 ```
 
 Additionally, if you plan to run the integration tests locally you must define:
@@ -199,11 +307,29 @@ The API endpoint is configured using the environment variable
 REACT_APP_ORDER_BOOK_URLS='{"1":"https://YOUR_HOST","100":"https://YOUR_HOST","5":"https://YOUR_HOST"}
 ```
 
+## Sentry Configuration
+
+For `apps/cowswap-frontend`:
+
+```ini
+REACT_APP_SENTRY_DSN=https://<public-dsn>
+SENTRY_AUTH_TOKEN=<sentry-auth-token>
+```
+
+Optional overrides for the build-time upload target:
+
+```ini
+SENTRY_ORG=cowprotocol
+SENTRY_PROJECT=cowswap
+```
+
+`SENTRY_AUTH_TOKEN` is the only required secret for source map upload. The org and project values are public identifiers and already default to the values above.
+
 ## BFF API Endpoints (Backend for Frontend)
 
 The BFF API is a helper API that provides some additional data to the frontend.
 It is a API that is used to enhance the frontend experience enabling some
-features. It is not consider a required API for Chameleon swap core functionality, the
+features. It is not consider a required API for CoW Swap core functionality, the
 app will still allow the user to place order and will have some fallback logics
 in case this API is not available.
 
@@ -221,7 +347,7 @@ REACT_APP_BFF_BASE_URL=https://bff.cow.fi
 
 The CMS API is a helper API that provides some additional content to the frontend.
 
-It is not considered a required API for Chameleon swap core functionality, the
+It is not considered a required API for CoW Swap core functionality, the
 app will still allow the user to place orders and will have some fallback logic
 in case this API is not available.
 
@@ -237,13 +363,13 @@ REACT_APP_CMS_BASE_URL=https://cms.cow.fi/api
 
 ## Price feeds
 
-Chameleon swap tries to find the best price available on-chain using some price feeds.
+CoW Swap tries to find the best price available on-chain using some price feeds.
 
 All price feeds are enabled by default, but they can be individually disabled by
 using an environment variable:
 
 | Name      | Environment variable                 | Type                         | Description                                                                          |
-| --------- | ------------------------------------ | ---------------------------- | ------------------------------------------------------------------------------------ |
+|-----------|--------------------------------------|------------------------------|--------------------------------------------------------------------------------------|
 | **1inch** | `REACT_APP_PRICE_FEED_1INCH_ENABLED` | `boolean` (default = `true`) | [Paraswap](https://1inch.exchange) price estimation. Used for all price estimations. |
 | **0x**    | `REACT_APP_PRICE_FEED_0X_ENABLED`    | `boolean` (default = `true`) | [0x](https://0x.org/) price estimation. Used for all price estimation.               |
 
@@ -257,7 +383,7 @@ metadata JSON containing some information about the trade (using `keccak256` on
 the `UTF-8` bytes).
 
 The format of the JSON follows the format defined in
-[@cowprotocol/app-data](https://github.com/cowprotocol/app-data).
+[@cowprotocol/sdk-app-data](https://www.npmjs.com/package/@cowprotocol/sdk-app-data).
 
 To set your own `AppData`, change `REACT_APP_FULL_APP_DATA_<environment>`
 environment variable. For more details, check out the environment file (<.env>)
@@ -266,13 +392,9 @@ environment variable. For more details, check out the environment file (<.env>)
 
 ## Sitemap
 
-The sitemap can be found in <./public/sitemap.xml>
+`pnpm run build:cowfi` also generates `./sitemap.xml` file.
 
-To update its content:
-
-1. Edit the list of pages in <./src/sitemap.js>
-2. Run `yarn sitemap`
-3. Commit the changes to git
+See [next-sitemap.config.js](apps/cow-fi/next-sitemap.config.js)
 
 # 🔫 Troubleshooting
 
@@ -288,9 +410,21 @@ In case of problems with the service worker cache you force a reset using
 
 ## Vercel preview build
 
+Each app’s `vercel.json` uses `cd ../..` then **`npx pnpm@10.30.3`** so installs match root **`packageManager`** and avoid Vercel’s default **pnpm 9** (which can trigger `ERR_PNPM_LOCKFILE_CONFIG_MISMATCH` with this lockfile).
+
+**Project settings that must line up (if deploys fail for unclear reasons):**
+
+1. **Root Directory** for that Vercel project should be the app folder (e.g. `apps/cow-fi`). If it is the monorepo root instead, `cd ../..` is wrong and install reads the wrong tree.
+2. **Build & Development →** no **Install Command** / **Build Command** override in the dashboard that replaces `vercel.json` (or align them with the repo).
+3. **Node.js version** on Vercel should be current LTS (Corepack / `npx` expect a recent Node).
+4. **`ERR_PNPM_LOCKFILE_CONFIG_MISMATCH`:** run `pnpm install` locally with **pnpm 10.30.3**, commit any `pnpm-lock.yaml` change, and ensure root `package.json` `pnpm.*` config was not edited without reinstalling.
+5. **Ignored Build Step:** use `node tools/scripts/ignore-build-step.js --app=…` — do not use a broken one-line `[ … || … ]` `sh` test (see below).
+
 Since this repo includes multiple apps, we do not want to build all of them on each PR because it causes long build queues in Vercel.  
-Some apps (see the list bellow) are not required to be built on each PR so we run them only a PR is labeled with a specific label.  
-This label is defined in the project settings on Vercel in `Settings`/`Git`/`Ignored Build Step` script.  
+Some apps (see the list below) are not required to be built on each PR so we run them only a PR is labeled with a specific label.
+This label is defined in the project settings on Vercel in `Settings`/`Git`/`Ignored Build Step` script.
+Use the Node script below (do **not** use a one-line `sh`/`bash` test with `[ ... || ... ]` inside a single `[` — POSIX `[` does not support `||` there, which breaks branch names like `feature/foo` and logs `[: missing \`]'`).
+
 For example, the label for the widget-configurator is `preview-widget-cfg`:
 
 ```
@@ -306,5 +440,5 @@ List of applications and their labels:
 # 📚 Technical Documentation
 
 1. [Oveall Architecture](docs/architecture-overview.md)
-2. [Amounts formatting](apps/cowswap-frontend/src/utils/amountFormat/README.md)
+2. [Amounts formatting](libs/common-utils/src/amountFormat/README.md)
 3. [ABIs](libs/abis/README.md)

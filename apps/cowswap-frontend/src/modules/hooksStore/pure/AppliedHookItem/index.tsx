@@ -1,10 +1,15 @@
-import ICON_CHECK_ICON from '@cowprotocol/assets/cow-swap/check-singular.svg'
-import ICON_GRID from '@cowprotocol/assets/cow-swap/grid.svg'
-import TenderlyLogo from '@cowprotocol/assets/cow-swap/tenderly-logo.svg'
-import ICON_X from '@cowprotocol/assets/cow-swap/x.svg'
+import { ReactElement } from 'react'
+
+import svgCheckSingularSrc from '@cowprotocol/assets/cow-swap/check-singular.svg'
+import svgGridSrc from '@cowprotocol/assets/cow-swap/grid.svg'
+import svgTenderlySrc from '@cowprotocol/assets/cow-swap/tenderly-logo.svg'
+import svgXSrc from '@cowprotocol/assets/cow-swap/x.svg'
+import { getSafeAbsoluteUrl } from '@cowprotocol/common-utils'
 import { CowHookDetails } from '@cowprotocol/hook-dapp-lib'
 import { InfoTooltip } from '@cowprotocol/ui'
 
+import { t } from '@lingui/core/macro'
+import { Trans, useLingui } from '@lingui/react/macro'
 import { Edit2, Trash2, ExternalLink as ExternalLinkIcon, RefreshCw } from 'react-feather'
 import SVG from 'react-inlinesvg'
 
@@ -20,6 +25,7 @@ interface HookItemProp {
   account: string | undefined
   hookDetails: CowHookDetails
   dapp: HookDapp | undefined
+  disabled?: boolean
   isPreHook: boolean
   removeHook: (uuid: string, isPreHook: boolean) => void
   editHook: (uuid: string) => void
@@ -29,70 +35,93 @@ interface HookItemProp {
 // TODO: refactor tu use single simulation as fallback
 const isBundleSimulationReady = true
 
-export function AppliedHookItem({ account, hookDetails, dapp, isPreHook, editHook, removeHook, index }: HookItemProp) {
-  const { isValidating, mutate } = useTenderlyBundleSimulation()
+interface BundleSimulationStatusProps {
+  isSuccessful: boolean
+  safeSimulationUrl: string | null
+  simulationStatus: string
+  simulationTooltip: string
+}
 
+// TODO: Break down this large function into smaller functions
+// TODO: Add proper return type annotation
+// TODO: Reduce function complexity by extracting logic
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export function AppliedHookItem({
+  account,
+  hookDetails,
+  dapp,
+  disabled = false,
+  isPreHook,
+  editHook,
+  removeHook,
+  index,
+}: HookItemProp) {
+  const { isValidating, mutate } = useTenderlyBundleSimulation()
+  const { i18n } = useLingui()
   const simulationData = useSimulationData(hookDetails.uuid)
 
-  const simulationStatus = simulationData?.status ? 'Simulation successful' : 'Simulation failed'
+  const simulationStatus = simulationData?.status ? t`Simulation successful` : t`Simulation failed`
   const simulationTooltip = simulationData?.status
-    ? 'The Tenderly simulation was successful. Your transaction is expected to succeed.'
-    : 'The Tenderly simulation failed. Please review your transaction.'
+    ? t`The Tenderly simulation was successful. Your transaction is expected to succeed.`
+    : t`The Tenderly simulation failed. Please review your transaction.`
+
+  const dAppName = dapp?.name ? i18n._(dapp.name) : ''
+  const safeSimulationUrl = simulationData ? getSafeAbsoluteUrl(simulationData.link) : null
 
   return (
     <styledEl.HookItemWrapper data-uid={hookDetails.uuid} as="li">
       <styledEl.HookItemHeader title={hookDetails.uuid}>
         <styledEl.HookItemInfo className="DragArea">
           <styledEl.DragIcon>
-            <SVG src={ICON_GRID} />
+            <SVG src={svgGridSrc} />
           </styledEl.DragIcon>
           <styledEl.HookNumber>{index + 1}</styledEl.HookNumber>
-          <img src={dapp?.image || ''} alt={dapp?.name} />
-          <span>{dapp?.name}</span>
+          <img src={dapp?.image || ''} alt={dAppName} />
+          <span>{dAppName}</span>
           {isValidating && <styledEl.Spinner />}
         </styledEl.HookItemInfo>
         <styledEl.HookItemActions>
-          <styledEl.ActionBtn onClick={() => mutate()} disabled={isValidating}>
+          <styledEl.ActionBtn onClick={() => mutate()} disabled={isValidating || disabled}>
             <RefreshCw size={14} />
           </styledEl.ActionBtn>
-          <styledEl.ActionBtn onClick={() => editHook(hookDetails.uuid)}>
+          <styledEl.ActionBtn onClick={disabled ? undefined : () => editHook(hookDetails.uuid)} disabled={disabled}>
             <Edit2 size={14} />
           </styledEl.ActionBtn>
-          <styledEl.ActionBtn onClick={() => removeHook(hookDetails.uuid, isPreHook)} actionType="remove">
+          <styledEl.ActionBtn
+            onClick={disabled ? undefined : () => removeHook(hookDetails.uuid, isPreHook)}
+            actionType="remove"
+            disabled={disabled}
+          >
             <Trash2 size={14} />
           </styledEl.ActionBtn>
         </styledEl.HookItemActions>
       </styledEl.HookItemHeader>
 
       {account && isBundleSimulationReady && simulationData && (
-        <styledEl.SimulateContainer isSuccessful={simulationData.status}>
-          {simulationData.status ? (
-            <SVG src={ICON_CHECK_ICON} color="green" width={16} height={16} aria-label="Simulation Successful" />
-          ) : (
-            <SVG src={ICON_X} color="red" width={14} height={14} aria-label="Simulation Failed" />
-          )}
-          {simulationData.link ? (
-            <a href={simulationData.link} target="_blank" rel="noopener noreferrer">
-              {simulationStatus}
-              <ExternalLinkIcon size={14} />
-            </a>
-          ) : (
-            <span>{simulationStatus}</span>
-          )}
-          <InfoTooltip content={simulationTooltip} />
-        </styledEl.SimulateContainer>
+        <BundleSimulationStatus
+          isSuccessful={simulationData.status}
+          safeSimulationUrl={safeSimulationUrl}
+          simulationStatus={simulationStatus}
+          simulationTooltip={simulationTooltip}
+        />
       )}
 
       {!isBundleSimulationReady && (
         <styledEl.OldSimulateContainer>
           <div>
             <styledEl.SimulateHeader>
-              <strong>Run a simulation</strong>
-              <InfoTooltip content="This transaction can be simulated before execution to ensure that it will be succeed, generating a detailed report of the transaction execution." />
+              <strong>
+                <Trans>Run a simulation</Trans>
+              </strong>
+              <InfoTooltip
+                content={t`This transaction can be simulated before execution to ensure that it will be succeed, generating a detailed report of the transaction execution.`}
+              />
             </styledEl.SimulateHeader>
             <styledEl.SimulateFooter>
-              <span>Powered by</span>
-              <SVG src={TenderlyLogo} description="Tenderly" />
+              <span>
+                <Trans>Powered by</Trans>
+              </span>
+              <SVG src={svgTenderlySrc} description="Tenderly" />
             </styledEl.SimulateFooter>
           </div>
           <div>
@@ -101,5 +130,31 @@ export function AppliedHookItem({ account, hookDetails, dapp, isPreHook, editHoo
         </styledEl.OldSimulateContainer>
       )}
     </styledEl.HookItemWrapper>
+  )
+}
+
+function BundleSimulationStatus({
+  isSuccessful,
+  safeSimulationUrl,
+  simulationStatus,
+  simulationTooltip,
+}: BundleSimulationStatusProps): ReactElement {
+  return (
+    <styledEl.SimulateContainer isSuccessful={isSuccessful}>
+      {isSuccessful ? (
+        <SVG src={svgCheckSingularSrc} color="green" width={16} height={16} aria-label={t`Simulation Successful`} />
+      ) : (
+        <SVG src={svgXSrc} color="red" width={14} height={14} aria-label={t`Simulation Failed`} />
+      )}
+      {safeSimulationUrl ? (
+        <a href={safeSimulationUrl} target="_blank" rel="noopener noreferrer">
+          {simulationStatus}
+          <ExternalLinkIcon size={14} />
+        </a>
+      ) : (
+        <span>{simulationStatus}</span>
+      )}
+      <InfoTooltip content={simulationTooltip} />
+    </styledEl.SimulateContainer>
   )
 }

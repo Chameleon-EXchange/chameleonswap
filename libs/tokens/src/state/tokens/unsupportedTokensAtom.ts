@@ -2,7 +2,7 @@ import { atom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
 
 import { getJotaiMergerStorage } from '@cowprotocol/core'
-import { mapSupportedNetworks, SupportedChainId } from '@cowprotocol/cow-sdk'
+import { getAddressKey, mapSupportedNetworks, SupportedChainId } from '@cowprotocol/cow-sdk'
 import { PersistentStateByChain } from '@cowprotocol/types'
 
 import { UnsupportedTokensState } from '../../types'
@@ -21,7 +21,7 @@ export const currentUnsupportedTokensAtom = atom((get) => {
 })
 
 export const addUnsupportedTokenAtom = atom(null, (get, set, chainId: SupportedChainId, tokenAddress: string) => {
-  const tokenId = tokenAddress.toLowerCase()
+  const tokenId = getAddressKey(tokenAddress)
   const tokenList = get(unsupportedTokensAtom)
   const tokenListForChain = tokenList[chainId] || {}
 
@@ -44,7 +44,7 @@ export const removeUnsupportedTokensAtom = atom(null, (get, set, tokenAddresses:
   const tokenListForChain = tokenList[chainId] || {}
 
   tokenAddresses.forEach((tokenAddress) => {
-    const tokenId = tokenAddress.toLowerCase()
+    const tokenId = getAddressKey(tokenAddress)
 
     delete tokenListForChain[tokenId]
   })

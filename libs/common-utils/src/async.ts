@@ -6,9 +6,12 @@
 
 import { Command } from '@cowprotocol/types'
 
-export type ResolveCallback<T> = (value: CancelableResult<T>) => void
-export type RejectCallback = (reason?: any) => void
+export type CancelableResult<T> = CancelledResult | SuccessResult<T>
 export type CancelCallback = Command
+export type CancelledResult = {
+  cancelled: true
+  data: undefined
+}
 
 export type ImperativePromise<T> = {
   promise: Promise<CancelableResult<T>>
@@ -17,18 +20,24 @@ export type ImperativePromise<T> = {
   cancel: CancelCallback
 }
 
-export type CancelableResult<T> = CancelledResult | SuccessResult<T>
+// TODO: Replace any with proper type definitions
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type RejectCallback = (reason?: any) => void
 
-export type CancelledResult = {
-  cancelled: true
-  data: undefined
-}
+export type ResolveCallback<T> = (value: CancelableResult<T>) => void
 
 export type SuccessResult<T> = {
   cancelled: false
   data: T
 }
 
+// TODO: Replace any with proper type definitions
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ArgumentsType<T> = T extends (...args: infer A) => any ? A : never
+
+// TODO: Replace any with proper type definitions
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AsyncFunction<T> = (...args: any[]) => Promise<T>
 export function createImperativePromise<T>(promiseArg?: Promise<T> | null | undefined): ImperativePromise<T> {
   let resolve: ResolveCallback<T> | null = null
   let reject: RejectCallback | null = null
@@ -49,7 +58,7 @@ export function createImperativePromise<T>(promiseArg?: Promise<T> | null | unde
       },
       (error) => {
         reject && reject(error)
-      }
+      },
     )
 
   return {
@@ -63,6 +72,8 @@ export function createImperativePromise<T>(promiseArg?: Promise<T> | null | unde
         }
       }
     },
+    // TODO: Replace any with proper type definitions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     reject: (reason?: any) => {
       reject && reject(reason)
     },
@@ -72,12 +83,9 @@ export function createImperativePromise<T>(promiseArg?: Promise<T> | null | unde
   }
 }
 
-type ArgumentsType<T> = T extends (...args: infer A) => any ? A : never
-type AsyncFunction<T> = (...args: any[]) => Promise<T>
-
 // see https://stackoverflow.com/a/54825370/82609
 export function onlyResolvesLast<R>(
-  asyncFunction: AsyncFunction<R>
+  asyncFunction: AsyncFunction<R>,
 ): (...args: ArgumentsType<AsyncFunction<R>>) => Promise<CancelableResult<R>> {
   let cancelPrevious: CancelCallback | null = null
 

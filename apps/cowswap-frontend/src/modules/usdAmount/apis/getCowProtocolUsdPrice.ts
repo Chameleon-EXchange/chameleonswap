@@ -1,16 +1,13 @@
 import { USDC } from '@cowprotocol/common-const'
 import { FractionUtils } from '@cowprotocol/common-utils'
 import { SupportedChainId } from '@cowprotocol/cow-sdk'
-import { Fraction, Token } from '@uniswap/sdk-core'
+import { Fraction, Token } from '@cowprotocol/currency'
 
 import { getCowProtocolNativePrice } from './getCowProtocolNativePrice'
 
-export async function getCowProtocolUsdPrice(
-  currency: Token,
-  getUsdcPrice: () => Promise<Fraction | null>
-): Promise<Fraction | null> {
+export async function getCowProtocolUsdPrice(currency: Token): Promise<Fraction | null> {
   const usdcToken = USDC[currency.chainId as SupportedChainId]
-  const usdNativePrice = await getUsdcPrice()
+  const usdNativePrice = await getCowProtocolNativePrice(usdcToken)
   const tokenNativePrice = await getCowProtocolNativePrice(currency)
 
   if (usdNativePrice && tokenNativePrice) {

@@ -1,11 +1,11 @@
 import { useEffect, useRef } from 'react'
 
-import CHAMELEON_DARK from '@cowprotocol/assets/images/Chameleon-black.png'
+import svgFlyingWinkCowDarkModeSrc from '@cowprotocol/assets/images/flying-wink-cow-dark-mode.svg'
 
 import SVG from 'react-inlinesvg'
 import styled, { keyframes } from 'styled-components/macro'
 
-import { Color } from '../../consts'
+import { UI } from '../../enum'
 
 const scrollHorizontal = keyframes`
   0% {
@@ -19,7 +19,7 @@ const scrollHorizontal = keyframes`
 const FooterAnimationContainer = styled.div`
   --height: 112px;
   --fontSize: 156px;
-  --animationSpeed: 14s;
+  --animationSpeed: 10s;
 
   display: flex;
   justify-content: flex-start;
@@ -27,7 +27,7 @@ const FooterAnimationContainer = styled.div`
   position: relative;
   height: var(--height);
   white-space: nowrap;
-  color: ${Color.neutral98};
+  color: var(${UI.COLOR_NEUTRAL_98});
   margin: 50px 0;
   overflow: hidden;
 `
@@ -72,37 +72,35 @@ const ScrollingContentWrapper = styled.div`
   }
 `
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export const FooterAnimation = () => {
   const containerRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
 
-  // useEffect(() => {
-  //   if (containerRef.current && contentRef.current) {
-  //     const contentWidth = contentRef.current.getBoundingClientRect().width
-  //     const containerWidth = containerRef.current.getBoundingClientRect().width
+  useEffect(() => {
+    if (containerRef.current && contentRef.current) {
+      const contentWidth = contentRef.current.getBoundingClientRect().width
+      const containerWidth = containerRef.current.getBoundingClientRect().width
 
-  //     // Ensure the content width is at least twice the container width for smooth scrolling
-  //     if (contentWidth < containerWidth * 2) {
-  //       const clone = contentRef.current.cloneNode(true) as HTMLDivElement
-  //       containerRef.current.appendChild(clone)
-  //     }
-  //   }
-  // }, [])
+      // Ensure the content width is at least twice the container width for smooth scrolling
+      if (contentWidth < containerWidth * 2) {
+        const clone = contentRef.current.cloneNode(true) as HTMLDivElement
+        containerRef.current.appendChild(clone)
+      }
+    }
+  }, [])
 
   return (
     <FooterAnimationContainer ref={containerRef}>
       <ScrollingContent ref={contentRef}>
         <ScrollingContentWrapper>
-          <b>CHAMELEON CHAMELEON</b>
-          <img src={CHAMELEON_DARK} width={120} height={120} alt="Chameleon" />
+          <b>MOOOOOOOOOOOOOOOOOO</b>
+          <SVG src={svgFlyingWinkCowDarkModeSrc} />
         </ScrollingContentWrapper>
         <ScrollingContentWrapper>
-          <b>CHAMELEON CHAMELEON</b>
-          <img src={CHAMELEON_DARK} width={120} height={120} alt="Chameleon" />
-        </ScrollingContentWrapper>
-        <ScrollingContentWrapper>
-          <b>CHAMELEON CHAMELEON</b>
-          <img src={CHAMELEON_DARK} width={120} height={120} alt="Chameleon" />
+          <b>MOOOOOOOOOOOOOOOOOO</b>
+          <SVG src={svgFlyingWinkCowDarkModeSrc} />
         </ScrollingContentWrapper>
       </ScrollingContent>
     </FooterAnimationContainer>

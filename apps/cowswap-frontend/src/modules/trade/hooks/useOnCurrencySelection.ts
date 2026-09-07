@@ -1,23 +1,27 @@
 import { useCallback } from 'react'
 
 import { FractionUtils } from '@cowprotocol/common-utils'
-import { Currency } from '@uniswap/sdk-core'
+import { Currency } from '@cowprotocol/currency'
+import { Command } from '@cowprotocol/types'
 
 import { Field } from 'legacy/state/types'
 
-import { useLimitOrdersDerivedState } from 'modules/limitOrders/hooks/useLimitOrdersDerivedState'
-import { useUpdateLimitOrdersRawState } from 'modules/limitOrders/hooks/useLimitOrdersRawState'
-import { useNavigateOnCurrencySelection } from 'modules/trade/hooks/useNavigateOnCurrencySelection'
-
 import { convertAmountToCurrency } from 'utils/orderUtils/calculateExecutionPrice'
 
-export function useOnCurrencySelection(): (field: Field, currency: Currency | null) => void {
-  const { inputCurrencyAmount, outputCurrencyAmount } = useLimitOrdersDerivedState()
-  const navigateOnCurrencySelection = useNavigateOnCurrencySelection()
-  const updateLimitOrdersState = useUpdateLimitOrdersRawState()
+import { useDerivedTradeState } from './useDerivedTradeState'
+import { useNavigateOnCurrencySelection } from './useNavigateOnCurrencySelection'
+import { useTradeState } from './useTradeState'
+
+export function useOnCurrencySelection(
+  enableSellEqBuy = false,
+): (field: Field, currency: Currency | null, callback?: Command) => void {
+  const { inputCurrencyAmount, outputCurrencyAmount } = useDerivedTradeState() || {}
+  const navigateOnCurrencySelection = useNavigateOnCurrencySelection(enableSellEqBuy)
+  const { updateState } = useTradeState()
 
   return useCallback(
-    (field: Field, currency: Currency | null) => {
+    (field: Field, currency: Currency | null, callback?: Command) => {
+      if (!currency) return
       /**
        * Since we store quotient value in the store, we must adjust the value regarding a currency decimals
        * For example, we selected USDC (6 decimals) as input currency and entered "6" as amount
@@ -26,24 +30,24 @@ export function useOnCurrencySelection(): (field: Field, currency: Currency | nu
        * Before changing the input currency we must adjust the inputCurrencyAmount for the new currency decimals
        * 6000000 must be converted to 6000000000000000000
        */
-      if (currency) {
-        const amountField = field === Field.INPUT ? 'inputCurrencyAmount' : 'outputCurrencyAmount'
+      const amountField = field === Field.INPUT ? 'inputCurrencyAmount' : 'outputCurrencyAmount'
 
-        const amount = field === Field.INPUT ? inputCurrencyAmount : outputCurrencyAmount
+      const amount = field === Field.INPUT ? inputCurrencyAmount : outputCurrencyAmount
 
-        if (amount) {
-          const converted = convertAmountToCurrency(amount, currency)
+      if (amount) {
+        const converted = FractionUtils.serializeFractionToJSON(convertAmountToCurrency(amount, currency))
 
-          return navigateOnCurrencySelection(field, currency, () => {
-            updateLimitOrdersState({
-              [amountField]: FractionUtils.serializeFractionToJSON(converted),
-            })
-          })
-        }
+        return navigateOnCurrencySelection(field, currency, (nextState) => {
+          updateState?.({ ...nextState, [amountField]: converted })
+          callback?.()
+        })
       }
 
-      return navigateOnCurrencySelection(field, currency)
+      return navigateOnCurrencySelection(field, currency, (nextState) => {
+        updateState?.(nextState)
+        callback?.()
+      })
     },
-    [navigateOnCurrencySelection, updateLimitOrdersState, inputCurrencyAmount, outputCurrencyAmount]
+    [navigateOnCurrencySelection, updateState, inputCurrencyAmount, outputCurrencyAmount],
   )
 }

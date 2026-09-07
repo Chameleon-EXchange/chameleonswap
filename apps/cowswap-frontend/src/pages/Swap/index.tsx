@@ -1,20 +1,28 @@
-import { useState, useEffect } from 'react'
+import { ReactNode, useEffect, useState } from 'react'
 
-import { WRAPPED_NATIVE_CURRENCIES as WETH } from '@cowprotocol/common-const'
+import { PAGE_TITLES, WRAPPED_NATIVE_CURRENCIES as WETH } from '@cowprotocol/common-const'
 import { useWalletInfo } from '@cowprotocol/wallet'
 
-import { Navigate, useLocation, useParams } from 'react-router-dom'
+import { useLingui } from '@lingui/react/macro'
+import { useLocation, useParams } from 'react-router'
 
+import { PageTitle } from 'modules/application'
 import { ReferralPopup } from 'modules/referral/components/ReferralPopup'
-import { SwapUpdaters, SwapWidget } from 'modules/swap'
-import { getDefaultTradeRawState } from 'modules/trade/types/TradeRawState'
-import { parameterizeTradeRoute } from 'modules/trade/utils/parameterizeTradeRoute'
+import { swapDerivedStateAtom, SwapUpdaters, SwapWidget, useSwapDerivedStateToFill } from 'modules/swap'
+import { PageWrapper, PrimaryWrapper, TradeRouteRedirect } from 'modules/trade'
 
 import { Routes } from 'common/constants/routes'
+import { HydrateAtom } from 'common/state/HydrateAtom'
 
-export function SwapPage() {
+const TRADE_PAGE_MAX_WIDTH = '1800px'
+
+export function SwapPage(): ReactNode {
   const params = useParams()
   const location = useLocation()
+  const { i18n } = useLingui()
+  const { chainId } = useWalletInfo()
+  const swapDerivedStateToFill = useSwapDerivedStateToFill()
+
   const [showReferralPopup, setShowReferralPopup] = useState(false)
   const [referralCode, setReferralCode] = useState<string | null>(null)
 
@@ -28,46 +36,25 @@ export function SwapPage() {
   }, [location.search])
 
   if (!params.chainId) {
-    return <SwapPageRedirect />
+    return (
+      <TradeRouteRedirect route={Routes.SWAP} inputCurrencyFallback={chainId ? WETH[chainId]?.symbol : undefined} />
+    )
   }
 
   return (
-    <>
+    <HydrateAtom atom={swapDerivedStateAtom} state={swapDerivedStateToFill}>
+      <PageTitle title={i18n._(PAGE_TITLES.SWAP)} />
+
       <SwapUpdaters />
-      <SwapWidget />
+      <PageWrapper isUnlocked maxWidth={TRADE_PAGE_MAX_WIDTH} hideOrdersTable>
+        <PrimaryWrapper>
+          <SwapWidget />
+        </PrimaryWrapper>
+      </PageWrapper>
       {showReferralPopup && referralCode && (
         <ReferralPopup referralCode={referralCode} onClose={() => setShowReferralPopup(false)} />
       )}
-    </>
+    </HydrateAtom>
   )
 }
 
-function SwapPageRedirect() {
-  const { chainId } = useWalletInfo()
-  const location = useLocation()
-
-  if (!chainId) return null
-
-  const defaultState = getDefaultTradeRawState(chainId)
-  const searchParams = new URLSearchParams(location.search)
-  const inputCurrencyId = searchParams.get('inputCurrency') || defaultState.inputCurrencyId || WETH[chainId]?.symbol
-  const outputCurrencyId = searchParams.get('outputCurrency') || defaultState.outputCurrencyId || undefined
-
-  searchParams.delete('inputCurrency')
-  searchParams.delete('outputCurrency')
-  searchParams.delete('chain')
-
-  const pathname = parameterizeTradeRoute(
-    {
-      chainId: String(chainId),
-      inputCurrencyId,
-      outputCurrencyId,
-      inputCurrencyAmount: undefined,
-      outputCurrencyAmount: undefined,
-      orderKind: undefined,
-    },
-    Routes.SWAP,
-  )
-
-  return <Navigate to={{ ...location, pathname, search: searchParams.toString() }} />
-}

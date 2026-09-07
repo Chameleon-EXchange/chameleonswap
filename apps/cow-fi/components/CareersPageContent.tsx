@@ -1,8 +1,20 @@
 'use client'
 
+import { useCowAnalytics } from '@cowprotocol/analytics'
+import { Color, ProductLogo, ProductVariant, UI } from '@cowprotocol/ui'
+
+import { CowFiCategory } from 'src/common/analytics/types'
+
+import { Link, LinkType } from '@/components/Link'
+import { CONFIG } from '@/const/meta'
 import {
   ContainerCard,
   ContainerCardSection,
+  DisclaimerColumn,
+  DisclaimerGrid,
+  DisclaimerHighlight,
+  DisclaimerList,
+  DisclaimerSection,
   PageWrapper,
   SectionTitleDescription,
   SectionTitleIcon,
@@ -14,10 +26,6 @@ import {
   TopicList,
   TopicTitle,
 } from '@/styles/styled'
-import { Color, Font, ProductLogo, ProductVariant } from '@cowprotocol/ui'
-import { Link, LinkType } from '@/components/Link'
-import { clickOnCareers } from '../modules/analytics'
-import { CONFIG } from '@/const/meta'
 
 interface CareersPageContentProps {
   department: string
@@ -32,22 +40,29 @@ export function CareersPageContent({
   jobsCountForDepartment,
   jobsCount,
 }: CareersPageContentProps) {
+  const analytics = useCowAnalytics()
+
   return (
     <PageWrapper>
-      <ContainerCard bgColor={Color.neutral90} color={Color.neutral10} touchFooter>
+      <ContainerCard bgColor={`var(${UI.COLOR_NEUTRAL_90})`} color={`var(${UI.COLOR_NEUTRAL_10})`} touchFooter>
         <ContainerCardSection>
           <SectionTitleWrapper maxWidth={900} margin="0 auto 56px" marginMobile="0 auto 56px">
-            <SectionTitleIcon size={60}>
+            <SectionTitleIcon $size={60}>
               <ProductLogo variant={ProductVariant.CowProtocol} theme="dark" logoIconOnly />
             </SectionTitleIcon>
             <SectionTitleText fontSize={62}>Want to build the future of decentralized trading?</SectionTitleText>
-            <SectionTitleDescription fontSize={24} color={Color.neutral40} fontWeight={Font.weight.regular}>
+            <SectionTitleDescription
+              fontSize={24}
+              color={`var(${UI.COLOR_NEUTRAL_40})`}
+              fontWeight={`var(${UI.FONT_WEIGHT_NORMAL})`}
+            >
               We are an ambitious, fast-growing and international team working at the forefront of DeFi. We believe that
               we can make markets more fair and more efficient by building the ultimate batch auction settlement layer
-              across EVM-compatible blockchains.
+              across EVM-compatible blockchains
             </SectionTitleDescription>
           </SectionTitleWrapper>
 
+          {/* Jobs content */}
           <SectionTitleWrapper maxWidth={900} margin="0 auto">
             <SectionTitleText fontSize={32}>
               We&apos;re currently hiring for {jobsCountForDepartment} position{jobsCountForDepartment > 1 && 's'}
@@ -70,18 +85,18 @@ export function CareersPageContent({
                         <TopicCard
                           key={id}
                           contentAlign={'left'}
-                          bgColor={Color.neutral100}
+                          bgColor={`var(${UI.COLOR_NEUTRAL_100})`}
                           padding={'32px'}
                           gap={16}
                           asProp="div"
                           height="100%"
                         >
                           <TopicCardInner contentAlign="left" contentAlignTablet={'center'} height="100%">
-                            <TopicTitle fontSize={16} color={Color.neutral50}>
+                            <TopicTitle fontSize={16} color={`var(${UI.COLOR_NEUTRAL_50})`}>
                               {deptName}
                             </TopicTitle>
                             <TopicTitle fontSize={34}>{title}</TopicTitle>
-                            <TopicDescription fontSize={18} color={Color.neutral40} margin="0 0 24px">
+                            <TopicDescription fontSize={18} color={`var(${UI.COLOR_NEUTRAL_40})`} margin="0 0 24px">
                               {locationName}
                             </TopicDescription>
                             <Link
@@ -91,7 +106,13 @@ export function CareersPageContent({
                               utmContent={`job-${title}`}
                               margin="auto auto 0 0"
                               marginTablet="auto auto 0"
-                              onClick={() => clickOnCareers(`click-job-${title}`)}
+                              onClick={() =>
+                                analytics.sendEvent({
+                                  category: CowFiCategory.CAREERS,
+                                  action: 'Click job',
+                                  label: `job-${title}`,
+                                })
+                              }
                             >
                               Apply
                             </Link>
@@ -107,14 +128,14 @@ export function CareersPageContent({
                         <TopicCard
                           key={index}
                           contentAlign={'left'}
-                          bgColor={Color.neutral100}
+                          bgColor={`var(${UI.COLOR_NEUTRAL_100})`}
                           padding={'32px'}
                           gap={16}
                           asProp="div"
                         >
                           <TopicCardInner contentAlign="left">
                             <TopicTitle>{title}</TopicTitle>
-                            <TopicDescription fontSize={18} color={Color.neutral40} margin="0">
+                            <TopicDescription fontSize={18} color={`var(${UI.COLOR_NEUTRAL_40})`} margin="0">
                               {locationName}
                             </TopicDescription>
                             <Link
@@ -122,7 +143,13 @@ export function CareersPageContent({
                               linkType={LinkType.TopicButton}
                               href={`https://jobs.ashbyhq.com/cow-dao/${id}`}
                               utmContent={`job-${title}`}
-                              onClick={() => clickOnCareers(`click-job-${title}`)}
+                              onClick={() =>
+                                analytics.sendEvent({
+                                  category: CowFiCategory.CAREERS,
+                                  action: 'Click job',
+                                  label: `job-${title}`,
+                                })
+                              }
                             >
                               Apply
                             </Link>
@@ -133,8 +160,8 @@ export function CareersPageContent({
                   ))}
 
             <TopicCard
-              bgColor={'#BCEC79'}
-              textColor="#194D05"
+              bgColor={Color.cowamm_green}
+              textColor={Color.cowamm_dark_green}
               padding={'32px'}
               gap={16}
               asProp="div"
@@ -144,22 +171,124 @@ export function CareersPageContent({
               <TopicCardInner contentAlign="left" height="100%">
                 <TopicTitle fontSize={34}>💸 Refer a friend and earn up to 6,000 in USDC or USD!</TopicTitle>
 
-                <TopicDescription fontSize={24} fontWeight={Font.weight.regular} margin="0 0 24px">
+                <TopicDescription fontSize={24} fontWeight={`var(${UI.FONT_WEIGHT_NORMAL})`} margin="0 0 24px">
                   Know someone who is looking not just for a job, but for a great opportunity to grow? Refer them to
-                  earn up to $6,000 in USD or USDC.{' '}
+                  earn up to $6,000 in USD or USDC{' '}
                 </TopicDescription>
                 <Link
                   linkType={LinkType.TopicButton}
-                  bgColor="#194D05"
-                  color="#BCEC79"
+                  bgColor={Color.cowamm_dark_green}
+                  color={Color.cowamm_green}
                   href="/careers/refer-to-earn"
-                  onClick={() => clickOnCareers(`click-refer-to-earn`)}
+                  onClick={() =>
+                    analytics.sendEvent({
+                      category: CowFiCategory.CAREERS,
+                      action: 'Click referral',
+                      label: 'refer-to-earn',
+                    })
+                  }
                 >
                   Refer-to-Earn details
                 </Link>
               </TopicCardInner>
             </TopicCard>
           </TopicList>
+
+          {/* Disclaimer content */}
+          <SectionTitleWrapper maxWidth={900} margin="0 auto 32px">
+            <SectionTitleText fontSize={32} color={Color.cowfi_orange_bright}>
+              Important Notice: Beware of Recruitment Scams
+            </SectionTitleText>
+            <SectionTitleDescription
+              fontSize={18}
+              color={`var(${UI.COLOR_NEUTRAL_40})`}
+              fontWeight={`var(${UI.FONT_WEIGHT_NORMAL})`}
+            >
+              We have been made aware of individuals impersonating our team and reaching out to job seekers via Telegram
+              and other unofficial channels, falsely claiming to represent CoW DAO
+            </SectionTitleDescription>
+
+            <DisclaimerGrid>
+              <DisclaimerColumn>
+                <SectionTitleText fontSize={20} fontSizeMobile={18} textAlign="left">
+                  We Never:
+                </SectionTitleText>
+                <DisclaimerList>
+                  <li>Ask for payment or wallet information during the hiring process.</li>
+                  <li>Request sensitive personal documents (e.g. passport) via chat apps.</li>
+                </DisclaimerList>
+
+                <DisclaimerSection>
+                  <SectionTitleText fontSize={20} fontSizeMobile={18} textAlign="left">
+                    What You Should Do:
+                  </SectionTitleText>
+                  <DisclaimerList>
+                    <li>Do not engage with suspicious messages claiming to offer you a job at CoW DAO.</li>
+                    <li>Do not share personal information, crypto wallet data, or make payments.</li>
+                    <li>
+                      Report impersonation attempts to us at <a href="mailto:people@cow.fi">people@cow.fi</a>.
+                    </li>
+                    <li>
+                      Report fake accounts directly on Telegram or to{' '}
+                      <a href="mailto:abuse@telegram.org">abuse@telegram.org</a>.
+                    </li>
+                  </DisclaimerList>
+                </DisclaimerSection>
+              </DisclaimerColumn>
+
+              <DisclaimerColumn>
+                <SectionTitleText fontSize={20} fontSizeMobile={18} textAlign="left">
+                  Official Communication Channels:
+                </SectionTitleText>
+                <SectionTitleDescription
+                  fontSize={16}
+                  fontSizeMobile={14}
+                  color={`var(${UI.COLOR_NEUTRAL_40})`}
+                  textAlign="left"
+                  margin="8px 0"
+                >
+                  All our hiring communications come from:
+                </SectionTitleDescription>
+                <DisclaimerList>
+                  <li>Official emails are sent from the cow.fi domain.</li>
+                  <li>Telegram (we&apos;ll send confirmation email from the cow.fi domain).</li>
+                  <li>
+                    Verified listings on{' '}
+                    <a href="https://linkedin.com/company/cow-protocol" target="_blank" rel="noopener noreferrer">
+                      LinkedIn
+                    </a>{' '}
+                    or official job boards.
+                  </li>
+                  <li>Official email or video conferencing platforms (Zoom, Meet).</li>
+                </DisclaimerList>
+
+                <DisclaimerHighlight>
+                  <SectionTitleDescription
+                    fontSize={16}
+                    fontSizeMobile={14}
+                    color={`var(${UI.COLOR_NEUTRAL_30})`}
+                    textAlign="left"
+                    margin="0 0 12px"
+                  >
+                    We are actively working to report and remove these impersonators. Your safety and trust are
+                    important to us.
+                  </SectionTitleDescription>
+                  <SectionTitleDescription
+                    fontSize={16}
+                    fontSizeMobile={14}
+                    color={`var(${UI.COLOR_NEUTRAL_30})`}
+                    textAlign="left"
+                    margin="0"
+                  >
+                    Stay safe,
+                    <br />
+                    The CoW DAO Team
+                  </SectionTitleDescription>
+                </DisclaimerHighlight>
+              </DisclaimerColumn>
+            </DisclaimerGrid>
+          </SectionTitleWrapper>
+          {/* End of disclaimer content */}
 
           <SectionTitleWrapper maxWidth={900} margin="32px auto">
             <SectionTitleText fontSize={24}>

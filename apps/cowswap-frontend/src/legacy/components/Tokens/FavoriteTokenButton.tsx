@@ -2,10 +2,9 @@ import { MouseEventHandler, useCallback, useMemo } from 'react'
 
 import { TokenWithLogo } from '@cowprotocol/common-const'
 import { useTheme } from '@cowprotocol/common-hooks'
+import { Token } from '@cowprotocol/currency'
 import { useFavoriteTokens, useToggleFavoriteToken } from '@cowprotocol/tokens'
-import { ButtonStar } from '@cowprotocol/ui'
-import { UI } from '@cowprotocol/ui'
-import { Token } from '@uniswap/sdk-core'
+import { ButtonStar, UI } from '@cowprotocol/ui'
 
 import styled from 'styled-components/macro'
 
@@ -17,6 +16,8 @@ type FavoriteTokenButtonParams = {
   tokenData: TokenWithLogo
 }
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export default function FavoriteTokenButton({ tokenData }: FavoriteTokenButtonParams) {
   const favoriteTokens = useFavoriteTokens()
   const theme = useTheme()
@@ -28,12 +29,12 @@ export default function FavoriteTokenButton({ tokenData }: FavoriteTokenButtonPa
       event.preventDefault()
       toggleFavoriteToken(tokenData)
     },
-    [toggleFavoriteToken, tokenData]
+    [toggleFavoriteToken, tokenData],
   )
 
   const isFavoriteToken = useMemo(
     () => favoriteTokens.some((t: Token) => t.address === tokenData.address),
-    [favoriteTokens, tokenData]
+    [favoriteTokens, tokenData],
   )
 
   return (

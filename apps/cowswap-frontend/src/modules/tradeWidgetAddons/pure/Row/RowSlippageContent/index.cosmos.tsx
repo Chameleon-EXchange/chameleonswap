@@ -1,9 +1,8 @@
-import { Percent } from '@uniswap/sdk-core'
+import { Percent } from '@cowprotocol/currency'
 
 import { RowSlippageContent, RowSlippageContentProps } from './index'
 
 const defaultProps: RowSlippageContentProps = {
-  chainId: 1,
   isEoaEthFlow: true,
   symbols: ['ETH', 'WETH'],
   allowedSlippage: new Percent(1, 100),
@@ -12,11 +11,12 @@ const defaultProps: RowSlippageContentProps = {
   },
   isSlippageModified: false,
   isSmartSlippageApplied: false,
+  isDefaultSlippageApplied: false,
   smartSlippage: '0.2%',
   setAutoSlippage: () => {
     console.log('setAutoSlippage called!')
   },
-  isSmartSlippageLoading: false
+  isSmartSlippageLoading: false,
 }
 
 export default <RowSlippageContent {...defaultProps} />

@@ -2,13 +2,15 @@ import { Order } from 'legacy/state/orders/actions'
 
 import { ParsedOrder, parseOrder } from 'utils/orderUtils/parseOrder'
 
-import { OrderTableGroup, OrderTableItem } from './orderTableGroupUtils'
+import { OrderTableGroup, OrderTableItem } from '../state/ordersTable.types'
 
 interface OrderTableGroupMapItem {
   parent: ParsedOrder | null
   children: ParsedOrder[]
 }
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 const childrenOrdersSorter = (a: ParsedOrder, b: ParsedOrder) => {
   return a.creationTime.getTime() - b.creationTime.getTime()
 }
@@ -45,16 +47,16 @@ export function groupOrdersTable(allOrders: Order[]): OrderTableItem[] {
     return acc
   }, [])
 
-  const groups = Array.from(groupsMap.entries()) //
-    .reduce<OrderTableGroup[]>((acc, [, group]) => {
-      if (group.parent) {
-        acc.push({
-          parent: group.parent,
-          children: group.children.sort(childrenOrdersSorter),
-        })
-      }
-      return acc
-    }, [])
+  const groups = Array.from(groupsMap.entries()).reduce<OrderTableGroup[]>((acc, [, group]) => {
+    if (group.parent) {
+      acc.push({
+        parent: group.parent,
+        children: group.children.sort(childrenOrdersSorter),
+      })
+    }
+
+    return acc
+  }, [])
 
   return [...orders, ...groups]
 }

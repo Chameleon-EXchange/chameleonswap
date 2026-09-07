@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { getAddressKey } from '@cowprotocol/cow-sdk'
+
 import { TokenErc20 } from '@gnosis.pm/dex-js'
 import { NATIVE_TOKEN_PER_NETWORK } from 'const'
 import { getErc20Info } from 'services/helpers'
@@ -11,41 +13,12 @@ import { useTokenList } from './useTokenList'
 
 import { erc20Api, web3 } from '../explorer/api'
 
-async function _fetchErc20FromNetwork(params: {
-  address: string
-  networkId: number
-  setError: (error: UiError) => void
-}): Promise<SingleErc20State> {
-  const { address, networkId, setError } = params
-
-  try {
-    return await retry(() => getErc20Info({ tokenAddress: address, networkId, web3, erc20Api }))
-  } catch (e) {
-    const msg = `Failed to fetch erc20 details for ${address} on network ${networkId}`
-    console.error(msg, e)
-    setError({ message: msg, type: 'error' })
-    // When failed, return null for given token
-    return null
-  }
-}
+export type UseMultipleErc20Params = { addresses: string[]; networkId?: Network }
 
 type Return<E, V> = { isLoading: boolean; error?: E; value: V }
 
-export type UseMultipleErc20Params = { addresses: string[]; networkId?: Network }
-
-/**
- * Fetches multiple erc20 token details for given network and addresses
- * More efficient method to fetch many tokens at once, and avoid unnecessary re-renders
- *
- * Tries to get it from globalState.
- * If not found, tries to get it from the network.
- * Saves to globalState if found.
- *`value` is an object with the `address` as key and it's value is either `null` when not found or the erc20
- * Returns `isLoading` to indicate whether fetching the value
- * Returns `error` with the error messages, if any.
- */
 export function useMultipleErc20(
-  params: UseMultipleErc20Params
+  params: UseMultipleErc20Params,
 ): Return<Record<string, UiError>, Record<string, SingleErc20State>> {
   const { addresses, networkId } = params
 
@@ -59,13 +32,13 @@ export function useMultipleErc20(
   const fromTokenList = useMemo(
     () =>
       addresses.reduce((acc, address) => {
-        const token = tokenListTokens[address.toLowerCase()]
+        const token = tokenListTokens[getAddressKey(address)]
         if (token) {
           acc[address] = token
         }
         return acc
       }, {}),
-    [addresses, tokenListTokens]
+    [addresses, tokenListTokens],
   )
 
   // If native token is in the list of tokens to be fetched, memoize it here
@@ -79,11 +52,11 @@ export function useMultipleErc20(
           // Overwrite native address because otherwise it won't match the case
           // Causing the caller to never know we got the token it was looking for
           // return { ...nativeToken, address }
-          return { [address.toLowerCase()]: nativeToken }
+          return { [getAddressKey(address)]: nativeToken }
         }
         return undefined
       }, undefined) || {},
-    [addresses, networkId]
+    [addresses, networkId],
   )
 
   // check what on globalState has not been fetched yet
@@ -98,9 +71,9 @@ export function useMultipleErc20(
               // Do not try to fetch the ones in a token list
               !fromTokenList[address] &&
               // Do not try to fetch native
-              !isNativeToken(address)
+              !isNativeToken(address),
           ),
-    [addresses, erc20s, fromTokenList, isTokenListLoading]
+    [addresses, erc20s, fromTokenList, isTokenListLoading],
   )
   // flow control
   const running = useRef({ networkId, isRunning: false })
@@ -120,7 +93,7 @@ export function useMultipleErc20(
         address,
         networkId,
         setError: (error) => setErrors((curr) => ({ ...curr, [address]: error })),
-      })
+      }),
     )
 
     const fetched = await Promise.all(promises)
@@ -145,6 +118,37 @@ export function useMultipleErc20(
       error: errors,
       value: { ...erc20s, ...fromTokenList, ...nativeState },
     }),
-    [isTokenListLoading, isLoading, errors, erc20s, fromTokenList, nativeState]
+    [isTokenListLoading, isLoading, errors, erc20s, fromTokenList, nativeState],
   )
+}
+
+/**
+ * Fetches multiple erc20 token details for given network and addresses
+ * More efficient method to fetch many tokens at once, and avoid unnecessary re-renders
+ *
+ * Tries to get it from globalState.
+ * If not found, tries to get it from the network.
+ * Saves to globalState if found.
+ *`value` is an object with the `address` as key and it's value is either `null` when not found or the erc20
+ * Returns `isLoading` to indicate whether fetching the value
+ * Returns `error` with the error messages, if any.
+ */
+// TODO: Break down this large function into smaller functions
+
+async function _fetchErc20FromNetwork(params: {
+  address: string
+  networkId: number
+  setError: (error: UiError) => void
+}): Promise<SingleErc20State> {
+  const { address, networkId, setError } = params
+
+  try {
+    return await retry(() => getErc20Info({ tokenAddress: address, networkId, web3, erc20Api }))
+  } catch (e) {
+    const msg = `Failed to fetch erc20 details for ${address} on network ${networkId}`
+    console.error(msg, e)
+    setError({ message: msg, type: 'error' })
+    // When failed, return null for given token
+    return null
+  }
 }

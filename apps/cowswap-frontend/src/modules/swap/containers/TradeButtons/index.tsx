@@ -1,0 +1,151 @@
+import React, { ReactNode, useMemo } from 'react'
+
+import { IS_SOLANA_ENABLED, TokenWithLogo } from '@cowprotocol/common-const'
+import { isSolanaChain } from '@cowprotocol/cow-sdk'
+import { useIsSafeWallet, useWalletInfo } from '@cowprotocol/wallet'
+
+import { AddIntermediateToken } from 'modules/tokensList'
+import {
+  useConfirmTradeWithRwaCheck,
+  useGetConfirmButtonLabel,
+  useIsCurrentTradeBridging,
+  useIsNonEvmBridging,
+  useIsNoImpactWarningAccepted,
+  useNonEvmReceiverConfirmed,
+  useWrappedToken,
+} from 'modules/trade'
+import {
+  TradeFormButtons,
+  TradeFormValidation,
+  useGetTradeFormValidation,
+  useIsTradeFormValidationPassed,
+  useTradeFormButtonContext,
+} from 'modules/tradeFormValidation'
+import { useHighFeeWarning } from 'modules/tradeWidgetAddons'
+
+import { useSafeMemoObject } from 'common/hooks/useSafeMemo'
+
+import { swapTradeButtonsMap } from './swapTradeButtonsMap'
+
+import { useOnCurrencySelection } from '../../hooks/useOnCurrencySelection'
+import { useShouldCheckBridgingRecipient } from '../../hooks/useSmartContractRecipientConfirmed'
+import { buildSwapBridgeClickEvent, useSwapBridgeClickEventData } from '../../hooks/useSwapBridgeClickEvent'
+import { useSwapDerivedState } from '../../hooks/useSwapDerivedState'
+import { useSwapFormState } from '../../hooks/useSwapFormState'
+
+interface TradeButtonsProps {
+  isTradeContextReady: boolean
+
+  openNativeWrapModal(): void
+
+  hasEnoughWrappedBalanceForSwap: boolean
+  tokenToBeImported: boolean
+  intermediateBuyToken: TokenWithLogo | null
+  setShowAddIntermediateTokenModal: (show: boolean) => void
+}
+
+export function TradeButtons({
+  isTradeContextReady,
+  openNativeWrapModal,
+  hasEnoughWrappedBalanceForSwap,
+  tokenToBeImported,
+  intermediateBuyToken,
+  setShowAddIntermediateTokenModal,
+}: TradeButtonsProps): ReactNode {
+  const { inputCurrency } = useSwapDerivedState()
+  const { chainId } = useWalletInfo()
+
+  const primaryFormValidation = useGetTradeFormValidation()
+  const isPrimaryValidationPassed = useIsTradeFormValidationPassed()
+  const { feeWarningAccepted } = useHighFeeWarning()
+  const isNoImpactWarningAccepted = useIsNoImpactWarningAccepted()
+  const localFormValidation = useSwapFormState()
+  const wrappedToken = useWrappedToken()
+  const onCurrencySelection = useOnCurrencySelection()
+  const isCurrentTradeBridging = useIsCurrentTradeBridging()
+  const shouldCheckBridgingRecipient = useShouldCheckBridgingRecipient()
+  const isNonEvmBridging = useIsNonEvmBridging()
+  const nonEvmReceiverConfirmed = useNonEvmReceiverConfirmed()
+  const isSafeWallet = useIsSafeWallet()
+
+  const { confirmTrade } = useConfirmTradeWithRwaCheck()
+
+  const confirmText = useGetConfirmButtonLabel('swap', isCurrentTradeBridging)
+
+  const swapBridgeClickEventData = useSwapBridgeClickEventData()
+  const swapBridgeClickEvent = useMemo(
+    () =>
+      buildSwapBridgeClickEvent({ ...swapBridgeClickEventData, action: 'swap_bridge_click', surface: 'trade_button' }),
+    [swapBridgeClickEventData],
+  )
+  const swapBridgeClickApproveEvent = useMemo(
+    () =>
+      buildSwapBridgeClickEvent({
+        ...swapBridgeClickEventData,
+        action: 'swap_bridge_click_approve',
+        surface: 'trade_button',
+      }),
+    [swapBridgeClickEventData],
+  )
+
+  const tradeFormAnalytics = useSafeMemoObject({
+    confirmClickEvent: swapBridgeClickEvent,
+    approveClickEvent: swapBridgeClickApproveEvent,
+  })
+
+  // enable partial approve only for swap
+  const tradeFormButtonContext = useTradeFormButtonContext(confirmText, confirmTrade, true, tradeFormAnalytics)
+
+  const context = useSafeMemoObject({
+    wrappedToken,
+    onEthFlow: openNativeWrapModal,
+    openSwapConfirm: confirmTrade,
+    inputCurrency,
+    hasEnoughWrappedBalanceForSwap,
+    onCurrencySelection,
+    confirmText,
+    isSafeWallet,
+    isCurrentTradeBridging,
+    swapBridgeClickEvent,
+  })
+
+  const shouldShowAddIntermediateToken =
+    tokenToBeImported &&
+    !!intermediateBuyToken &&
+    primaryFormValidation === TradeFormValidation.ImportingIntermediateToken
+
+  // TODO(solana): temporary bypass tied to IS_SOLANA_ENABLED. The Solana order-flow context isn't wired
+  // yet, so `isTradeContextReady` is always false on Solana and would keep the approve button permanently
+  // disabled. While Solana is behind the flag, skip that gate (the Solana swap callback is a no-op until
+  // the order flow lands). Remove this when the Solana trade flow is implemented — surfaces on the grep
+  // for IS_SOLANA_ENABLED when the flag is cleaned up.
+  const skipTradeContextReadyGate = IS_SOLANA_ENABLED && isSolanaChain(chainId)
+  const isDisabled =
+    (!skipTradeContextReadyGate && !isTradeContextReady) ||
+    !feeWarningAccepted ||
+    !isNoImpactWarningAccepted ||
+    (isNonEvmBridging || shouldCheckBridgingRecipient ? !nonEvmReceiverConfirmed : false)
+
+  if (!tradeFormButtonContext) return null
+
+  if (localFormValidation && isPrimaryValidationPassed) {
+    return swapTradeButtonsMap[localFormValidation](context, isDisabled)
+  }
+
+  return (
+    <>
+      <TradeFormButtons
+        confirmText={confirmText}
+        validation={primaryFormValidation}
+        context={tradeFormButtonContext}
+        isDisabled={isDisabled}
+      />
+      {shouldShowAddIntermediateToken && (
+        <AddIntermediateToken
+          intermediateBuyToken={intermediateBuyToken!}
+          onImport={() => setShowAddIntermediateTokenModal(true)}
+        />
+      )}
+    </>
+  )
+}

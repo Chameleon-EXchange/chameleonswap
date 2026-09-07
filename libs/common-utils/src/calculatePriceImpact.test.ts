@@ -1,9 +1,12 @@
-import { SupportedChainId as ChainId } from '@cowprotocol/cow-sdk'
-import { parseUnits } from '@ethersproject/units'
-import { CurrencyAmount, Percent, Token, WETH9 } from '@uniswap/sdk-core'
+import { parseUnits } from 'viem'
+
+import { SupportedChainId as ChainId, WRAPPED_NATIVE_CURRENCIES } from '@cowprotocol/cow-sdk'
+import { CurrencyAmount, Percent, Token } from '@cowprotocol/currency'
 
 import BigNumber from 'bignumber.js'
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 function _calculateAbaPriceImpact(initialValue: string, finalValue: string) {
   const initialValueBn = new BigNumber(initialValue)
   const finalValueBn = new BigNumber(finalValue)
@@ -14,7 +17,7 @@ function _calculateAbaPriceImpact(initialValue: string, finalValue: string) {
   return new Percent(numerator.toString(), denominator.toString())
 }
 
-const WETH_MAINNET = new Token(ChainId.MAINNET, WETH9[1].address, 18)
+const WETH_MAINNET = new Token(ChainId.MAINNET, WRAPPED_NATIVE_CURRENCIES[ChainId.MAINNET].address, 18)
 const DAI_MAINNET = new Token(ChainId.MAINNET, '0x6b175474e89094c44da98b954eedeac495271d0f', 18)
 
 describe('A > B > A Price Impact', () => {

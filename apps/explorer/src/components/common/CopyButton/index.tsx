@@ -1,14 +1,15 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 
-import { Media } from '@cowprotocol/ui'
+import { useCopyClipboard } from '@cowprotocol/common-hooks'
+import { Media, Color, UI } from '@cowprotocol/ui'
 
 import { faCopy } from '@fortawesome/free-regular-svg-icons'
 import { faCheck } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import CopyToClipboard from 'react-copy-to-clipboard'
 import styled, { css, FlattenSimpleInterpolation } from 'styled-components/macro'
 
 import { DISPLAY_TEXT_COPIED_CHECK } from '../../../explorer/const'
+import Portal from '../../Portal'
 
 // Why is `copied` not a boolean?
 //   Because it's passed down to parent component (`FontAwesomeIcon`) and
@@ -17,7 +18,7 @@ import { DISPLAY_TEXT_COPIED_CHECK } from '../../../explorer/const'
 // "Warning: Received `false` for a non-boolean attribute `copied`"
 //   Effectively though, it's treated as a boolean, thus the value doesn't matter
 const Icon = styled(FontAwesomeIcon)<{ copied?: string; height?: number }>`
-  color: ${({ theme, copied }): string => (copied ? theme.green : theme.grey)};
+  color: ${({ copied }): string => (copied ? Color.explorer_green1 : Color.explorer_grey)};
   transition: color 0.1s ease-in;
   cursor: ${({ copied }): string => (copied ? 'reset' : 'pointer')};
   vertical-align: baseline;
@@ -31,24 +32,23 @@ const Icon = styled(FontAwesomeIcon)<{ copied?: string; height?: number }>`
     `}
 
   &:hover {
-    color: ${({ theme, copied }): string => (copied ? theme.green : theme.white)};
+    color: ${({ copied }): string => (copied ? Color.explorer_green1 : `var(${UI.COLOR_NEUTRAL_100})`)};
   }
+`
 
-  + span {
-    color: ${({ theme }): string => theme.green};
-    font-weight: ${({ theme }): string => theme.fontMedium};
-    font-size: 1.2rem;
-    position: absolute;
-    border: 1px solid ${({ theme }): string => theme.green};
-    background-color: ${({ theme }): string => theme.green2};
-    padding: 0.5rem;
-    border-radius: 0.4rem;
-    margin-top: -3rem;
-    margin-left: -3.3rem;
+const CopiedTooltip = styled.div`
+  color: ${Color.explorer_green1};
+  font-weight: 500;
+  font-size: 1.2rem;
+  border: 1px solid ${Color.explorer_green1};
+  background-color: ${Color.explorer_green2};
+  padding: 0.5rem;
+  border-radius: 0.4rem;
+  z-index: 9999;
+  position: fixed;
 
-    ${Media.upToMedium()} {
-      display: none;
-    }
+  ${Media.upToMedium()} {
+    display: none;
   }
 `
 
@@ -65,30 +65,47 @@ export type Props = { text: string; onCopy?: (value: string) => void; heightIcon
 export function CopyButton(props: Props): React.ReactNode {
   const { text, onCopy, heightIcon } = props
 
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useCopyClipboard(DISPLAY_TEXT_COPIED_CHECK)
+  const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null)
+  const buttonRef = useRef<HTMLSpanElement>(null)
+
   const handleOnCopy = (): void => {
-    setCopied(true)
+    // Calculate tooltip position relative to button
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect()
+      setTooltipPosition({
+        x: rect.left + rect.width / 2 - 25, // Center horizontally, offset by half tooltip width
+        y: rect.top - 30, // Position above button
+      })
+    }
+
+    setCopied(text)
     onCopy && onCopy(text)
   }
 
   useEffect(() => {
-    let timeout: NodeJS.Timeout | null = null
-
-    if (copied) {
-      timeout = setTimeout(() => setCopied(false), DISPLAY_TEXT_COPIED_CHECK)
-    }
-
-    return (): void => {
-      timeout && clearTimeout(timeout)
+    if (!copied) {
+      setTooltipPosition(null)
     }
   }, [copied])
 
   return (
-    <CopyToClipboard text={text} onCopy={handleOnCopy}>
-      <span>
-        <Icon height={heightIcon} icon={copied ? faCheck : faCopy} copied={copied ? 'true' : undefined} />{' '}
-        {copied && <span className="copy-text">Copied</span>}
+    <>
+      <span ref={buttonRef} onClick={handleOnCopy}>
+        <Icon height={heightIcon} icon={copied ? faCheck : faCopy} copied={copied ? 'true' : undefined} />
       </span>
-    </CopyToClipboard>
+      {copied && tooltipPosition && (
+        <Portal>
+          <CopiedTooltip
+            style={{
+              left: tooltipPosition.x,
+              top: tooltipPosition.y,
+            }}
+          >
+            Copied
+          </CopiedTooltip>
+        </Portal>
+      )}
+    </>
   )
 }

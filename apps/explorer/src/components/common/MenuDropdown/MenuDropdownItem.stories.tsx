@@ -1,19 +1,17 @@
 import React, { Dispatch, SetStateAction, useState } from 'react'
 
 import { Story, Meta } from '@storybook/react/types-6-0'
-import IMAGE_APPDATA from 'assets/img/code.svg'
-import IMAGE_COW from 'assets/img/CowProtocol-logo.svg'
-import IMAGE_DISCORD from 'assets/img/discord.svg'
-import IMAGE_DOC from 'assets/img/doc.svg'
+import svgCodeSrc from 'assets/img/code.svg'
+import svgCowProtocolSrc from 'assets/img/CowProtocol-logo.svg'
+import svgDiscordSrc from 'assets/img/discord.svg'
+import svgDocSrc from 'assets/img/doc.svg'
 import { GlobalStyles, ThemeToggler, Router } from 'storybook/decorators'
 
 import { DropDownItem, MenuItemKind } from './types'
 
-import { DOCS_LINK, DISCORD_LINK, PROTOCOL_LINK, Routes } from '../../../explorer/const'
+import { DOCS_LINK, DISCORD_LINK, PROTOCOL_LINK, COWSWAP_LINK, Routes } from '../../../explorer/const'
 
 import MenuDropdown, { DropdownProps } from '.'
-
-
 
 export default {
   title: 'Common/MenuDropdownItem',
@@ -30,15 +28,21 @@ const DropdownMenu: DropDownItem = {
       links: [
         {
           title: 'Option 1',
-          url: PROTOCOL_LINK,
+          url: COWSWAP_LINK,
           kind: MenuItemKind.EXTERNAL_LINK,
-          iconSVG: IMAGE_COW,
+          iconSVG: svgCowProtocolSrc,
         },
         {
           title: 'Option 2',
+          url: PROTOCOL_LINK,
+          kind: MenuItemKind.EXTERNAL_LINK,
+          iconSVG: svgCowProtocolSrc,
+        },
+        {
+          title: 'Option 3',
           url: DOCS_LINK,
           kind: MenuItemKind.EXTERNAL_LINK,
-          iconSVG: IMAGE_DOC,
+          iconSVG: svgDocSrc,
         },
       ],
     },
@@ -48,7 +52,7 @@ const DropdownMenu: DropDownItem = {
         {
           title: 'Option 3',
           url: DISCORD_LINK,
-          iconSVG: IMAGE_DISCORD,
+          iconSVG: svgDiscordSrc,
           kind: MenuItemKind.EXTERNAL_LINK,
         },
       ],
@@ -59,7 +63,7 @@ const DropdownMenu: DropDownItem = {
         {
           title: 'Option 4',
           url: Routes.APPDATA,
-          iconSVG: IMAGE_APPDATA,
+          iconSVG: svgCodeSrc,
         },
       ],
     },

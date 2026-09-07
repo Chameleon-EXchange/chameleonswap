@@ -1,9 +1,20 @@
+import { ReactNode, useCallback } from 'react'
+
+import { useFeatureFlags } from '@cowprotocol/common-hooks'
+import { isInjectedWidget } from '@cowprotocol/common-utils'
 import { SupportedChainId } from '@cowprotocol/cow-sdk'
-import { Command } from '@cowprotocol/types'
+import { Command, UiOrderType } from '@cowprotocol/types'
 import { UI } from '@cowprotocol/ui'
 import { useIsSafeWallet, useWalletInfo } from '@cowprotocol/wallet'
 
+import { useSigningStep } from 'entities/trade'
 import styled from 'styled-components/macro'
+
+import {
+  useHasNotificationSubscription,
+  useOpenNotificationSidebar,
+  useTrackOrderBannerDismissal,
+} from 'modules/notifications'
 
 import { PermitModal } from 'common/containers/PermitModal'
 import { OrderSubmittedContent } from 'common/pure/OrderSubmittedContent'
@@ -17,26 +28,51 @@ const Container = styled.div`
   background: var(${UI.COLOR_PAPER});
   border-radius: var(${UI.BORDER_RADIUS_NORMAL});
   box-shadow: ${({ theme }) => theme.boxShadow1};
+  overflow: hidden;
 
   .modalMode & {
     box-shadow: none;
   }
 `
-type CustomSubmittedContent = (onDismiss: Command) => JSX.Element
 
-export interface TradeConfirmModalProps {
-  children: JSX.Element
-  title: string
-  submittedContent?: CustomSubmittedContent
+export interface TradeConfirmModalProps extends React.PropsWithChildren {
+  orderType: UiOrderType
+  submittedContent?: ReactNode
+  showGetNotifiedMessage?: boolean
 }
 
-export function TradeConfirmModal(props: TradeConfirmModalProps) {
-  const { children, submittedContent, title } = props
+interface InnerComponentProps extends React.PropsWithChildren {
+  chainId: SupportedChainId
+  account: string
+  orderType: UiOrderType
+  error: string | null
+  pendingTrade: TradeAmounts | null
+  transactionHash: string | null
+  onDismiss: Command
+  permitSignatureState: string | undefined
+  isSafeWallet: boolean
+  submittedContent?: ReactNode
+  showGetNotifiedMessage?: boolean
+  onGetNotifiedClick: () => void
+  onDismissGetNotifiedMessage: () => void
+}
+
+export function TradeConfirmModal(props: TradeConfirmModalProps): ReactNode {
+  const { children, submittedContent, orderType, showGetNotifiedMessage } = props
 
   const { chainId, account } = useWalletInfo()
   const isSafeWallet = useIsSafeWallet()
   const { permitSignatureState, pendingTrade, transactionHash, error } = useTradeConfirmState()
   const { onDismiss } = useTradeConfirmActions()
+  const signingStep = useSigningStep()
+  const { areTelegramNotificationsEnabled } = useFeatureFlags()
+  const { hasSubscription, isLoading: isNotificationSubscriptionLoading } = useHasNotificationSubscription()
+  const openNotificationSidebar = useOpenNotificationSidebar()
+  const { isDismissed: isTrackOrderBannerDismissed, dismiss: dismissTrackOrderBanner } = useTrackOrderBannerDismissal()
+
+  const handleGetNotifiedClick = useCallback(() => {
+    openNotificationSidebar()
+  }, [openNotificationSidebar])
 
   if (!account) return null
 
@@ -46,13 +82,24 @@ export function TradeConfirmModal(props: TradeConfirmModalProps) {
         chainId={chainId}
         account={account}
         error={error}
-        title={title}
+        orderType={orderType}
         pendingTrade={pendingTrade}
         transactionHash={transactionHash}
         onDismiss={onDismiss}
-        permitSignatureState={permitSignatureState}
+        // Disable default permit flow when signingStep is set
+        permitSignatureState={signingStep ? undefined : permitSignatureState}
         isSafeWallet={isSafeWallet}
         submittedContent={submittedContent}
+        showGetNotifiedMessage={
+          showGetNotifiedMessage &&
+          areTelegramNotificationsEnabled &&
+          !isNotificationSubscriptionLoading &&
+          !hasSubscription &&
+          !isInjectedWidget() &&
+          !isTrackOrderBannerDismissed
+        }
+        onGetNotifiedClick={handleGetNotifiedClick}
+        onDismissGetNotifiedMessage={dismissTrackOrderBanner}
       >
         {children}
       </InnerComponent>
@@ -60,21 +107,7 @@ export function TradeConfirmModal(props: TradeConfirmModalProps) {
   )
 }
 
-type InnerComponentProps = {
-  children: JSX.Element
-  chainId: SupportedChainId
-  account: string
-  title: string
-  error: string | null
-  pendingTrade: TradeAmounts | null
-  transactionHash: string | null
-  onDismiss: Command
-  permitSignatureState: string | undefined
-  isSafeWallet: boolean
-  submittedContent?: CustomSubmittedContent
-}
-
-function InnerComponent(props: InnerComponentProps) {
+function InnerComponent(props: InnerComponentProps): ReactNode {
   const {
     account,
     chainId,
@@ -82,11 +115,14 @@ function InnerComponent(props: InnerComponentProps) {
     error,
     isSafeWallet,
     onDismiss,
-    title,
+    orderType,
     pendingTrade,
     permitSignatureState,
     transactionHash,
     submittedContent,
+    showGetNotifiedMessage,
+    onGetNotifiedClick,
+    onDismissGetNotifiedMessage,
   } = props
 
   if (error) {
@@ -94,8 +130,6 @@ function InnerComponent(props: InnerComponentProps) {
   }
 
   if (pendingTrade && permitSignatureState && permitSignatureState !== 'signed') {
-    // TODO: potentially replace TradeConfirmPendingContent completely with PermitModal
-    // We could use this not just for permit, but for any token, even already approved
     const step = permitSignatureState === 'signed' ? 'submit' : 'approve'
     return (
       <PermitModal
@@ -103,22 +137,25 @@ function InnerComponent(props: InnerComponentProps) {
         outputAmount={pendingTrade.outputAmount}
         step={step}
         onDismiss={onDismiss}
-        orderType={title}
+        orderType={orderType}
       />
     )
   }
 
   if (transactionHash) {
-    return submittedContent ? (
-      submittedContent(onDismiss)
-    ) : (
-      <OrderSubmittedContent
-        chainId={chainId}
-        account={account}
-        isSafeWallet={isSafeWallet}
-        onDismiss={onDismiss}
-        hash={transactionHash}
-      />
+    return (
+      submittedContent || (
+        <OrderSubmittedContent
+          chainId={chainId}
+          account={account}
+          isSafeWallet={isSafeWallet}
+          onDismiss={onDismiss}
+          hash={transactionHash}
+          showGetNotifiedMessage={showGetNotifiedMessage}
+          onGetNotifiedClick={onGetNotifiedClick}
+          onDismissGetNotifiedMessage={onDismissGetNotifiedMessage}
+        />
+      )
     )
   }
 

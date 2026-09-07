@@ -1,11 +1,14 @@
 import { useCallback } from 'react'
 
-import { COW } from '@cowprotocol/common-const'
-import { TokenWithLogo } from '@cowprotocol/common-const'
+import { i18n } from '@lingui/core'
+
+import { COW_TOKEN_TO_CHAIN, TokenWithLogo } from '@cowprotocol/common-const'
 import { useGasLimit } from '@cowprotocol/common-hooks'
 import { SupportedChainId } from '@cowprotocol/cow-sdk'
+import { Token } from '@cowprotocol/currency'
 import { ButtonPrimary } from '@cowprotocol/ui'
-import { Token } from '@uniswap/sdk-core'
+
+import { Trans } from '@lingui/react/macro'
 
 import { HookDappProps } from 'modules/hooksStore/types/hooks'
 
@@ -13,27 +16,35 @@ import { AIRDROP_PREVIEW_ERRORS, useClaimData } from './hooks/useClaimData'
 import { Amount, ContentWrapper, Label, Wrapper } from './styled'
 import { IAirdrop, IClaimData } from './types'
 
-const cowSepolia = COW[SupportedChainId.SEPOLIA]
+const cowSepolia = COW_TOKEN_TO_CHAIN[SupportedChainId.SEPOLIA]
 const COW_AIRDROP = {
   name: 'COW',
   dataBaseUrl: 'https://raw.githubusercontent.com/bleu/cow-airdrop-contract-deployer/example/mock-airdrop-data/',
   chainId: SupportedChainId.SEPOLIA,
   address: '0x06Ca512F7d35A35Dfa49aa69F12cFB2a9166a95b',
-  token: TokenWithLogo.fromToken(
-    new Token(cowSepolia.chainId, cowSepolia.address, cowSepolia.decimals, cowSepolia.symbol, cowSepolia.name),
-    cowSepolia.logoURI,
-  ),
+  token: cowSepolia
+    ? TokenWithLogo.fromToken(
+        new Token(cowSepolia.chainId, cowSepolia.address, cowSepolia.decimals, cowSepolia.symbol, cowSepolia.name),
+        cowSepolia.logoURI,
+      )
+    : undefined,
 } as IAirdrop
 
+// TODO: Add proper return type annotation
+// TODO: Reduce function complexity by extracting logic
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function AirdropHookApp({ context }: HookDappProps) {
   const { data: claimData, isValidating, error } = useClaimData(COW_AIRDROP)
-  const { data: gasLimit } = useGasLimit({ to: claimData?.contract.address, data: claimData?.callData })
+  const { data: gasLimit } = useGasLimit({
+    to: claimData?.contractAddress as `0x${string}` | undefined,
+    data: claimData?.callData,
+  })
 
   const clickOnAddHook = useCallback(async () => {
     if (!context || !claimData || !gasLimit) return
     context.addHook({
       hook: {
-        target: claimData.contract.address,
+        target: claimData.contractAddress,
         callData: claimData.callData,
         gasLimit,
       },
@@ -50,7 +61,7 @@ export function AirdropHookApp({ context }: HookDappProps) {
     context.editHook({
       ...context.hookToEdit,
       hook: {
-        target: claimData.contract.address,
+        target: claimData.contractAddress,
         callData: claimData.callData,
         gasLimit,
       },
@@ -62,23 +73,30 @@ export function AirdropHookApp({ context }: HookDappProps) {
       <ContentWrapper>
         {messageToUser === null ? (
           <div>
-            <Label>Claimable amount</Label>:<Amount>{claimData?.formattedAmount}</Amount>
+            <Label>
+              <Trans>Claimable amount</Trans>
+            </Label>
+            :<Amount>{claimData?.formattedAmount}</Amount>
           </div>
         ) : (
           messageToUser
         )}
       </ContentWrapper>
       {context.hookToEdit ? (
-        <ButtonPrimary onClick={onEditHook}>Return to Swap</ButtonPrimary>
+        <ButtonPrimary onClick={onEditHook}>
+          <Trans>Return to Swap</Trans>
+        </ButtonPrimary>
       ) : messageToUser === null ? (
         <ButtonPrimary disabled={!canClaim || isValidating} onClick={clickOnAddHook}>
-          Add Hook
+          <Trans>Add Hook</Trans>
         </ButtonPrimary>
       ) : undefined}
     </Wrapper>
   )
 }
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 function getMessageToUser({
   account,
   claimData,
@@ -92,23 +110,43 @@ function getMessageToUser({
   isValidating?: boolean
 }) {
   if (!account) {
-    return <span>Connect your wallet</span>
+    return (
+      <span>
+        <Trans>Connect your wallet</Trans>
+      </span>
+    )
   }
 
   if (isValidating) {
-    return <span>Loading...</span>
+    return (
+      <span>
+        <Trans>Loading...</Trans>
+      </span>
+    )
   }
 
   if (error) {
-    if (Object.values(AIRDROP_PREVIEW_ERRORS).includes(error.message)) {
+    if (
+      Object.values(AIRDROP_PREVIEW_ERRORS)
+        .map((item) => i18n._(item))
+        .includes(error.message)
+    ) {
       return <span>{error.message}</span>
     } else {
-      return <span>An unexpected error occurred</span>
+      return (
+        <span>
+          <Trans>An unexpected error occurred</Trans>
+        </span>
+      )
     }
   }
 
   if (claimData?.isClaimed) {
-    return <span>You have already claimed this airdrop</span>
+    return (
+      <span>
+        <Trans>You have already claimed this airdrop</Trans>
+      </span>
+    )
   }
 
   return null

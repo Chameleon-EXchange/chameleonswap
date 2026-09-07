@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
-
-import { useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router'
 
 export function useReferralCode() {
   const [referralCode, setReferralCode] = useState<string | null>(null)

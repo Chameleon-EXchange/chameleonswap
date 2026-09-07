@@ -1,6 +1,6 @@
 import { USDC_MAINNET as USDC, USDT } from '@cowprotocol/common-const'
 import { OrderKind, OrderStatus, SigningScheme } from '@cowprotocol/cow-sdk'
-import { Price } from '@uniswap/sdk-core'
+import { Price } from '@cowprotocol/currency'
 
 import ms from 'ms.macro'
 
@@ -19,6 +19,8 @@ ORDER.sellAmount = '1000'
 ORDER.sellAmountBeforeFee = '1000'
 ORDER.buyAmount = '1000'
 
+// TODO: Break down this large function into smaller functions
+
 describe('isOrderUnfillable', () => {
   describe('sell order', () => {
     const order = { ...ORDER, kind: OrderKind.SELL }
@@ -33,7 +35,7 @@ describe('isOrderUnfillable', () => {
         order.inputToken,
         order.outputToken,
         order.sellAmount.toString(),
-        order.buyAmount.toString()
+        order.buyAmount.toString(),
       )
       const executionPrice = getOrderMarketPrice(order, price, fee)
 
@@ -48,7 +50,7 @@ describe('isOrderUnfillable', () => {
         order.inputToken,
         order.outputToken,
         order.sellAmount.toString(),
-        order.buyAmount.toString()
+        order.buyAmount.toString(),
       )
       const executionPrice = getOrderMarketPrice(order, price, fee)
 
@@ -63,7 +65,7 @@ describe('isOrderUnfillable', () => {
         order.inputToken,
         order.outputToken,
         order.sellAmount.toString(),
-        order.buyAmount.toString()
+        order.buyAmount.toString(),
       )
       const executionPrice = getOrderMarketPrice(order, price, fee)
 
@@ -83,7 +85,7 @@ describe('isOrderUnfillable', () => {
         order.inputToken,
         order.outputToken,
         order.sellAmount.toString(),
-        order.buyAmount.toString()
+        order.buyAmount.toString(),
       )
       const executionPrice = getOrderMarketPrice(order, price, fee)
 
@@ -98,7 +100,7 @@ describe('isOrderUnfillable', () => {
         order.inputToken,
         order.outputToken,
         order.sellAmount.toString(),
-        order.buyAmount.toString()
+        order.buyAmount.toString(),
       )
       const executionPrice = getOrderMarketPrice(order, price, fee)
 
@@ -113,7 +115,7 @@ describe('isOrderUnfillable', () => {
         order.inputToken,
         order.outputToken,
         order.sellAmount.toString(),
-        order.buyAmount.toString()
+        order.buyAmount.toString(),
       )
       const executionPrice = getOrderMarketPrice(order, price, fee)
 
@@ -121,6 +123,8 @@ describe('isOrderUnfillable', () => {
     })
   })
 })
+
+// TODO: Break down this large function into smaller functions
 
 describe('classifyOrder', () => {
   const BASE_ORDER: Parameters<typeof classifyOrder>[0] = {

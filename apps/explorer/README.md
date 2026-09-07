@@ -5,14 +5,23 @@ Allows you to explore the protocol orders and trades.
 ## 🏃‍♀️ Run it locally
 
 ```bash
-yarn start:explorer
+pnpm run start:explorer
 ```
+
+Environment selection is configured explicitly via `REACT_APP_ENVIRONMENT`.
+Use [`.env.example`](./.env.example) as the reference values:
+
+- `local`
+- `development`
+- `pr`
+- `staging`
+- `production`
 
 
 ## 👷‍♀️ Build app
 
 ```bash
-yarn build:explorer
+pnpm run build:explorer
 ```
 
 Static files will be generated inside the `build/explorer` dir.
@@ -20,7 +29,7 @@ Static files will be generated inside the `build/explorer` dir.
 ## 🧪 Run tests
 
 ```bash
-yarn test:explorer
+pnpm run test:explorer
 ```
 
 ## Orderbook API Endpoints

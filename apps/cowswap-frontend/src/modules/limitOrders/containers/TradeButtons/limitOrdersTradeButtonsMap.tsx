@@ -1,16 +1,20 @@
-import React from 'react'
+import { ReactElement } from 'react'
+
+import { MessageDescriptor } from '@lingui/core'
+
+import { msg } from '@lingui/core/macro'
 
 import { TradeLoadingButton } from 'common/pure/TradeLoadingButton'
 
 import { LimitOrdersFormState } from '../../hooks/useLimitOrdersFormState'
 
-interface ButtonConfig {
-  text: JSX.Element | string
-  id?: string
+interface ButtonCallback {
+  (): ReactElement | null
 }
 
-interface ButtonCallback {
-  (): JSX.Element | null
+interface ButtonConfig {
+  text: ReactElement | MessageDescriptor
+  id?: string
 }
 
 export const limitOrdersTradeButtonsMap: { [key in LimitOrdersFormState]: ButtonConfig | ButtonCallback } = {
@@ -18,12 +22,12 @@ export const limitOrdersTradeButtonsMap: { [key in LimitOrdersFormState]: Button
     text: <TradeLoadingButton />,
   },
   [LimitOrdersFormState.PriceIsNotSet]: {
-    text: 'Enter a price',
+    text: msg`Enter a price`,
   },
   [LimitOrdersFormState.ZeroPrice]: {
-    text: 'Invalid price. Try increasing input/output amount.',
+    text: msg`Invalid price. Try increasing input/output amount.`,
   },
   [LimitOrdersFormState.FeeExceedsFrom]: {
-    text: 'Sell amount is too small',
+    text: msg`Sell amount is too small`,
   },
 }

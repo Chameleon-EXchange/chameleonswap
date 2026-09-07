@@ -1,13 +1,16 @@
-import { Color, ProductVariant } from '@cowprotocol/ui'
+import { initGtm } from '@cowprotocol/analytics'
+import svgBitsSrc from '@cowprotocol/assets/images/image-bits.svg'
+import svgCoinsSrc from '@cowprotocol/assets/images/image-coins.svg'
+import svgDiscordSrc from '@cowprotocol/assets/images/image-discord.svg'
+import svgForumSrc from '@cowprotocol/assets/images/image-forum.svg'
+import svgSnapshotSrc from '@cowprotocol/assets/images/image-snapshot.svg'
+import { Color, ProductVariant, UI } from '@cowprotocol/ui'
 
-import IMG_GREEN_WAVES from '@cowprotocol/assets/images/image-green-waves.svg'
-import IMG_COINS from '@cowprotocol/assets/images/image-coins.svg'
-import IMG_BITS from '@cowprotocol/assets/images/image-bits.svg'
-import IMG_TUBE from '@cowprotocol/assets/images/image-tube.svg'
+import SVG from 'react-inlinesvg'
+import { CowFiCategory } from 'src/common/analytics/types'
 
-import IMG_DISCORD from '@cowprotocol/assets/images/image-discord.svg'
-import IMG_FORUM from '@cowprotocol/assets/images/image-forum.svg'
-import IMG_SNAPSHOT from '@cowprotocol/assets/images/image-snapshot.svg'
+import { Link, LinkType } from '@/components/Link'
+import { COW_SWAP_CTA } from '@/const/cta'
 import {
   ContainerCard,
   ContainerCardSection,
@@ -20,9 +23,8 @@ import {
   TopicList,
   TopicTitle,
 } from '@/styles/styled'
-import { Link, LinkType } from '@/components/Link'
-import SVG from 'react-inlinesvg'
-import { clickOnHome } from 'modules/analytics'
+
+const analytics = initGtm()
 
 export const PRODUCT_LIST = [
   {
@@ -31,91 +33,63 @@ export const PRODUCT_LIST = [
     linkHref: '/cow-protocol',
     linkText: 'Start building',
     linkEvent: 'click-start-building',
-    bgColor: '#490072',
-    textColor: '#F996EE',
-    descriptionColor: '#F996EE',
-    linkBgColor: '#F996EE',
-    linkColor: '#490072',
+    bgColor: Color.cowfi_purple_dark,
+    textColor: Color.cowfi_purple_bright,
+    descriptionColor: Color.cowfi_purple_bright,
+    linkBgColor: Color.cowfi_purple_bright,
+    linkColor: Color.cowfi_purple_dark,
     productVariant: ProductVariant.CowDao,
-    iconImage: IMG_BITS,
+    iconImage: svgBitsSrc,
   },
   {
-    title: 'Chameleon swap',
+    title: 'CoW Swap',
     description: 'The DEX that lets you do what you want',
-    linkHref: 'https://chameleon.exchange/#/1/swap/USDC/COW',
-    linkText: 'Start trading',
-    linkEvent: 'click-trade-on-cow-swap',
+    linkHref: COW_SWAP_CTA.deeplinkHref,
+    linkText: COW_SWAP_CTA.text,
+    linkEvent: COW_SWAP_CTA.action,
     linkExternal: true,
     linkUtmContent: 'home-page-trade-on-cow-swap',
-    bgColor: '#ff65ff',
-    textColor: '#012F7A',
-    descriptionColor: '#012F7A',
-    linkBgColor: '#012F7A',
-    linkColor: '#ff65ff',
+    bgColor: `var(${UI.COLOR_BLUE_300_PRIMARY})`,
+    textColor: `var(${UI.COLOR_BLUE_900_PRIMARY})`,
+    descriptionColor: `var(${UI.COLOR_BLUE_900_PRIMARY})`,
+    linkBgColor: `var(${UI.COLOR_BLUE_900_PRIMARY})`,
+    linkColor: `var(${UI.COLOR_BLUE_300_PRIMARY})`,
     productVariant: ProductVariant.CowDao,
-    iconImage: IMG_COINS,
-  },
-  {
-    title: 'CoW AMM',
-    description: 'The first MEV-capturing AMM',
-    linkHref: '/cow-amm',
-    linkText: 'Deposit liquidity',
-    linkEvent: 'click-deploy-liquidity',
-    bgColor: '#194D06',
-    textColor: '#BCEC79',
-    descriptionColor: '#BCEC79',
-    linkBgColor: '#BCEC79',
-    linkColor: '#194D06',
-    productVariant: ProductVariant.CowDao,
-    iconImage: IMG_GREEN_WAVES,
-  },
-  {
-    title: 'MEV Blocker',
-    description: 'The best MEV protection RPC under the sun',
-    linkHref: '/mev-blocker',
-    linkText: 'Get protected',
-    linkEvent: 'click-get-protected',
-    bgColor: '#FEE7CF',
-    textColor: '#EC4612',
-    descriptionColor: '#EC4612',
-    linkBgColor: '#EC4612',
-    linkColor: '#FEE7CF',
-    productVariant: ProductVariant.MevBlocker,
-    iconImage: IMG_TUBE,
+    iconImage: svgCoinsSrc,
   },
 ]
 
 export const CHANNEL_LIST = [
   {
     title: 'Discord',
-    href: 'https://discord.com/invite/cowprotocol?utm_source=cow.fi&utm_medium=web&utm_content=link',
+    href: 'https://discord.com/invite/cowprotocol',
     linkEvent: 'click-discord',
-    iconColor: '#FDADA3',
-    textColor: '#23191A',
-    iconImage: IMG_DISCORD,
+    iconColor: Color.cowfi_discord_pink,
+    textColor: `var(${UI.COLOR_NEUTRAL_10})`,
+    iconImage: svgDiscordSrc,
   },
   {
     title: 'Forum',
-    href: 'https://forum.cow.fi/?utm_source=cow.fi&utm_medium=web&utm_content=link',
+    href: 'https://forum.cow.fi/',
     linkEvent: 'click-forum',
-    iconColor: '#1E5C06',
-    textColor: '#FFF8F7',
-    iconImage: IMG_FORUM,
+    iconColor: Color.cowamm_dark_green,
+    textColor: Color.neutral98,
+    iconImage: svgForumSrc,
   },
   {
     title: 'Snapshot',
-    href: 'https://snapshot.org/#/cow.eth?utm_source=cow.fi&utm_medium=web&utm_content=link',
+    href: 'https://snapshot.org/#/cow.eth',
     linkEvent: 'click-snapshot',
-    iconColor: '#710408',
-    textColor: '#FFF8F7',
-    iconImage: IMG_SNAPSHOT,
+    iconColor: Color.cowfi_snapshot_red,
+    textColor: Color.neutral98,
+    iconImage: svgSnapshotSrc,
   },
 ]
 
 export const PRODUCT_CONTAINERS = (
-  <ContainerCard bgColor={Color.neutral100}>
+  <ContainerCard bgColor={`var(${UI.COLOR_NEUTRAL_100})`}>
     <ContainerCardSection>
-      <SectionTitleWrapper color={Color.neutral0} maxWidth={1200} margin="100px auto">
+      <SectionTitleWrapper color={`var(${UI.COLOR_NEUTRAL_0})`} maxWidth={1200} margin="100px auto">
         <SectionTitleText lineHeight={1.6} lineHeightMobile={1.8} fontSizeMobile={28}>
           CoW DAO develops the <span className="wordtag-orange">most user-protective</span> products in DeFi – so you
           can <span className="wordtag-purple">do more</span> with <span className="wordtag-blue">less worry</span>
@@ -142,7 +116,12 @@ export const PRODUCT_CONTAINERS = (
                 color={topic.linkColor}
                 href={topic.linkHref}
                 linkType={LinkType.TopicButton}
-                onClick={() => clickOnHome(topic.linkEvent)}
+                onClick={() =>
+                  analytics.sendEvent({
+                    category: CowFiCategory.HOME,
+                    action: topic.linkEvent,
+                  })
+                }
                 external={topic.linkExternal}
                 utmContent={topic.linkUtmContent}
               >

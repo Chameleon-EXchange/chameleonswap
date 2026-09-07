@@ -1,12 +1,12 @@
 'use client'
 
-import { Color } from '@cowprotocol/ui'
+import { useCowAnalytics } from '@cowprotocol/analytics'
+import { UI } from '@cowprotocol/ui'
 
+import { CowFiCategory } from 'src/common/analytics/types'
 import styled from 'styled-components/macro'
 
 import { ContainerCard, ArticleContent, Breadcrumbs, ArticleMainTitle, BodyContent } from '@/styles/styled'
-
-import { clickOnCareers } from '../../../../modules/analytics'
 
 const Wrapper = styled.div`
   display: flex;
@@ -20,12 +20,30 @@ const Wrapper = styled.div`
 `
 
 export default function Page() {
+  const analytics = useCowAnalytics()
+
   return (
     <Wrapper>
-      <ContainerCard bgColor={Color.neutral100} minHeight="70vh" gap={62} gapMobile={42} centerContent touchFooter>
+      <ContainerCard
+        bgColor={`var(${UI.COLOR_NEUTRAL_100})`}
+        minHeight="70vh"
+        gap={62}
+        gapMobile={42}
+        centerContent
+        touchFooter
+      >
         <ArticleContent maxWidth="100%">
           <Breadcrumbs>
-            <a href="/careers" onClick={() => clickOnCareers('click-breadcrumb-careers')}>
+            <a
+              href="/careers"
+              onClick={() =>
+                analytics.sendEvent({
+                  category: CowFiCategory.CAREERS,
+                  action: 'Click Breadcrumb',
+                  label: 'careers',
+                })
+              }
+            >
               Careers
             </a>
             <span>Refer-to-Earn</span>
@@ -36,7 +54,7 @@ export default function Page() {
           <BodyContent>
             <h2>
               Know someone who is not just looking for a job but for a great opportunity to grow? Refer them to us to
-              earn up to $6,000 in USDC or USD.
+              earn up to $6,000 in USDC or USD
             </h2>
             <p>
               We will reward you with a referral bonus of up to <b>6,000 USDC or USD</b> per placement. The referral
@@ -54,8 +72,8 @@ export default function Page() {
               <br />
               <b>
                 Have Questions? Ask us at{' '}
-                <a href="mailto:people@cow.fi" target="_blank" rel="noreferrer">
-                  people@cow.fi
+                <a href="mailto:jobs@cow.fi" target="_blank" rel="noreferrer">
+                  jobs@cow.fi
                 </a>
               </b>
             </p>
@@ -95,8 +113,8 @@ export default function Page() {
             <ul>
               <li>
                 The referrer should reach out to a CoW core team member or directly contact the People department via
-                email at <a href="mailto:people@cow.fi">people@cow.fi</a>, LinkedIn, or Telegram. When reaching out, the
-                Referrer must include the candidate's name, surname, and email or LinkedIn profile. The Referrer is
+                email at <a href="mailto:jobs@cow.fi">jobs@cow.fi</a>, LinkedIn, or Telegram. When reaching out, the
+                Referrer must include the candidate&apos;s name, surname, and email or LinkedIn profile. The Referrer is
                 responsible for ensuring that the Candidate has given consent to share this information.
               </li>
               <li>
@@ -123,7 +141,7 @@ export default function Page() {
             <ul>
               <li>
                 The Referrer becomes eligible to receive the full referral bonus up to six thousand USDC or USD (6,000)
-                after six (6) months from the Candidate's start date, provided that the Candidate remains providing
+                after six (6) months from the Candidate&apos;s start date, provided that the Candidate remains providing
                 services to CoW during this period. The referral bonus amount can vary for each role. You can find the
                 exact amount listed in the job description on our website at{' '}
                 <a href="https://cow.fi/careers">https://cow.fi/careers</a>. The Referrer can decide if they want to be

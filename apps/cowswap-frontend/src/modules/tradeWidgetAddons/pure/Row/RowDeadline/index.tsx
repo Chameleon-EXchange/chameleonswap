@@ -1,6 +1,6 @@
 import { HoverTooltip, RowFixed } from '@cowprotocol/ui'
 
-import { Trans } from '@lingui/macro'
+import { Trans } from '@lingui/react/macro'
 
 import { getNativeOrderDeadlineTooltip, getNonNativeOrderDeadlineTooltip } from 'common/utils/tradeSettingsTooltips'
 
@@ -16,6 +16,10 @@ export interface RowDeadlineProps {
   slippageTooltip?: React.ReactNode
 }
 
+type DeadlineTextContentsProps = { isEoaEthFlow: boolean }
+
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function RowDeadlineContent(props: RowDeadlineProps) {
   const { displayDeadline, isEoaEthFlow, symbols, styleProps } = props
   const deadlineTooltipContent = isEoaEthFlow
@@ -39,13 +43,17 @@ export function RowDeadlineContent(props: RowDeadlineProps) {
   )
 }
 
-type DeadlineTextContentsProps = { isEoaEthFlow: boolean }
-
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 function DeadlineTextContents({ isEoaEthFlow }: DeadlineTextContentsProps) {
   return (
     <TransactionText>
       <Trans>Transaction expiration</Trans>
-      {isEoaEthFlow && <i>(modified)</i>}
+      {isEoaEthFlow && (
+        <i>
+          <Trans>(modified)</Trans>
+        </i>
+      )}
     </TransactionText>
   )
 }

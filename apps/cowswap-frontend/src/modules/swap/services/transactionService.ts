@@ -1,6 +1,6 @@
 import { EnrichedOrder, OrderKind } from '@cowprotocol/cow-sdk'
+import { CurrencyAmount, Currency, Token } from '@cowprotocol/currency'
 import { JsonRpcProvider } from '@ethersproject/providers'
-import { CurrencyAmount, Currency, Token } from '@uniswap/sdk-core'
 
 import { orderBookApi } from 'cowSdk'
 import { BigNumber, utils as ethersUtils } from 'ethers'
@@ -8,7 +8,6 @@ import { BigNumber, utils as ethersUtils } from 'ethers'
 import { SystemSettings } from 'modules/system/services/systemSettings'
 import { SystemSettingsService } from 'modules/system/services/systemSettingsService'
 import { fetchCurrencyUsdPrice } from 'modules/usdAmount/services/fetchCurrencyUsdPrice'
-import { usdcPriceLoader } from 'modules/usdAmount/utils/usdcPriceLoader'
 
 import http from 'utils/http'
 
@@ -98,12 +97,11 @@ export class TransactionService {
     kind: OrderKind,
     txHash: string,
   ): Promise<void> {
-    // Get order details from orderBookApi
-    const order = (await orderBookApi.getOrder(orderId, { chainId })) as ExtendedEnrichedOrder
-
-    if (!order) {
-      console.error('[TransactionService] Order not found:', orderId)
-      return
+    // Get order details from orderBookApi (non-blocking if not indexed yet)
+    try {
+      await orderBookApi.getOrder(orderId, { chainId })
+    } catch {
+      // Proceed even if not indexed yet
     }
 
     // Get system settings
@@ -121,8 +119,7 @@ export class TransactionService {
         : (amountForUsdCalculation.currency as Token)
 
       // Get USD price using the same method as the UI
-      const getUsdcPrice = usdcPriceLoader(chainId)
-      const tokenPrice = await fetchCurrencyUsdPrice(token, getUsdcPrice)
+      const tokenPrice = await fetchCurrencyUsdPrice(token)
 
       if (tokenPrice) {
         const tokenAmount = Number(amountForUsdCalculation.toExact())

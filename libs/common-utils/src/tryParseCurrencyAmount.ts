@@ -1,5 +1,6 @@
-import { parseUnits } from '@ethersproject/units'
-import { Currency, CurrencyAmount, Fraction } from '@uniswap/sdk-core'
+import { parseUnits } from 'viem'
+
+import { Currency, CurrencyAmount, Fraction } from '@cowprotocol/currency'
 
 import JSBI from 'jsbi'
 
@@ -9,13 +10,10 @@ import JSBI from 'jsbi'
  */
 export function tryParseCurrencyAmount<T extends Currency>(value: string, currency: T): CurrencyAmount<T>
 export function tryParseCurrencyAmount<T extends Currency>(value: Fraction, currency: T): CurrencyAmount<T>
-export function tryParseCurrencyAmount<T extends Currency>(
-  value?: string,
-  currency?: T
-): CurrencyAmount<T> | undefined
+export function tryParseCurrencyAmount<T extends Currency>(value?: string, currency?: T): CurrencyAmount<T> | undefined
 export function tryParseCurrencyAmount<T extends Currency>(
   value?: string | Fraction,
-  currency?: T
+  currency?: T,
 ): CurrencyAmount<T> | undefined {
   if (!value || !currency) {
     return undefined
@@ -29,9 +27,10 @@ export function tryParseCurrencyAmount<T extends Currency>(
     const [quotient, remainder] = value.split('.')
     const fixedNumber = remainder ? quotient + '.' + remainder.slice(0, currency.decimals) : quotient
     const typedValueParsed = parseUnits(fixedNumber, currency.decimals).toString()
-    if (typedValueParsed !== '0') {
-      return CurrencyAmount.fromRawAmount(currency, JSBI.BigInt(typedValueParsed))
-    }
+
+    return CurrencyAmount.fromRawAmount(currency, JSBI.BigInt(typedValueParsed))
+    // TODO: Replace any with proper type definitions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     // fails if the user specifies too many decimal places of precision (or maybe exceed max uint?)
     console.debug(`Failed to parse input amount: "${value}"`, error)

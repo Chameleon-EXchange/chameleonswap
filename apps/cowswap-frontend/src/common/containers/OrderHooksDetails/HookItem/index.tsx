@@ -1,26 +1,48 @@
-import { useState } from 'react'
+/* eslint-disable @typescript-eslint/no-restricted-imports */ // TODO: Don't use 'modules' import
+import { ReactNode, useState } from 'react'
 
+import { getSafeAbsoluteUrl } from '@cowprotocol/common-utils'
 import { CowHookDetails, HookToDappMatch } from '@cowprotocol/hook-dapp-lib'
 
+import { t } from '@lingui/core/macro'
+import { Trans } from '@lingui/react/macro'
 import { ChevronDown, ChevronUp } from 'react-feather'
 
-import { clickOnHooks } from 'modules/analytics'
 import { useSimulationData } from 'modules/tenderly/hooks/useSimulationData'
+
+import { CowSwapAnalyticsCategory, toCowSwapGtmEvent } from 'common/analytics/types'
 
 import * as styledEl from './styled'
 
-export function HookItem({ details, item, index }: { details?: CowHookDetails; item: HookToDappMatch; index: number }) {
+// TODO: Break down this large function into smaller functions
+// eslint-disable-next-line max-lines-per-function
+export function HookItem({
+  details,
+  item,
+  index,
+}: {
+  details?: CowHookDetails
+  item: HookToDappMatch
+  index: number
+}): ReactNode {
   const [isOpen, setIsOpen] = useState(false)
-
   const simulationData = useSimulationData(details?.uuid)
 
-  const handleLinkClick = () => {
-    clickOnHooks(item.dapp?.name || 'Unknown hook dapp')
-  }
+  const dappName = item.dapp?.name || t`Unknown Hook`
+  const safeWebsiteUrl = item.dapp ? getSafeAbsoluteUrl(item.dapp.website) : null
+  const websiteHostname = safeWebsiteUrl ? new URL(safeWebsiteUrl).hostname : null
+  const safeSimulationUrl = simulationData ? getSafeAbsoluteUrl(simulationData.link) : null
 
   return (
     <styledEl.HookItemWrapper as="li">
-      <styledEl.HookItemHeader onClick={() => setIsOpen(!isOpen)}>
+      <styledEl.HookItemHeader
+        onClick={() => setIsOpen(!isOpen)}
+        data-click-event={toCowSwapGtmEvent({
+          category: CowSwapAnalyticsCategory.HOOKS,
+          action: 'Click Hook Details',
+          label: `${dappName} - ${isOpen ? 'Collapse' : 'Expand'}`,
+        })}
+      >
         <styledEl.HookItemInfo>
           <styledEl.HookNumber>{index + 1}</styledEl.HookNumber>
           {item.dapp ? (
@@ -29,7 +51,9 @@ export function HookItem({ details, item, index }: { details?: CowHookDetails; i
               <span>{item.dapp.name}</span>
             </>
           ) : (
-            <span>Unknown hook dapp</span>
+            <span>
+              <Trans>Unknown hook dapp</Trans>
+            </span>
           )}
         </styledEl.HookItemInfo>
         <styledEl.ToggleIcon isOpen={isOpen}>
@@ -42,25 +66,71 @@ export function HookItem({ details, item, index }: { details?: CowHookDetails; i
             <>
               {simulationData && (
                 <p>
-                  <b>Simulation:</b>
+                  <b>
+                    <Trans>Simulation:</Trans>
+                  </b>
                   <styledEl.SimulationLink status={simulationData.status}>
-                    <a href={simulationData.link} target="_blank" rel="noopener noreferrer">
-                      {simulationData.status ? 'Simulation successful' : 'Simulation failed'}
-                    </a>
+                    {safeSimulationUrl ? (
+                      <a
+                        href={safeSimulationUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        data-click-event={toCowSwapGtmEvent({
+                          category: CowSwapAnalyticsCategory.HOOKS,
+                          action: 'Click Simulation',
+                          label: `${dappName} - ${simulationData.status ? 'Success' : 'Failed'}`,
+                        })}
+                      >
+                        {simulationData.status ? (
+                          <Trans>Simulation successful</Trans>
+                        ) : (
+                          <Trans>Simulation failed</Trans>
+                        )}
+                      </a>
+                    ) : (
+                      <span>
+                        {simulationData.status ? (
+                          <Trans>Simulation successful</Trans>
+                        ) : (
+                          <Trans>Simulation failed</Trans>
+                        )}
+                      </span>
+                    )}
                   </styledEl.SimulationLink>
                 </p>
               )}
               <p>
-                <b>Description:</b> {item.dapp.descriptionShort}
+                <b>
+                  <Trans>Description</Trans>:
+                </b>{' '}
+                {item.dapp?.descriptionShort}
               </p>
               <p>
-                <b>Version:</b> {item.dapp.version}
+                <b>
+                  <Trans>Version</Trans>:
+                </b>{' '}
+                {item.dapp.version}
               </p>
               <p>
-                <b>Website:</b>{' '}
-                <a href={item.dapp.website} target="_blank" rel="noopener noreferrer" onClick={handleLinkClick}>
-                  {item.dapp.website}
-                </a>
+                <b>
+                  <Trans>Website</Trans>:
+                </b>{' '}
+                {safeWebsiteUrl && websiteHostname ? (
+                  <a
+                    href={safeWebsiteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    data-click-event={toCowSwapGtmEvent({
+                      category: CowSwapAnalyticsCategory.HOOKS,
+                      action: 'Click Website',
+                      label: `${dappName} - ${websiteHostname}`,
+                    })}
+                  >
+                    {item.dapp.website}
+                  </a>
+                ) : (
+                  item.dapp.website
+                )}
               </p>
             </>
           )}

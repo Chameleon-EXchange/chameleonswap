@@ -1,31 +1,32 @@
-import React, { DOMAttributes, useState, useCallback, createRef, ReactElement } from 'react'
+import React, { createRef, DOMAttributes, ReactElement, useCallback, useState } from 'react'
 
 import { Command } from '@cowprotocol/types'
+import { Color } from '@cowprotocol/ui'
 
-import styled, { FlattenSimpleInterpolation } from 'styled-components/macro'
+import styled from 'styled-components/macro'
 
 import {
   BaseCard,
+  DirectionDownwardsCSS,
+  DirectionUpwardsCSS,
+  DropdownItemCSS,
+  DropdownItemProps,
   PositionCenterCSS,
   PositionLeftCSS,
   PositionRightCSS,
-  DirectionDownwardsCSS,
-  DirectionUpwardsCSS,
-  DropdownItemProps,
-  DropdownItemCSS,
 } from './styled'
 
 import useOnClickOutside from '../../../../hooks/useOnClickOutside'
+
+export enum DropdownDirection {
+  downwards = 'down',
+  upwards = 'up',
+}
 
 export enum DropdownPosition {
   center,
   left,
   right,
-}
-
-export enum DropdownDirection {
-  downwards = 'down',
-  upwards = 'up',
 }
 
 const Wrapper = styled.div<{ isOpen: boolean; disabled: boolean }>`
@@ -48,13 +49,14 @@ const ButtonContainer = styled.div`
   user-select: none;
   width: 100%;
 `
+
 export interface DropdownProps extends DOMAttributes<HTMLDivElement> {
   activeItemHighlight?: boolean | undefined
   className?: string
   closeOnClick?: boolean
   currentItem?: number | undefined
   disabled?: boolean
-  items: Array<ReactElement>
+  items: Array<ReactElement<{ onClick?: (e: React.MouseEvent) => void; className?: string }>>
   triggerClose?: boolean
   dropdownButtonContent?: React.ReactNode | string
   dropdownButtonContentOpened?: React.ReactNode | string
@@ -63,42 +65,52 @@ export interface DropdownProps extends DOMAttributes<HTMLDivElement> {
   callback?: Command
 }
 
-type CssString = FlattenSimpleInterpolation | string
-
 const Items = styled(BaseCard)<{
   dropdownDirection?: DropdownDirection
   dropdownPosition?: DropdownPosition
   fullWidth?: boolean
   isOpen: boolean
 }>`
-  background: ${({ theme }): string => theme.paper};
+  background: ${Color.explorer_bg};
   border-radius: 0.6rem;
-  border: 1px solid ${({ theme }): string => theme.borderPrimary};
-  box-shadow: ${({ theme }): string => theme.boxShadow};
+  border: 1px solid ${Color.explorer_border};
+  box-shadow: ${Color.explorer_boxShadow};
   display: ${(props): string => (props.isOpen ? 'block' : 'none')};
   min-width: 160px;
   position: absolute;
   white-space: nowrap;
 
-  ${(props): CssString => (props.fullWidth ? 'width: 100%;' : '')}
-  ${(props): CssString => (props.dropdownPosition === DropdownPosition.left ? PositionLeftCSS : '')}
-  ${(props): CssString => (props.dropdownPosition === DropdownPosition.right ? PositionRightCSS : '')}
-  ${(props): CssString => (props.dropdownPosition === DropdownPosition.center ? PositionCenterCSS : '')}
-  ${(props): CssString => (props.dropdownDirection === DropdownDirection.downwards ? DirectionDownwardsCSS : '')}
-  ${(props): CssString => (props.dropdownDirection === DropdownDirection.upwards ? DirectionUpwardsCSS : '')}
+  ${({ fullWidth = false }) => (fullWidth ? 'width: 100%;' : '')}
+  ${({ dropdownPosition = DropdownPosition.left }) => {
+    switch (dropdownPosition) {
+      case DropdownPosition.right:
+        return PositionRightCSS
+      case DropdownPosition.center:
+        return PositionCenterCSS
+      case DropdownPosition.left:
+        return PositionLeftCSS
+      default:
+        return ''
+    }
+  }}
+  ${({ dropdownDirection = DropdownDirection.downwards }) => {
+    switch (dropdownDirection) {
+      case DropdownDirection.downwards:
+        return DirectionDownwardsCSS
+      case DropdownDirection.upwards:
+        return DirectionUpwardsCSS
+      default:
+        return ''
+    }
+  }}
 `
-
-Items.defaultProps = {
-  dropdownDirection: DropdownDirection.downwards,
-  dropdownPosition: DropdownPosition.left,
-  fullWidth: false,
-  isOpen: false,
-}
 
 export const DropdownOption = styled.li<DropdownItemProps>`
-  ${DropdownItemCSS}
+  ${DropdownItemCSS};
   list-style-type: none;
 `
+
+// TODO: Break down this large function into smaller functions
 
 export const Dropdown: React.FC<DropdownProps> = (props) => {
   const {
@@ -125,7 +137,7 @@ export const Dropdown: React.FC<DropdownProps> = (props) => {
       setIsOpen(!isOpen)
       callback && callback()
     },
-    [callback, disabled, isOpen]
+    [callback, disabled, isOpen],
   )
 
   return (
@@ -144,13 +156,13 @@ export const Dropdown: React.FC<DropdownProps> = (props) => {
         dropdownPosition={dropdownPosition}
         isOpen={isOpen}
       >
-        {items.map((item: ReactElement, index: number) => {
+        {items.map((item, index) => {
           const isActive = activeItemHighlight && index === currentItem
 
           return React.cloneElement(item, {
-            className: `dropdown-item ${isActive && 'active'}`,
+            className: `dropdown-item ${isActive ? 'active' : ''}`,
             key: item.key || index,
-            onClick: (e: Event) => {
+            onClick: (e: React.MouseEvent) => {
               e.stopPropagation()
 
               if (closeOnClick) {
@@ -161,7 +173,7 @@ export const Dropdown: React.FC<DropdownProps> = (props) => {
                 return
               }
 
-              item.props.onClick()
+              item.props.onClick(e)
             },
           })
         })}

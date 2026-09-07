@@ -3,7 +3,7 @@ import { Media, QuestionTooltipIconWrapper, UI } from '@cowprotocol/ui'
 import styled from 'styled-components/macro'
 
 import { ExecutionPrice } from 'common/pure/ExecutionPrice'
-import { RateInfo, RateWrapper } from 'common/pure/RateInfo'
+import { RateWrapper } from 'common/pure/RateInfo'
 
 export const Row = styled.div`
   display: flex;
@@ -25,13 +25,12 @@ export const Row = styled.div`
   }
 `
 
-export const StyledRateInfo = styled(RateInfo).attrs({ rightAlign: true })`
-  padding: 10px;
+export const FooterBox = styled.div`
+  width: 100%;
+  padding: 0 6px;
   gap: 4px;
-  font-size: 13px;
-  display: grid;
-  grid-template-columns: max-content auto;
-  grid-template-rows: max-content;
+  display: flex;
+  flex-flow: column wrap;
 
   ${RateWrapper} {
     text-align: right;

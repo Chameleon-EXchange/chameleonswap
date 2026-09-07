@@ -1,101 +1,146 @@
-'use server'
+import type { ReactNode } from 'react'
 
-import React from 'react'
+import { notFound } from 'next/navigation'
+
 import {
-  Article,
+  Category,
   getAllArticleSlugs,
   getArticleBySlug,
   getArticles,
   getCategories,
   SharedRichTextComponent,
 } from '../../../../services/cms'
-import { ArticlePageComponent } from '@/components/ArticlePageComponent'
-import { notFound } from 'next/navigation'
-import type { Metadata } from 'next'
-import { stripHtmlTags } from '@/util/stripHTMLTags'
-import { getPageMetadata } from '@/util/getPageMetadata'
 
-function isRichTextComponent(block: any): block is SharedRichTextComponent {
-  return block.body !== undefined
-}
+import type { Metadata } from 'next'
+
+import { ArticlePageComponent } from '@/components/ArticlePageComponent'
+import { FEATURED_ARTICLES_PAGE_SIZE } from '@/const/pagination'
+import { isValidCmsSlug } from '@/util/cmsValidation'
+import { fetchArticleWithRetry } from '@/util/fetchHelpers'
+import { getPageMetadata } from '@/util/getPageMetadata'
+import { stripHtmlTags } from '@/util/stripHTMLTags'
+
+// Next.js requires revalidate to be a literal number for static analysis
+// 12 hours (43200 seconds) - balanced between freshness and cache efficiency
+export const revalidate = 43200
+
+// Maximum length for metadata descriptions. When content exceeds MAX_LENGTH,
+// we truncate to TRUNCATE_LENGTH (MAX_LENGTH - 3) to make room for "..." ellipsis
+const METADATA_DESCRIPTION_MAX_LENGTH = 150
+const METADATA_DESCRIPTION_TRUNCATE_LENGTH = METADATA_DESCRIPTION_MAX_LENGTH - 3
 
 type Props = {
   params: Promise<{ article: string }>
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export default async function ArticlePage({ params }: Props): Promise<ReactNode> {
   const articleSlug = (await params).article
 
-  if (!articleSlug) return {}
-
-  const article = await getArticleBySlug(articleSlug)
-  const attributes = article?.attributes
-  const { title, blocks, description, cover } = attributes || {}
-  const coverImageUrl = cover?.data?.attributes?.url
-
-  const content =
-    blocks?.map((block: SharedRichTextComponent) => (isRichTextComponent(block) ? block.body : '')).join(' ') || ''
-  const plainContent = stripHtmlTags(content)
-
-  return getPageMetadata({
-    absoluteTitle: `${title} - CoW DAO`,
-    description: description
-      ? stripHtmlTags(description)
-      : plainContent.length > 150
-        ? stripHtmlTags(plainContent.substring(0, 147)) + '...'
-        : stripHtmlTags(plainContent),
-    image: coverImageUrl,
-  })
-}
-
-export async function generateStaticParams() {
-  const slugs = await getAllArticleSlugs()
-
-  return slugs.map((article) => ({ article }))
-}
-
-export default async function ArticlePage({ params }: Props) {
-  const articleSlug = (await params).article
-  const article = await getArticleBySlug(articleSlug)
-
-  if (!article) {
+  if (!isValidCmsSlug(articleSlug)) {
     return notFound()
   }
 
-  const articlesResponse = await getArticles()
-  const articles = articlesResponse.data
+  try {
+    const article = await fetchArticleWithRetry(articleSlug)
 
-  // Fetch featured articles
-  const featuredArticlesResponse = await getArticles({
-    filters: {
-      featured: {
-        $eq: true,
+    if (!article) {
+      return notFound()
+    }
+
+    // Fetch featured articles
+    const featuredArticlesResponse = await getArticles({
+      filters: {
+        featured: {
+          $eq: true,
+        },
       },
-    },
-    pageSize: 7, // Limit to 7 articles
-  })
-  const featuredArticles = featuredArticlesResponse.data
+      pageSize: FEATURED_ARTICLES_PAGE_SIZE,
+    })
+    const featuredArticles = featuredArticlesResponse.data
 
-  const randomArticles = getRandomArticles(articles, 3)
-  const categoriesResponse = await getCategories()
-  const allCategories =
-    categoriesResponse?.map((category: any) => ({
-      name: category?.attributes?.name || '',
-      slug: category?.attributes?.slug || '',
-    })) || []
+    // Use first 3 featured articles for "Read more" section to ensure deterministic ISR caching
+    const readMoreArticles = featuredArticles.slice(0, 3)
+    const categoriesResponse = await getCategories()
+    const allCategories =
+      categoriesResponse?.map((category: Category) => ({
+        name: category?.attributes?.name || '',
+        slug: category?.attributes?.slug || '',
+      })) || []
 
-  return (
-    <ArticlePageComponent
-      article={article}
-      articles={articles}
-      randomArticles={randomArticles}
-      featuredArticles={featuredArticles}
-      allCategories={allCategories}
-    />
-  )
+    return (
+      <ArticlePageComponent
+        article={article}
+        randomArticles={readMoreArticles}
+        featuredArticles={featuredArticles}
+        allCategories={allCategories}
+      />
+    )
+  } catch (error) {
+    console.error(`Error fetching article ${articleSlug}:`, error)
+    return notFound()
+  }
 }
 
-function getRandomArticles(articles: Article[], count: number): Article[] {
-  const shuffled = articles.sort(() => 0.5 - Math.random())
-  return shuffled.slice(0, count)
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const articleSlug = (await params).article
+
+  if (!articleSlug || !isValidCmsSlug(articleSlug)) {
+    return getPageMetadata({
+      title: 'Article Not Found',
+      description: 'The requested article could not be found.',
+    })
+  }
+
+  try {
+    const article = await getArticleBySlug(articleSlug)
+    if (!article || !article.attributes) {
+      return getPageMetadata({
+        title: 'Article Not Found',
+        description: 'The requested article could not be found.',
+      })
+    }
+
+    const attributes = article.attributes
+    const { title, blocks, description, cover } = attributes
+    const coverImageUrl = cover?.data?.attributes?.url
+
+    const content =
+      blocks?.map((block: SharedRichTextComponent) => (isRichTextComponent(block) ? block.body : '')).join(' ') || ''
+    const plainContent = stripHtmlTags(content)
+
+    return getPageMetadata({
+      absoluteTitle: `${title} - CoW DAO`,
+      description: description
+        ? stripHtmlTags(description)
+        : plainContent.length > METADATA_DESCRIPTION_MAX_LENGTH
+          ? stripHtmlTags(plainContent.substring(0, METADATA_DESCRIPTION_TRUNCATE_LENGTH)) + '...'
+          : stripHtmlTags(plainContent),
+      image: coverImageUrl,
+    })
+  } catch (error) {
+    console.error(`Error generating metadata for article ${articleSlug}:`, error)
+    return getPageMetadata({
+      title: 'Article',
+      description: 'Loading article...',
+    })
+  }
+}
+
+export async function generateStaticParams(): Promise<{ article: string }[]> {
+  try {
+    const slugs = await getAllArticleSlugs()
+    return slugs.map((article) => ({ article }))
+  } catch (error) {
+    console.error('Error generating static params:', error)
+    return []
+  }
+}
+
+function isRichTextComponent(block: unknown): block is SharedRichTextComponent {
+  return (
+    typeof block === 'object' &&
+    block !== null &&
+    'body' in block &&
+    typeof (block as { body?: unknown }).body === 'string'
+  )
 }

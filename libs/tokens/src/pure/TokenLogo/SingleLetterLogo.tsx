@@ -1,3 +1,5 @@
+import { ReactNode } from 'react'
+
 import { UI } from '@cowprotocol/ui'
 
 import styled from 'styled-components/macro'
@@ -17,8 +19,9 @@ export const SingleLetterLogoWrapper = styled.div`
 
 type SingleLetterLogoProps = {
   initial: string
+  address?: string
 }
 
-export function SingleLetterLogo({ initial }: SingleLetterLogoProps) {
-  return <SingleLetterLogoWrapper>{initial}</SingleLetterLogoWrapper>
+export function SingleLetterLogo({ initial, address }: SingleLetterLogoProps): ReactNode {
+  return <SingleLetterLogoWrapper data-address={address}>{initial}</SingleLetterLogoWrapper>
 }

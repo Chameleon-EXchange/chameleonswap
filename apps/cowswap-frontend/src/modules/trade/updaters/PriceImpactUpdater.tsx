@@ -6,7 +6,7 @@ import { useSafeEffect } from 'common/hooks/useSafeMemo'
 
 import { priceImpactAtom } from '../state/priceImpactAtom'
 
-export function PriceImpactUpdater() {
+export function PriceImpactUpdater(): null {
   const updatePriceImpact = useSetAtom(priceImpactAtom)
   const priceImpactState = useFiatValuePriceImpact()
 

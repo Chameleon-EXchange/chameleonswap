@@ -16,7 +16,7 @@ const EMPTY_FAVORITE_TOKENS: TokenWithLogo[] = []
 export const favoriteTokensAtom = atomWithStorage<FavoriteTokens>(
   'favoriteTokensAtom:v2',
   DEFAULT_FAVORITE_TOKENS,
-  getJotaiMergerStorage()
+  getJotaiMergerStorage(),
 )
 
 export const favoriteTokensListAtom = atom((get) => {
@@ -73,7 +73,7 @@ function migrateFavoriteTokensAtom(oldStorageKey: string, newStorageKey: string)
         }
         return acc
       },
-      {}
+      {},
     )
 
     // Save the new state

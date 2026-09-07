@@ -1,59 +1,61 @@
 import { ReactNode } from 'react'
 
 import { useUsdAmount } from 'modules/usdAmount'
-import { VolumeFeeTooltip } from 'modules/volumeFee'
+import { useVolumeFeeTooltip } from 'modules/volumeFee'
 
 import { NetworkCostsRow } from '../../pure/NetworkCostsRow'
-import { PartnerFeeRow } from '../../pure/PartnerFeeRow'
+import { TradeFees } from '../../pure/TradeFees'
 import { ReceiveAmountInfo } from '../../types'
-import { getOrderTypeReceiveAmounts } from '../../utils/getReceiveAmountInfo'
+import { getOrderTypeReceiveAmounts } from '../../utils/getOrderTypeReceiveAmounts'
 
 interface TradeFeesAndCostsProps {
   receiveAmountInfo: ReceiveAmountInfo | null
   networkCostsSuffix?: ReactNode
   networkCostsTooltipSuffix?: ReactNode
   withTimelineDot?: boolean
-
-  volumeFeeTooltip: VolumeFeeTooltip
 }
 
-export function TradeFeesAndCosts(props: TradeFeesAndCostsProps) {
-  const {
-    receiveAmountInfo,
-    networkCostsSuffix,
-    networkCostsTooltipSuffix,
-    withTimelineDot = true,
-
-    volumeFeeTooltip,
-  } = props
+export function TradeFeesAndCosts(props: TradeFeesAndCostsProps): ReactNode {
+  const { receiveAmountInfo, networkCostsSuffix, networkCostsTooltipSuffix, withTimelineDot = true } = props
 
   const networkFeeAmount = receiveAmountInfo && getOrderTypeReceiveAmounts(receiveAmountInfo).networkFeeAmount
   const partnerFee = receiveAmountInfo && receiveAmountInfo.costs.partnerFee
   const partnerFeeAmount = partnerFee?.amount
   const partnerFeeBps = partnerFee?.bps
+  const protocolFee = receiveAmountInfo && receiveAmountInfo.costs.protocolFee
+  const protocolFeeAmount = protocolFee?.amount
+  const protocolFeeBps = protocolFee?.bps
 
   const partnerFeeUsd = useUsdAmount(partnerFeeAmount).value
+  const protocolFeeUsd = useUsdAmount(protocolFeeAmount).value
   const networkFeeAmountUsd = useUsdAmount(networkFeeAmount).value
+
+  const volumeFeeTooltip = useVolumeFeeTooltip()
+
+  const hasNetworkCosts = networkFeeAmount?.greaterThan(0)
 
   return (
     <>
-      {/*Partner fee*/}
-      <PartnerFeeRow
-        withTimelineDot={withTimelineDot}
-        partnerFeeUsd={partnerFeeUsd}
+      <TradeFees
         partnerFeeAmount={partnerFeeAmount}
+        partnerFeeUsd={partnerFeeUsd}
         partnerFeeBps={partnerFeeBps}
+        protocolFeeAmount={protocolFeeAmount}
+        protocolFeeUsd={protocolFeeUsd}
+        protocolFeeBps={protocolFeeBps}
         volumeFeeTooltip={volumeFeeTooltip}
+        withTimelineDot={withTimelineDot}
+        isLast={!hasNetworkCosts}
       />
 
-      {/*Network cost*/}
-      {networkFeeAmount?.greaterThan(0) && (
+      {hasNetworkCosts && networkFeeAmount && (
         <NetworkCostsRow
           networkFeeAmount={networkFeeAmount}
           networkFeeAmountUsd={networkFeeAmountUsd}
           withTimelineDot={withTimelineDot}
           amountSuffix={networkCostsSuffix}
           tooltipSuffix={networkCostsTooltipSuffix}
+          isLast
         />
       )}
     </>

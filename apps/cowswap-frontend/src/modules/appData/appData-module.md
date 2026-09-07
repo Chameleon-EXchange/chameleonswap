@@ -2,8 +2,8 @@
 
 See also:
 
-- [Chameleon swap Architecture](../../../docs/architecture-overview.md)
-- [Broader Chameleon swap Architecture](https://github.com/cowprotocol/cowswap-diagrams)
+- [CoW Swap Architecture](../../../docs/architecture-overview.md)
+- [Broader CoW Swap Architecture](https://github.com/cowprotocol/cowswap-diagrams)
 
 ![appData module](./appData-module.drawio.svg)
 
@@ -15,7 +15,7 @@ This module will facilitate to get this information, both in a object format, an
 
 ## App-data project
 
-This module depends on the library https://github.com/cowprotocol/app-data
+This module depends on the library https://www.npmjs.com/package/@cowprotocol/sdk-app-data
 
 # Details
 

@@ -1,7 +1,7 @@
+import { CurrencyAmount, Token } from '@cowprotocol/currency'
 import { FiatAmount, HoverTooltip } from '@cowprotocol/ui'
-import { CurrencyAmount, Token } from '@uniswap/sdk-core'
 
-import { Trans } from '@lingui/macro'
+import { Trans } from '@lingui/react/macro'
 
 import { useUsdAmount } from 'modules/usdAmount'
 
@@ -11,6 +11,8 @@ type FiatBalanceCellProps = {
   balance: CurrencyAmount<Token> | undefined
 }
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function FiatBalanceCell({ balance }: FiatBalanceCellProps) {
   const hasBalance = balance?.greaterThan(0)
   const fiatValue = useUsdAmount(balance).value
@@ -22,7 +24,10 @@ export function FiatBalanceCell({ balance }: FiatBalanceCellProps) {
       ) : (
         <FiatValue>
           <span>$ 0.00</span>
-          <HoverTooltip wrapInContainer content={<Trans>Value may be zero due to missing token price information</Trans>}>
+          <HoverTooltip
+            wrapInContainer
+            content={<Trans>Value may be zero due to missing token price information</Trans>}
+          >
             <InfoCircle size="20" color={'white'} />
           </HoverTooltip>
         </FiatValue>

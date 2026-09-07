@@ -1,27 +1,53 @@
 import { Atom, useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 
+import { TokenWithLogo } from '@cowprotocol/common-const'
 import { tryParseFractionalAmount } from '@cowprotocol/common-utils'
+import { getAddressKey } from '@cowprotocol/cow-sdk'
+import { Currency, CurrencyAmount } from '@cowprotocol/currency'
+import { BuyTokensParams } from '@cowprotocol/sdk-bridging'
 import { useTokenBySymbolOrAddress } from '@cowprotocol/tokens'
-import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
 
+import { useBridgeSupportedTokens } from 'entities/bridgeProvider'
 import { Nullish } from 'types'
 
 import { useCurrencyAmountBalanceCombined } from 'modules/combinedBalances'
-import { ExtendedTradeRawState } from 'modules/trade/types/TradeRawState'
 import { useTradeUsdAmounts } from 'modules/usdAmount'
 
 import { useSafeMemoObject } from 'common/hooks/useSafeMemo'
 
-export function useBuildTradeDerivedState(stateAtom: Atom<ExtendedTradeRawState>) {
-  const rawState = useAtomValue(stateAtom)
+import { TradeDerivedState } from '../types'
+import { ExtendedTradeRawState } from '../types/TradeRawState'
 
+export function useBuildTradeDerivedState(
+  stateAtom: Atom<ExtendedTradeRawState>,
+  isQuoteBasedOrder: boolean,
+): Omit<TradeDerivedState, 'slippage' | 'tradeType'> {
+  const rawState = useAtomValue(stateAtom)
+  const { inputCurrencyId, outputCurrencyId } = rawState
+
+  const targetChainId = rawState.targetChainId || undefined
   const recipient = rawState.recipient
   const recipientAddress = rawState.recipientAddress
   const orderKind = rawState.orderKind
+  const sellChainId = rawState.chainId
 
-  const inputCurrency = useTokenBySymbolOrAddress(rawState.inputCurrencyId)
-  const outputCurrency = useTokenBySymbolOrAddress(rawState.outputCurrencyId)
+  const inputCurrency = useTokenBySymbolOrAddress(inputCurrencyId, sellChainId)
+
+  const buyTokensParams: BuyTokensParams | undefined = useMemo(() => {
+    if (!targetChainId) return undefined
+
+    return {
+      buyChainId: targetChainId,
+      sellChainId: sellChainId || undefined,
+    }
+  }, [sellChainId, targetChainId])
+
+  const outputCurrencyFromBridge = useTokenForTargetChain(buyTokensParams, outputCurrencyId)
+  const outputCurrencyFromTokenLists = useTokenBySymbolOrAddress(targetChainId ? null : outputCurrencyId, sellChainId)
+
+  const outputCurrency = outputCurrencyFromBridge || outputCurrencyFromTokenLists
+
   const inputCurrencyAmount = useMemo(
     () => getCurrencyAmount(inputCurrency, rawState.inputCurrencyAmount),
     [inputCurrency, rawState.inputCurrencyAmount],
@@ -38,10 +64,6 @@ export function useBuildTradeDerivedState(stateAtom: Atom<ExtendedTradeRawState>
     outputAmount: { value: outputCurrencyFiatAmount },
   } = useTradeUsdAmounts(inputCurrencyAmount, outputCurrencyAmount, inputCurrency, outputCurrency, true)
 
-  // In limit orders and advanced orders we don't have "real" buy orders
-  const slippageAdjustedSellAmount = inputCurrencyAmount
-  const slippageAdjustedBuyAmount = outputCurrencyAmount
-
   return useSafeMemoObject({
     orderKind,
     recipient,
@@ -50,12 +72,11 @@ export function useBuildTradeDerivedState(stateAtom: Atom<ExtendedTradeRawState>
     outputCurrency,
     inputCurrencyAmount,
     outputCurrencyAmount,
-    slippageAdjustedSellAmount,
-    slippageAdjustedBuyAmount,
     inputCurrencyBalance,
     outputCurrencyBalance,
     inputCurrencyFiatAmount,
     outputCurrencyFiatAmount,
+    isQuoteBasedOrder,
   })
 }
 
@@ -69,4 +90,16 @@ function getCurrencyAmount(
   // State can be stored as a full string in atoms rather than a json with numerator/denominator
   // Thus we try just that in case the first option fails
   return tryParseFractionalAmount(currency, currencyAmount) || CurrencyAmount.fromRawAmount(currency, currencyAmount)
+}
+
+function useTokenForTargetChain(params: BuyTokensParams | undefined, currencyId: string | null): TokenWithLogo | null {
+  const result = useBridgeSupportedTokens(params)
+
+  return useMemo(() => {
+    if (!result.data?.tokens?.length || !currencyId) return null
+
+    const currencyIdKey = getAddressKey(currencyId)
+
+    return result.data.tokens.find((token) => getAddressKey(token.address) === currencyIdKey) || null
+  }, [result, currencyId])
 }

@@ -1,6 +1,5 @@
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from '@cowprotocol/common-const'
-import { Currency, CurrencyAmount, Price } from '@uniswap/sdk-core'
-
+import { Currency, CurrencyAmount, Price } from '@cowprotocol/currency'
 
 interface FormatLocaleNumberArgs {
   number: CurrencyAmount<Currency> | Price<Currency, Currency> | number
@@ -10,6 +9,8 @@ interface FormatLocaleNumberArgs {
   fixedDecimals?: number
 }
 
+// TODO: Reduce function complexity by extracting logic
+// eslint-disable-next-line complexity
 export default function formatLocaleNumber({
   number,
   locale,

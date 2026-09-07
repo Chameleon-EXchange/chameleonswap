@@ -1,6 +1,9 @@
 import { ReactElement } from 'react'
 
+import { i18n } from '@lingui/core'
+
 import { getChainInfo } from '@cowprotocol/common-const'
+import { getSafeAbsoluteUrl } from '@cowprotocol/common-utils'
 import { SupportedChainId } from '@cowprotocol/cow-sdk'
 import { HOOK_DAPP_ID_LENGTH, HookDappBase, HookDappWalletCompatibility } from '@cowprotocol/hook-dapp-lib'
 
@@ -10,7 +13,11 @@ type HookDappBaseInfo = Omit<HookDappBase, 'type' | 'conditions'>
 
 const MANDATORY_DAPP_FIELDS: (keyof HookDappBaseInfo)[] = ['id', 'name', 'image', 'version', 'website']
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 const isHex = (val: string) => Boolean(val.match(/^[0-9a-f]+$/i))
+
+// TODO: Reduce function complexity by extracting logic
 
 export function validateHookDappManifest(
   data: HookDappBase,
@@ -21,7 +28,7 @@ export function validateHookDappManifest(
   const { conditions = {}, ...dapp } = data
 
   if (!dapp) {
-    return ERROR_MESSAGES.INVALID_MANIFEST
+    return i18n._(ERROR_MESSAGES.INVALID_MANIFEST)
   }
 
   const emptyFields = MANDATORY_DAPP_FIELDS.filter((field) => typeof dapp[field] === 'undefined')
@@ -34,11 +41,15 @@ export function validateHookDappManifest(
     typeof conditions.walletCompatibility !== 'undefined' &&
     !conditions.walletCompatibility.includes(HookDappWalletCompatibility.SMART_CONTRACT)
   ) {
-    return ERROR_MESSAGES.SMART_CONTRACT_INCOMPATIBLE
+    return i18n._(ERROR_MESSAGES.SMART_CONTRACT_INCOMPATIBLE)
   }
 
   if (!isHex(dapp.id) || dapp.id.length !== HOOK_DAPP_ID_LENGTH) {
-    return ERROR_MESSAGES.INVALID_HOOK_ID
+    return i18n._(ERROR_MESSAGES.INVALID_HOOK_ID)
+  }
+
+  if (!getSafeAbsoluteUrl(dapp.website)) {
+    return i18n._(ERROR_MESSAGES.INVALID_WEBSITE_URL)
   }
 
   if (chainId && conditions.supportedNetworks && !conditions.supportedNetworks.includes(chainId)) {

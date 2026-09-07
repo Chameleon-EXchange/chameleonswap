@@ -1,19 +1,18 @@
-import { ACTIVE_CUSTOM_THEME, CustomTheme } from '@cowprotocol/common-const'
+import { APRILS_FOOLS_FLAG_KEY, CustomTheme, resolveCustomThemeForContext } from '@cowprotocol/common-const'
+import type { FeatureFlags } from '@cowprotocol/common-const'
 import { isInjectedWidget } from '@cowprotocol/common-utils'
 import { jotaiStore } from '@cowprotocol/core'
 import { CowSwapWidgetAppParams } from '@cowprotocol/widget-lib'
 
+import { injectedWidgetParamsAtom } from 'entities/injectedWidget'
+
 import { cowSwapStore } from 'legacy/state'
 
-import { injectedWidgetParamsAtom } from 'modules/injectedWidget/state/injectedWidgetParamsAtom'
+import { featureFlagsAtom } from 'common/state/featureFlagsState'
 
-type SoundType = 'SEND' | 'SUCCESS' | 'ERROR'
 type Sounds = Record<SoundType, string>
+type SoundType = 'SEND' | 'SUCCESS' | 'ERROR'
 type WidgetSounds = keyof NonNullable<CowSwapWidgetAppParams['sounds']>
-type ThemedSoundOptions = {
-  winterSound?: string
-  halloweenSound?: string
-}
 
 const DEFAULT_COW_SOUNDS: Sounds = {
   SEND: '/audio/send.mp3',
@@ -21,15 +20,14 @@ const DEFAULT_COW_SOUNDS: Sounds = {
   ERROR: '/audio/error.mp3',
 }
 
-const THEMED_SOUNDS: Partial<Record<SoundType, ThemedSoundOptions>> = {
-  SEND: {
-    winterSound: '/audio/send-winterTheme.mp3',
-    halloweenSound: '/audio/halloween.mp3',
-  },
-  SUCCESS: {
-    winterSound: '/audio/success-winterTheme.mp3',
-    halloweenSound: '/audio/halloween.mp3',
-  },
+const WINTER_SOUNDS: Partial<Sounds> = {
+  SEND: '/audio/send-winterTheme.mp3',
+  SUCCESS: '/audio/success-winterTheme.mp3',
+}
+
+const HALLOWEEN_SOUNDS: Partial<Sounds> = {
+  SEND: '/audio/halloween.mp3',
+  SUCCESS: '/audio/halloween.mp3',
 }
 
 const COW_SOUND_TO_WIDGET_KEY: Record<SoundType, WidgetSounds> = {
@@ -38,47 +36,94 @@ const COW_SOUND_TO_WIDGET_KEY: Record<SoundType, WidgetSounds> = {
   ERROR: 'orderError',
 }
 
+const APRIL_FOOL_STORAGE_KEY = 'lastAprilFoolSoundSelections' as const
+
+const APRIL_FOOL_SOUND_SEND = [
+  '/audio/cowswap-aprils2025-yoga.mp3',
+  '/audio/cowswap-aprils2025-epic.mp3',
+  '/audio/cowswap-aprils2025-bubba2.mp3',
+  '/audio/cowswap-aprils2025-bubba.mp3',
+]
+
+function getSeasonalSounds(featureFlags?: FeatureFlags): Partial<Sounds> {
+  const darkModeEnabled = isDarkMode()
+  const activeSeasonalTheme = resolveCustomThemeForContext(featureFlags, { darkModeEnabled })
+
+  if (activeSeasonalTheme === CustomTheme.HALLOWEEN) return HALLOWEEN_SOUNDS
+  if (activeSeasonalTheme === CustomTheme.CHRISTMAS) return WINTER_SOUNDS
+
+  return {}
+}
+
+function getThemeBasedSound(type: SoundType): string {
+  const featureFlags = jotaiStore.get(featureFlagsAtom) as FeatureFlags
+  const isAprilsFoolsEnabled = Boolean(featureFlags?.[APRILS_FOOLS_FLAG_KEY])
+
+  if (isAprilsFoolsEnabled && type === 'SEND') {
+    return pickRandomAprilsFoolSound()
+  }
+
+  const themedSounds = getSeasonalSounds(featureFlags)
+  return themedSounds[type] || DEFAULT_COW_SOUNDS[type]
+}
+
 function isDarkMode(): boolean {
   const state = cowSwapStore.getState()
   const { userDarkMode, matchesDarkMode } = state.user
   return userDarkMode === null ? matchesDarkMode : userDarkMode
 }
 
-function getThemeBasedSound(type: SoundType): string {
-  // TODO: load featureFlags when enabling again
-  // const featureFlags = jotaiStore.get(featureFlagsAtom) as Record<string, boolean>
-  // const { isChristmasEnabled, isHalloweenEnabled } = featureFlags
-  const isChristmasEnabled = false
-  const isHalloweenEnabled = false
-
-  const defaultSound = DEFAULT_COW_SOUNDS[type]
-  const themedOptions = THEMED_SOUNDS[type]
-
-  const isInjectedWidgetMode = isInjectedWidget()
-
-  // When in widget mode, always return default sounds
-  if (isInjectedWidgetMode) {
-    return DEFAULT_COW_SOUNDS[type]
+function pickRandomAprilsFoolSound(): string {
+  let played: string[] = []
+  if (typeof localStorage !== 'undefined') {
+    try {
+      const raw = localStorage.getItem(APRIL_FOOL_STORAGE_KEY)
+      const parsed = raw ? JSON.parse(raw) : []
+      if (Array.isArray(parsed)) {
+        played = parsed.filter((value): value is string => typeof value === 'string')
+      }
+    } catch {
+      // Ignore parse errors and reset the cycle
+    }
   }
 
-  if (!themedOptions) {
-    return defaultSound
+  let pool = APRIL_FOOL_SOUND_SEND.filter((sound) => !played.includes(sound))
+  if (pool.length === 0) {
+    played = []
+    pool = [...APRIL_FOOL_SOUND_SEND]
   }
 
-  if (ACTIVE_CUSTOM_THEME === CustomTheme.CHRISTMAS && isChristmasEnabled && themedOptions.winterSound) {
-    return themedOptions.winterSound
+  const randomPick = pool[Math.floor(Math.random() * pool.length)]
+  const nextPlayed = [...played, randomPick]
+  const stored = nextPlayed.length === APRIL_FOOL_SOUND_SEND.length ? [] : nextPlayed
+
+  if (typeof localStorage !== 'undefined') {
+    try {
+      localStorage.setItem(APRIL_FOOL_STORAGE_KEY, JSON.stringify(stored))
+    } catch {
+      // Ignore storage quota or availability errors; audio rotation still works in-memory
+    }
   }
 
-  if (
-    ACTIVE_CUSTOM_THEME === CustomTheme.HALLOWEEN &&
-    isHalloweenEnabled &&
-    themedOptions.halloweenSound &&
-    isDarkMode()
-  ) {
-    return themedOptions.halloweenSound
-  }
+  return randomPick
+}
 
-  return defaultSound
+const SOUND_CACHE: Record<string, HTMLAudioElement | undefined> = {}
+
+export function getCowSoundError(): HTMLAudioElement {
+  return getAudio('ERROR')
+}
+
+export function getCowSoundSend(): HTMLAudioElement {
+  return getAudio('SEND')
+}
+
+export function getCowSoundSuccess(): HTMLAudioElement {
+  return getAudio('SUCCESS')
+}
+
+function createAudioOrEmpty(src: string): HTMLAudioElement {
+  return typeof Audio !== 'undefined' ? new Audio(src) : getEmptySound()
 }
 
 const SILENT_SOUND: HTMLAudioElement = {
@@ -93,14 +138,28 @@ function getAudio(_type: SoundType): HTMLAudioElement {
   return SILENT_SOUND
 }
 
-export function getCowSoundSend(): HTMLAudioElement {
-  return getAudio('SEND')
+function getEmptySound(): HTMLAudioElement {
+  if (typeof Audio !== 'undefined') {
+    return new Audio('')
+  }
+
+  const stub: Partial<HTMLAudioElement> = {
+    play: () => Promise.resolve(),
+    pause: () => undefined,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }
+
+  return stub as HTMLAudioElement
 }
 
-export function getCowSoundSuccess(): HTMLAudioElement {
-  return getAudio('SUCCESS')
+function getWidgetSoundUrl(type: SoundType): string | null | undefined {
+  const { params } = jotaiStore.get(injectedWidgetParamsAtom)
+  const key = COW_SOUND_TO_WIDGET_KEY[type]
+
+  return params?.sounds?.[key]
 }
 
-export function getCowSoundError(): HTMLAudioElement {
-  return getAudio('ERROR')
-}
+export const __soundTestUtils = {
+  getThemeBasedSound,
+} as const

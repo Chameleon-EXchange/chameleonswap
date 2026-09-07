@@ -1,23 +1,52 @@
-'use server'
+import type { ReactNode } from 'react'
 
-import React from 'react'
-import { getAllCategorySlugs, getArticles, getCategories, getCategoryBySlug } from '../../../../../services/cms'
-import { TopicPageComponent } from '@/components/TopicPageComponent'
 import { notFound } from 'next/navigation'
+
+import {
+  Category,
+  getAllCategorySlugs,
+  getArticles,
+  getCategories,
+  getCategoryBySlug,
+} from '../../../../../services/cms'
+
 import type { Metadata } from 'next'
+
+import { TopicPageComponent } from '@/components/TopicPageComponent'
+import { isValidCmsSlug } from '@/util/cmsValidation'
 import { getPageMetadata } from '@/util/getPageMetadata'
 
 type Props = {
   params: Promise<{ topicSlug: string }>
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const topicSlug = (await params).topicSlug
+// Next.js requires revalidate to be a literal number for static analysis
+// 12 hours (43200 seconds) - balanced between freshness and cache efficiency
+export const revalidate = 43200
 
-  if (!topicSlug) return {}
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  'use server'
+
+  const { topicSlug } = await params
+
+  if (!topicSlug || !isValidCmsSlug(topicSlug)) {
+    return getPageMetadata({
+      absoluteTitle: 'Topic Not Found - Knowledge base',
+      description: 'The requested topic could not be found.',
+    })
+  }
 
   const category = await getCategoryBySlug(topicSlug)
-  const { name, description = '' } = category?.attributes || {}
+
+  if (!category || !category.attributes) {
+    return getPageMetadata({
+      absoluteTitle: 'Topic Not Found - Knowledge base',
+      description: 'The requested topic could not be found.',
+    })
+  }
+
+  const { name, description = '' } = category.attributes
 
   return getPageMetadata({
     absoluteTitle: `${name} - Knowledge base`,
@@ -25,41 +54,92 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   })
 }
 
-export async function generateStaticParams() {
+export async function generateStaticParams(): Promise<{ topicSlug: string }[]> {
+  'use server'
+
   const categoriesResponse = await getAllCategorySlugs()
 
   return categoriesResponse.map((topicSlug) => ({ topicSlug }))
 }
 
-export default async function TopicPage({ params }: Props) {
-  const slug = (await params).topicSlug
+export default async function TopicPage({ params }: { params: Promise<{ topicSlug: string }> }): Promise<ReactNode> {
+  const { topicSlug } = await params
 
-  const category = await getCategoryBySlug(slug)
-
-  if (!category) {
-    return notFound()
+  if (!isValidCmsSlug(topicSlug)) {
+    notFound()
   }
 
-  const articlesResponse = await getArticles({
-    page: 0,
-    pageSize: 50,
-    filters: {
-      categories: {
-        slug: {
-          $eq: slug,
+  const category = await getCategoryBySlug(topicSlug)
+
+  if (!category) {
+    notFound()
+  }
+
+  const formattedCategory = formatCategoryForTopicPage(category)
+  const [topicArticlesResponse, allArticlesResponse, categoriesResponse] = await Promise.all([
+    getArticles({
+      filters: {
+        categories: {
+          slug: {
+            $eq: topicSlug,
+          },
         },
       },
-    },
-  })
+    }),
+    getArticles(),
+    getCategories(),
+  ])
 
-  const articles = articlesResponse.data
+  const topicArticles = topicArticlesResponse.data
+  const allArticles = allArticlesResponse.data
+  const allCategories = categoriesResponse?.map(formatCategoryForList) || []
 
-  const categoriesResponse = await getCategories()
-  const allCategories =
-    categoriesResponse?.map((category: any) => ({
-      name: category?.attributes?.name || '',
-      slug: category?.attributes?.slug || '',
-    })) || []
+  return (
+    <TopicPageComponent
+      category={formattedCategory}
+      allCategories={allCategories}
+      articles={topicArticles}
+      allArticles={allArticles}
+    />
+  )
+}
 
-  return <TopicPageComponent category={category} allCategories={allCategories} articles={articles} />
+function formatCategoryForList(category: Category): {
+  name: string
+  slug: string
+} {
+  return {
+    name: category.attributes?.name ?? '',
+    slug: category.attributes?.slug ?? '',
+  }
+}
+
+function formatCategoryForTopicPage(category: Category): {
+  name: string
+  slug: string
+  description: string
+  bgColor: string
+  textColor: string
+  imageUrl: string
+} {
+  const attrs = category.attributes
+  if (!attrs) {
+    return {
+      name: '',
+      slug: '',
+      description: '',
+      bgColor: '#FFFFFF',
+      textColor: '#000000',
+      imageUrl: '',
+    }
+  }
+
+  return {
+    name: attrs.name ?? '',
+    slug: attrs.slug ?? '',
+    description: attrs.description ?? '',
+    bgColor: attrs.backgroundColor ?? '#FFFFFF',
+    textColor: attrs.textColor ?? '#000000',
+    imageUrl: attrs.image?.data?.attributes?.url ?? '',
+  }
 }

@@ -1,47 +1,100 @@
 import { atom } from 'jotai'
-import { atomWithReset } from 'jotai/utils'
 
-import { BigNumber } from '@ethersproject/bignumber'
+import { erc20Abi, type Address } from 'viem'
+import { Connector } from 'wagmi'
+
+import { getUpdaterInterval } from '@cowprotocol/common-const'
+import { asyncAtomFamily, getPublicClientFromProvider } from '@cowprotocol/common-utils'
+import { getAddressKey, mapSupportedNetworks, SupportedChainId, EvmChains, isEvmChain } from '@cowprotocol/cow-sdk'
+import { PersistentStateByChain } from '@cowprotocol/types'
 
 import ms from 'ms.macro'
 
-import { Erc20MulticallState } from '../types'
+const ALLOWANCES_UPDATE_INTERVAl = getUpdaterInterval(ms`32s`)
 
-/**
- * Priority value is valid for 30 seconds after tx mined
- * After that, we use allowance from Updaters
- */
-const PRIORITY_VALUE_TTL = ms`30s`
+export type AllowancesState = Record<string, bigint | undefined>
 
-export interface AllowancesState extends Erc20MulticallState {
-  /**
-   * Since we update allowances periodically, we have a lag between the current allowance (in atom) and the actual allowance (blockchain)
-   * To avoid this, we have a priority value that is updated immediately after tx mined (see FinalizeTxUpdater)
-   */
-  priorityValues: {
-    [address: string]: {
-      value: BigNumber | undefined
-      timestamp: number
-    }
-  }
-}
-
-export const allowancesFullState = atomWithReset<AllowancesState>({ isLoading: false, values: {}, priorityValues: {} })
-
-export const allowancesReadState = atom<Erc20MulticallState>((get) => {
-  const { values, priorityValues, isLoading } = get(allowancesFullState)
-
-  const computedValues = Object.keys(values).reduce<Erc20MulticallState['values']>((acc, address) => {
-    const priorityValue = priorityValues[address]
-    const isPriorityValueValid = priorityValue && Date.now() - priorityValue.timestamp < PRIORITY_VALUE_TTL
-
-    acc[address] = isPriorityValueValid ? priorityValue.value : values[address]
-
+function buildAllowancesState(tokenAddresses: string[], decodedResults: (bigint | undefined)[]): AllowancesState {
+  return tokenAddresses.reduce<AllowancesState>((acc, address, index) => {
+    acc[getAddressKey(address)] = decodedResults[index]
     return acc
   }, {})
+}
 
-  return {
-    isLoading,
-    values: computedValues,
-  }
-})
+async function fetchAllowances(
+  connector: Connector,
+  chainId: EvmChains,
+  account: string,
+  spender: string,
+  tokenAddresses: string[],
+): Promise<AllowancesState> {
+  const provider = await connector.getProvider({ chainId }).catch(() => undefined)
+
+  // If the connector does not expose an EIP-1193, or provider retrieval fails (which can happen during page load),
+  // fallback to default RPC (getClient takes care of that internally):
+  const client = getPublicClientFromProvider(chainId, provider)
+
+  const results = await client.multicall({
+    allowFailure: true,
+    contracts: tokenAddresses.map((address) => ({
+      address: address as Address,
+      abi: erc20Abi,
+      functionName: 'allowance' as const,
+      args: [account as Address, spender as Address],
+    })),
+  })
+
+  const decodedResults = results.map((result) => (result.status === 'success' ? result.result : undefined))
+
+  return buildAllowancesState(tokenAddresses, decodedResults)
+}
+
+// In-memory only: values are `bigint` (SPL delegations / EVM allowances), which `JSON.stringify` cannot
+// serialize — persisting via `atomWithStorage` throws on write. Delegations are re-fetched each session
+// by `usePersistSplViaMulticall`, so persistence is unnecessary here.
+export const allowancesAtom = atom<PersistentStateByChain<Record<string, bigint | undefined>>>(mapSupportedNetworks({}))
+
+export interface TokenAllowancesFamilyParams {
+  connector?: Connector
+  chainId: SupportedChainId
+  account?: string
+  spender?: string
+  tokenAddresses: string[]
+}
+
+function areTokenAllowancesParamsEqual(a: TokenAllowancesFamilyParams, b: TokenAllowancesFamilyParams): boolean {
+  return tokenAllowancesFamilyKey(a) === tokenAllowancesFamilyKey(b)
+}
+
+/** Stable key for atomFamily so [a,b] and [b,a] resolve to the same atom. */
+function tokenAllowancesFamilyKey(params: TokenAllowancesFamilyParams): string {
+  return [
+    params.chainId,
+    getAddressKey(params.account ?? ''),
+    getAddressKey(params.spender ?? ''),
+    ...params.tokenAddresses.map((a) => getAddressKey(a)).sort(),
+  ].join(',')
+}
+
+// TODO: Combine apps/cowswap-frontend/src/common/hooks/useTokenAllowance.ts and optimisticAllowancesAtom
+// in here. We should use a module to cache a Map of allowances per chain/token/owner/spender.
+
+export const tokenAllowancesFamily = asyncAtomFamily(
+  async (params: TokenAllowancesFamilyParams): Promise<AllowancesState | null> => {
+    const { connector, chainId, account, spender, tokenAddresses } = params
+
+    if (!connector || !chainId || !account || !spender || !tokenAddresses.length || !isEvmChain(chainId)) {
+      return null
+    }
+
+    return fetchAllowances(connector, chainId, account, spender, tokenAddresses)
+  },
+  {
+    areEqual: areTokenAllowancesParamsEqual,
+    familyLabel: 'tokenAllowancesFamily',
+    valueOnError: {} as AllowancesState,
+    refetchInterval: ALLOWANCES_UPDATE_INTERVAl,
+  },
+)
+
+// TODO: Family clean up missing...

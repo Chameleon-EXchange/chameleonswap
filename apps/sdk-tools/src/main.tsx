@@ -1,14 +1,19 @@
-import { StrictMode } from 'react'
+import { ReactNode, StrictMode } from 'react'
 
 import 'inter-ui'
+import './cowSdkAdapter'
+import { Web3Provider } from '@cowprotocol/wallet'
+
 import { createRoot } from 'react-dom/client'
 
 import { SdkTools } from './SdkTools'
 
-function Root() {
+function Root(): ReactNode {
   return (
     <StrictMode>
-      <SdkTools />
+      <Web3Provider>
+        <SdkTools />
+      </Web3Provider>
     </StrictMode>
   )
 }

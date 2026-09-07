@@ -1,6 +1,8 @@
 import { useSetAtom } from 'jotai'
 import { useMemo } from 'react'
 
+import { useResetSigningStep } from 'entities/trade'
+
 import { TradeAmounts } from 'common/types'
 
 import {
@@ -16,12 +18,13 @@ export interface TradeConfirmActions {
   onSign(pendingTrade: TradeAmounts): void
   onError(error: string): void
   onSuccess(transactionHash: string): void
-  onOpen(): void
+  onOpen(forcePriceConfirmation?: boolean): void
   requestPermitSignature(pendingTrade: TradeAmounts): void
   onDismiss(): void
 }
 
 export function useTradeConfirmActions(): TradeConfirmActions {
+  const resetSigningStep = useResetSigningStep()
   const setOpenTradeConfirm = useSetAtom(setOpenTradeConfirmAtom)
   const setCloseTradeConfirm = useSetAtom(setCloseTradeConfirmAtom)
   const setErrorTradeConfirm = useSetAtom(setErrorTradeConfirmAtom)
@@ -40,8 +43,9 @@ export function useTradeConfirmActions(): TradeConfirmActions {
       onSuccess(transactionHash: string) {
         setTxHashTradeConfirm(transactionHash)
       },
-      onOpen() {
-        setOpenTradeConfirm()
+      onOpen(forcePriceConfirmation?: boolean) {
+        resetSigningStep()
+        setOpenTradeConfirm(typeof forcePriceConfirmation === 'boolean' ? forcePriceConfirmation : undefined)
       },
       requestPermitSignature(pendingTrade: TradeAmounts) {
         setPermitSignatureRequested(pendingTrade)
@@ -51,6 +55,7 @@ export function useTradeConfirmActions(): TradeConfirmActions {
       },
     }
   }, [
+    resetSigningStep,
     setPendingTradeConfirm,
     setOpenTradeConfirm,
     setCloseTradeConfirm,

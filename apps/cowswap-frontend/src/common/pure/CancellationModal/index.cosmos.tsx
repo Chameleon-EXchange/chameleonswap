@@ -1,7 +1,5 @@
 import { useState } from 'react'
 
-import { BigNumber } from '@ethersproject/bignumber'
-
 import { CancellationModalContext } from 'common/hooks/useCancelOrder/state'
 import { MAINNET_NATIVE_CURRENCY } from 'lib/hooks/useNativeCurrency'
 
@@ -10,11 +8,10 @@ import { CancellationModal, CancellationModalProps } from '.'
 const context: CancellationModalContext = {
   chainId: 1,
   orderId: '0x111',
-  summary: 'SWAP 1 BLA for 5 BLI',
   error: null,
   isPendingSignature: false,
   onDismiss: null,
-  txCost: BigNumber.from('150000000000000000'),
+  txCost: 150000000000000000n,
   nativeCurrency: MAINNET_NATIVE_CURRENCY,
   triggerCancellation: async () => {
     alert('cancelling!!')
@@ -28,11 +25,25 @@ const defaultProps: CancellationModalProps = {
     console.log(`closed the modal!!!`)
   },
   context,
+  orderSummary: 'SWAP 1 BLA for 5 BLI',
 }
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+function buildComponent(props?: Partial<CancellationModalProps['context']>) {
+  const p = { ...context, ...props }
+  return <Wrapper {...p} />
+}
+
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 function Wrapper(props: CancellationModalProps['context']) {
   const [isOpen, setIsOpen] = useState(true)
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   const hideModal = () => setIsOpen(false)
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   const cancelOrder = () => alert('Cancelling order!')
   const p = {
     ...defaultProps,
@@ -42,11 +53,6 @@ function Wrapper(props: CancellationModalProps['context']) {
   }
 
   return <CancellationModal {...p} />
-}
-
-function buildComponent(props?: Partial<CancellationModalProps['context']>) {
-  const p = { ...context, ...props }
-  return <Wrapper {...p} />
 }
 
 const Fixtures = {

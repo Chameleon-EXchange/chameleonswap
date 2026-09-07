@@ -1,31 +1,48 @@
-import EXPERIMENT_ICON from '@cowprotocol/assets/cow-swap/experiment.svg'
+import { MessageDescriptor } from '@lingui/core'
+
+import svgExperimentSrc from '@cowprotocol/assets/cow-swap/experiment.svg'
 import { isInjectedWidget } from '@cowprotocol/common-utils'
 import { BadgeTypes } from '@cowprotocol/ui'
+
+import { msg } from '@lingui/core/macro'
+import { createHashHistory } from 'history'
+
+import type { HistoryRouterProps } from 'react-router'
+
+type History = HistoryRouterProps['history']
+
+// Use standalone history package: UNSAFE_createHashHistory from react-router triggers
+// BUILDING_BLOCK_flushCallbacks in dev. Vite resolve.dedupe keeps a single react-router
+// in the production bundle so Router context remains valid.
+export const hashHistory = createHashHistory() as unknown as History
 
 export const TRADE_WIDGET_PREFIX = isInjectedWidget() ? '/widget' : ''
 
 export const Routes = {
-  HOME: `/landingpage`,
-  REWARD: `/rewardpage`,
-  BUY: `/buypage`,
-  // BRIDGE: `/bridgepage`,
-  ADMIN: `adminpage`,
-  SWAPS: `/swap`,
-  LIMIT: `/limit`,
-  ADVANCED: `/advanced`,
+  HOME: '/',
+  LANDING: '/landingpage',
+  REWARD: '/rewardpage',
+  BUY: '/buypage',
+  ADMIN: '/adminpage',
+  REFERRAL_CONFIRMATION: '/referral',
   SWAP: `/:chainId?${TRADE_WIDGET_PREFIX}/swap/:inputCurrencyId?/:outputCurrencyId?`,
   HOOKS: `/:chainId?${TRADE_WIDGET_PREFIX}/swap/hooks/:inputCurrencyId?/:outputCurrencyId?`,
-  COW_SHED: `/:chainId?${TRADE_WIDGET_PREFIX}/cowShed`,
-  LIMIT_ORDER: `/:chainId?${TRADE_WIDGET_PREFIX}/limit/:inputCurrencyId?/:outputCurrencyId?`,
+  LIMIT_ORDERS: `/:chainId?${TRADE_WIDGET_PREFIX}/limit/:inputCurrencyId?/:outputCurrencyId?`,
   YIELD: `/:chainId?${TRADE_WIDGET_PREFIX}/yield/:inputCurrencyId?/:outputCurrencyId?`,
   ADVANCED_ORDERS: `/:chainId?${TRADE_WIDGET_PREFIX}/advanced/:inputCurrencyId?/:outputCurrencyId?`,
   LONG_LIMIT_ORDER: `/:chainId?${TRADE_WIDGET_PREFIX}/limit-orders/:inputCurrencyId?/:outputCurrencyId?`,
   LONG_ADVANCED_ORDERS: `/:chainId?${TRADE_WIDGET_PREFIX}/advanced-orders/:inputCurrencyId?/:outputCurrencyId?`,
+  ACCOUNT_PROXIES: '/:chainId/account-proxy',
+  ACCOUNT_PROXY: '/:chainId/account-proxy/:proxyAddress',
+  ACCOUNT_PROXY_RECOVER: '/:chainId/account-proxy/:proxyAddress/recover/:tokenAddress',
+  ACCOUNT_PROXY_HELP: '/:chainId/account-proxy/help',
   SEND: '/send',
   ACCOUNT: '/account',
   ACCOUNT_TOKENS: '/account/tokens',
   ACCOUNT_TOKENS_SINGLE: '/account/tokens/:address',
   ACCOUNT_GOVERNANCE: '/account/governance',
+  ACCOUNT_AFFILIATE_PARTNER: '/account/affiliate',
+  ACCOUNT_AFFILIATE_TRADER: '/account/my-rewards',
   ABOUT: '/about',
   PRIVACY_POLICY: '/privacy-policy',
   COOKIE_POLICY: '/cookie-policy',
@@ -43,12 +60,14 @@ export const Routes = {
   DOCS: '/docs',
   STATS: '/stats',
   TWITTER: '/twitter',
-  REFERRAL_CONFIRMATION: '/referral',
 } as const
 
-export type RoutesKeys = keyof typeof Routes
-export type RoutesValues = (typeof Routes)[RoutesKeys]
-
+export interface I18nIMenuItem extends Omit<IMenuItem, 'label' | 'fullLabel' | 'description' | 'badge'> {
+  label: MessageDescriptor
+  fullLabel?: MessageDescriptor
+  description: MessageDescriptor
+  badge?: MessageDescriptor
+}
 export interface IMenuItem {
   route: RoutesValues
   label: string
@@ -59,26 +78,42 @@ export interface IMenuItem {
   badgeType?: (typeof BadgeTypes)[keyof typeof BadgeTypes]
 }
 
-export const MENU_ITEMS: IMenuItem[] = [
-  { route: Routes.SWAP, label: 'Swap', description: 'Trade tokens' },
-  { route: Routes.LIMIT_ORDER, label: 'Limit', fullLabel: 'Limit order', description: 'Set your own price' },
-  { route: Routes.ADVANCED_ORDERS, label: 'TWAP', description: 'Place orders with a time-weighted average price' },
-  // { route: Routes.BUY, label: 'Buy', description: 'Buy tokens with card' },
+export type RoutesKeys = keyof typeof Routes
+
+export type RoutesValues = (typeof Routes)[RoutesKeys]
+
+export const MENU_ITEMS: I18nIMenuItem[] = [
+  {
+    route: Routes.SWAP,
+    label: msg`Swap`,
+    description: msg`Trade tokens`,
+  },
+  {
+    route: Routes.LIMIT_ORDERS,
+    label: msg`Limit`,
+    fullLabel: msg`Limit order`,
+    description: msg`Set your own price`,
+  },
+  {
+    route: Routes.ADVANCED_ORDERS,
+    label: msg`TWAP`,
+    description: msg`Place orders with a time-weighted average price`,
+  },
 ]
 
-export const HOOKS_STORE_MENU_ITEM: IMenuItem = {
+export const HOOKS_STORE_MENU_ITEM: I18nIMenuItem = {
   route: Routes.HOOKS,
-  label: 'Hooks',
-  description: 'Powerful tool to generate pre/post interaction for CoW Protocol',
-  badgeImage: EXPERIMENT_ICON,
+  label: msg`Hooks`,
+  description: msg`Powerful tool to generate pre/post interaction for CoW Protocol`,
+  badgeImage: svgExperimentSrc,
   badgeType: BadgeTypes.INFORMATION,
 }
 
-export const YIELD_MENU_ITEM: IMenuItem = {
+export const YIELD_MENU_ITEM: I18nIMenuItem = {
   route: Routes.YIELD,
-  label: 'Yield',
-  fullLabel: 'Yield',
-  description: 'Provide liquidity',
-  badge: 'New',
+  label: msg`Yield`,
+  fullLabel: msg`Yield`,
+  description: msg`Provide liquidity`,
+  badge: msg`New`,
   badgeType: BadgeTypes.ALERT,
 }

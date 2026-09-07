@@ -1,8 +1,9 @@
 import { ReactNode } from 'react'
 
+import { Currency, CurrencyAmount, Token } from '@cowprotocol/currency'
 import { FiatAmount, getTokenAmountTitle, InfoTooltip, RowBetween, RowFixed, TokenAmount, UI } from '@cowprotocol/ui'
-import { Currency, CurrencyAmount, Token } from '@uniswap/sdk-core'
 
+import { Trans } from '@lingui/react/macro'
 import styled from 'styled-components/macro'
 
 import { FiatRate } from 'common/pure/RateInfo'
@@ -35,6 +36,8 @@ export interface RowFeeContentProps {
   isFree: boolean
 }
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function RowFeeContent(props: RowFeeContentProps) {
   const {
     label,
@@ -61,17 +64,23 @@ export function RowFeeContent(props: RowFeeContentProps) {
 
       <div title={getTokenAmountTitle({ amount: feeAmount, tokenSymbol })}>
         {isFree ? (
-          <FreeLabel>FREE</FreeLabel>
+          <FreeLabel>
+            <Trans>FREE</Trans>
+          </FreeLabel>
         ) : (
           <>
             {feeIsApproximate ? '≈ ' : ''}
             <TokenAmount amount={feeAmount} tokenSymbol={tokenSymbol} />
-            {requireGas && <PlusGas>&nbsp;+ gas</PlusGas>}
+            {requireGas && (
+              <PlusGas>
+                &nbsp; + <Trans>gas</Trans>
+              </PlusGas>
+            )}
           </>
         )}{' '}
         {!isFree && feeInFiat && (
           <FiatRate>
-            (<FiatAmount amount={feeInFiat} />)
+            <FiatAmount amount={feeInFiat} withParentheses />
           </FiatRate>
         )}
       </div>

@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react'
 
-import iconCompleted from '@cowprotocol/assets/cow-swap/check.svg'
+import { MessageDescriptor } from '@lingui/core'
+
+import svgCheckSrc from '@cowprotocol/assets/cow-swap/check.svg'
 import { UI } from '@cowprotocol/ui'
 
+import { msg } from '@lingui/core/macro'
+import { Trans, useLingui } from '@lingui/react/macro'
 import SVG from 'react-inlinesvg'
 
 import { useIsDarkMode } from 'legacy/state/user/hooks'
@@ -11,13 +15,13 @@ import { ArrowBackground } from 'common/pure/ArrowBackground'
 
 import * as styledEl from './styled'
 
-const BULLET_POINTS = [
-  'Locked limits - lock or unlock prices for finer control, the order does the rest',
-  'Easily set and manage your orders in USD',
-  'Try before you buy - see the potential fill price before you hit trade',
-  'Longer limit orders - place orders for up to a year.',
-  'Trade your way - personalize the interface and customize your limit orders',
-  'More intuitive UI and improved design',
+const BULLET_POINTS: MessageDescriptor[] = [
+  msg`Locked limits - lock or unlock prices for finer control, the order does the rest`,
+  msg`Easily set and manage your orders in USD`,
+  msg`Try before you buy - see the potential fill price before you hit trade`,
+  msg`Longer limit orders - place orders for up to a year.`,
+  msg`Trade your way - personalize the interface and customize your limit orders`,
+  msg`More intuitive UI and improved design`,
 ]
 
 interface LimitOrdersPromoBannerProps {
@@ -26,11 +30,15 @@ interface LimitOrdersPromoBannerProps {
   isLimitOrdersTab?: boolean
 }
 
+// TODO: Break down this large function into smaller functions
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function LimitOrdersPromoBanner({
   onCtaClick,
   onDismiss,
   isLimitOrdersTab = false,
 }: LimitOrdersPromoBannerProps) {
+  const { i18n } = useLingui()
   const [isHovered, setIsHovered] = useState(false)
   const [arrowRef, setArrowRef] = useState<HTMLDivElement | null>(null)
   const [arrowsReady, setArrowsReady] = useState(false)
@@ -66,11 +74,14 @@ export function LimitOrdersPromoBanner({
       <styledEl.CloseButton size={24} onClick={onDismiss} />
       <styledEl.TitleSection>
         <h3>
-          Limit orders, but <span>s-moooo-ther</span> than ever
+          <Trans>
+            Limit orders, but <span>s-moooo-ther</span> than ever
+          </Trans>
         </h3>
         <strong>
-          Limit orders are now easier to use. <br />
-          Give them a try
+          <Trans>
+            Limit orders are now easier to use. <br /> Give them a try
+          </Trans>
         </strong>
       </styledEl.TitleSection>
 
@@ -78,9 +89,9 @@ export function LimitOrdersPromoBanner({
         {BULLET_POINTS.map((point, index) => (
           <li key={index}>
             <span>
-              <SVG src={iconCompleted} />
+              <SVG src={svgCheckSrc} />
             </span>
-            {point}
+            {i18n._(point)}
           </li>
         ))}
       </styledEl.List>
@@ -91,10 +102,16 @@ export function LimitOrdersPromoBanner({
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
-          <styledEl.ButtonText $hover={isHovered}>Try new limit orders now</styledEl.ButtonText>
+          <styledEl.ButtonText $hover={isHovered}>
+            <Trans>Try new limit orders now</Trans>
+          </styledEl.ButtonText>
           <styledEl.Shimmer />
         </styledEl.CTAButton>
-        {!isLimitOrdersTab && <styledEl.DismissLink onClick={onDismiss}>Maybe next time</styledEl.DismissLink>}
+        {!isLimitOrdersTab && (
+          <styledEl.DismissLink onClick={onDismiss}>
+            <Trans>Maybe next time</Trans>
+          </styledEl.DismissLink>
+        )}
       </styledEl.ControlSection>
     </styledEl.BannerWrapper>
   )

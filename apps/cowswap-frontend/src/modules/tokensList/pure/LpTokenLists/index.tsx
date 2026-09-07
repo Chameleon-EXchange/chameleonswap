@@ -1,13 +1,18 @@
 import { MouseEventHandler, ReactNode, useCallback } from 'react'
 
+import { VirtualItem } from '@tanstack/react-virtual'
+import { toHex } from 'viem'
+
 import { BalancesState } from '@cowprotocol/balances-and-allowances'
-import { LpToken, TokenWithLogo } from '@cowprotocol/common-const'
+import { LpToken } from '@cowprotocol/common-const'
 import { useMediaQuery } from '@cowprotocol/common-hooks'
+import { getAddressKey, getTokenId } from '@cowprotocol/cow-sdk'
+import { CurrencyAmount } from '@cowprotocol/currency'
 import { TokenLogo } from '@cowprotocol/tokens'
 import { LoadingRows, LoadingRowSmall, Media, TokenAmount, TokenName, TokenSymbol } from '@cowprotocol/ui'
-import { CurrencyAmount } from '@uniswap/sdk-core'
 
-import { VirtualItem } from '@tanstack/react-virtual'
+import { t } from '@lingui/core/macro'
+import { Trans } from '@lingui/react/macro'
 import { Info } from 'react-feather'
 
 import { PoolInfoStates } from 'modules/yield/shared'
@@ -32,6 +37,8 @@ import {
   Wrapper,
 } from './styled'
 
+import { useSelectTokenWidgetState } from '../../hooks/useSelectTokenWidgetState'
+
 const LoadingElement = (
   <LoadingRows>
     <LoadingRowSmall />
@@ -51,29 +58,33 @@ interface LpTokenListsProps {
   balancesState: BalancesState
   displayCreatePoolBanner: boolean
   poolsInfo: PoolInfoStates | undefined
-  onSelectToken(token: TokenWithLogo): void
   openPoolPage(poolAddress: string): void
 }
 
+// TODO: Break down this large function into smaller functions
+// eslint-disable-next-line max-lines-per-function
 export function LpTokenLists({
   account,
-  onSelectToken,
   openPoolPage,
   lpTokens,
   balancesState,
   displayCreatePoolBanner,
   poolsInfo,
-}: LpTokenListsProps) {
+}: LpTokenListsProps): ReactNode {
+  const { onSelectToken } = useSelectTokenWidgetState()
   const { values: balances } = balancesState
   const isMobile = useMediaQuery(Media.upToSmall(false))
 
   const getItemView = useCallback(
+    // TODO: Break down this large function into smaller functions
+    // TODO: Reduce function complexity by extracting logic
+
     (lpTokens: LpToken[], item: VirtualItem) => {
       const token = lpTokens[item.index]
 
-      const tokenAddressLower = token.address.toLowerCase()
+      const tokenAddressLower = getAddressKey(token.address)
       const balance = balances ? balances[tokenAddressLower] : undefined
-      const balanceAmount = balance ? CurrencyAmount.fromRawAmount(token, balance.toHexString()) : undefined
+      const balanceAmount = balance ? CurrencyAmount.fromRawAmount(token, toHex(balance)) : undefined
       const info = poolsInfo?.[tokenAddressLower]?.info
 
       const onInfoClick: MouseEventHandler<HTMLDivElement> = (e) => {
@@ -99,15 +110,22 @@ export function LpTokenLists({
 
       if (isMobile) {
         return (
-          <MobileCard key={token.address} data-address={token.address} onClick={() => onSelectToken(token)}>
+          <MobileCard
+            key={getTokenId(token)}
+            data-address={token.address}
+            data-token-symbol={token.symbol || ''}
+            data-token-name={token.name || ''}
+            data-element-type="token-selection"
+            onClick={() => onSelectToken?.(token)}
+          >
             <MobileCardRow>{commonContent}</MobileCardRow>
-            <MobileCardRowItem label="Balance" value={BalanceDisplay} />
-            <MobileCardRowItem label="APR" value={info?.apy ? `${info.apy}%` : ''} />
+            <MobileCardRowItem label={t`Balance`} value={BalanceDisplay} />
+            <MobileCardRowItem label={`APR`} value={info?.apy ? `${info.apy}%` : ''} />
             <MobileCardRowItem
-              label="Details"
+              label={t`Details`}
               value={
                 <LpTokenTooltip onClick={onInfoClick}>
-                  Pool details
+                  <Trans>Pool details</Trans>
                   <Info size={18} />
                 </LpTokenTooltip>
               }
@@ -117,7 +135,14 @@ export function LpTokenLists({
       }
 
       return (
-        <ListItem key={token.address} data-address={token.address} onClick={() => onSelectToken(token)}>
+        <ListItem
+          key={getTokenId(token)}
+          data-address={token.address}
+          data-token-symbol={token.symbol || ''}
+          data-token-name={token.name || ''}
+          data-element-type="token-selection"
+          onClick={() => onSelectToken?.(token)}
+        >
           <LpTokenWrapper>{commonContent}</LpTokenWrapper>
           <LpTokenBalance>{BalanceDisplay}</LpTokenBalance>
           <LpTokenYieldPercentage>{info?.apy ? `${info.apy}%` : ''}</LpTokenYieldPercentage>
@@ -136,8 +161,12 @@ export function LpTokenLists({
         <>
           {!isMobile && (
             <ListHeader>
-              <span>Pool</span>
-              <span>Balance</span>
+              <span>
+                <Trans>Pool</Trans>
+              </span>
+              <span>
+                <Trans>Balance</Trans>
+              </span>
               <span>APR</span>
               <span></span>
             </ListHeader>
@@ -145,12 +174,18 @@ export function LpTokenLists({
           <VirtualList items={lpTokens} getItemView={getItemView} />
         </>
       ) : (
-        <EmptyList>No pool tokens available</EmptyList>
+        <EmptyList>
+          <Trans>No pool tokens available</Trans>
+        </EmptyList>
       )}
       {displayCreatePoolBanner && (
         <NoPoolWrapper>
-          <div>Can’t find the pool you’re looking for?</div>
-          <CreatePoolLink href="https://pool-creator.balancer.fi/cow">Create a pool ↗</CreatePoolLink>
+          <div>
+            <Trans>Can't find the pool you're looking for?</Trans>
+          </div>
+          <CreatePoolLink href="https://balancer.fi/create/step-1-type">
+            <Trans>Create a pool</Trans> ↗
+          </CreatePoolLink>
         </NoPoolWrapper>
       )}
     </Wrapper>

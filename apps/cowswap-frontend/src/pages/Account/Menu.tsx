@@ -1,17 +1,45 @@
-import { ACCOUNT_MENU_LINKS } from '@cowprotocol/common-const'
+import { ReactNode } from 'react'
 
-import { NavLink } from 'react-router-dom'
+import { MessageDescriptor } from '@lingui/core'
+
+import { ACCOUNT_PROXY_LABEL } from '@cowprotocol/common-const'
+import { useExtractText } from '@cowprotocol/common-utils'
+import { isEvmChain, SupportedChainId } from '@cowprotocol/cow-sdk'
+import { useWalletInfo } from '@cowprotocol/wallet'
+
+import { msg } from '@lingui/core/macro'
+import { NavLink } from 'react-router'
 
 import { SideMenu } from 'legacy/components/SideMenu'
 
-export function AccountMenu() {
+import { getProxyAccountUrl } from 'modules/accountProxy'
+
+interface MenuItem {
+  title: string | MessageDescriptor
+  url: string
+}
+
+const ACCOUNT_MENU_LINKS = (chainId: SupportedChainId): MenuItem[] => {
+  return [
+    { title: msg`Overview`, url: '/account' },
+    { title: msg`Affiliate`, url: '/account/affiliate' },
+    { title: msg`My Rewards`, url: '/account/my-rewards' },
+    { title: msg`Tokens`, url: '/account/tokens' },
+    ...(isEvmChain(chainId) ? [{ title: ACCOUNT_PROXY_LABEL, url: getProxyAccountUrl(chainId) }] : []),
+  ]
+}
+
+export function AccountMenu(): ReactNode {
+  const { chainId } = useWalletInfo()
+  const { extractTextFromStringOrI18nDescriptor } = useExtractText()
+
   return (
-    <SideMenu longList={true}>
+    <SideMenu longList>
       <ul>
-        {ACCOUNT_MENU_LINKS.map(({ title, url }) => (
+        {ACCOUNT_MENU_LINKS(chainId).map(({ title, url }) => (
           <li key={url}>
-            <NavLink end to={url} className={({ isActive }) => (isActive ? 'active' : undefined)}>
-              {title}
+            <NavLink end={url === '/account'} to={url} className={({ isActive }) => (isActive ? 'active' : undefined)}>
+              {extractTextFromStringOrI18nDescriptor(title)}
             </NavLink>
           </li>
         ))}

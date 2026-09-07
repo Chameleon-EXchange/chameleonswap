@@ -1,4 +1,23 @@
 import { SupportedChainId } from '@cowprotocol/cow-sdk'
+import { StateDiff } from '@cowprotocol/hook-dapp-lib'
+
+// { [address: string]: { [token: string]: balanceDiff: string } }
+// example: { '0x123': { '0x456': '100', '0xabc': '-100' } }
+export type BalancesDiff = Record<string, Record<string, string>>
+
+export interface GetTopTokenHoldersParams {
+  tokenAddress?: string
+  chainId: SupportedChainId
+}
+
+export interface SimulationData {
+  link: string
+  status: boolean
+  id: string
+  cumulativeBalancesDiff: BalancesDiff
+  stateDiff: StateDiff[]
+  gasUsed: string
+}
 
 export interface SimulationInput {
   input: string
@@ -7,23 +26,6 @@ export interface SimulationInput {
   value?: string
   gas?: number
   gas_price?: string
-}
-
-// { [address: string]: { [token: string]: balanceDiff: string } }
-// example: { '0x123': { '0x456': '100', '0xabc': '-100' } }
-export type BalancesDiff = Record<string, Record<string, string>>
-
-export interface SimulationData {
-  link: string
-  status: boolean
-  id: string
-  cumulativeBalancesDiff: BalancesDiff
-  gasUsed: string
-}
-
-export interface GetTopTokenHoldersParams {
-  tokenAddress?: string
-  chainId: SupportedChainId
 }
 
 export interface TokenHolder {

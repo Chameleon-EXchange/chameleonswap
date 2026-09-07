@@ -1,75 +1,8 @@
-'use client'
+import { createCmsPage } from '@/util/createCmsPage'
 
-import { Color } from '@cowprotocol/ui'
+const { default: Page, generateMetadata } = createCmsPage('legal')
 
-import styled from 'styled-components/macro'
-import { Link } from '@/components/Link'
+export { Page as default, generateMetadata }
 
-import { ArticleContent, ArticleMainTitle, BodyContent, Breadcrumbs, ContainerCard } from '@/styles/styled'
-import { clickOnLegal } from '../../../modules/analytics'
-
-const LEGAL_LINKS = [
-  {
-    title: 'CoW Widget Terms and Conditions',
-    href: '/legal/widget-terms',
-  },
-  {
-    title: 'Chameleon swap Terms and Conditions',
-    href: '/legal/cowswap-terms',
-  },
-  {
-    title: 'Chameleon swap Privacy Policy',
-    href: '/legal/cowswap-privacy-policy',
-  },
-  {
-    title: 'Chameleon swap Cookie Policy',
-    href: '/legal/cowswap-cookie-policy',
-  },
-]
-
-const Wrapper = styled.div`
-  display: flex;
-  flex-flow: column wrap;
-  justify-content: flex-start;
-  align-items: center;
-  max-width: 1000px;
-  width: 100%;
-  margin: 24px auto 0;
-  gap: 24px;
-`
-
-export default function Page() {
-  return (
-    <Wrapper>
-      <ContainerCard bgColor={Color.neutral100} minHeight="70vh" gap={62} gapMobile={42} centerContent touchFooter>
-        <ArticleContent maxWidth="100%">
-          <Breadcrumbs>
-            <Link href="/" onClick={() => clickOnLegal('click-legal-breadcrumbs')}>
-              Home
-            </Link>
-
-            <span>CoW DAO Legal Overview</span>
-          </Breadcrumbs>
-
-          <ArticleMainTitle margin={'0 0 62px'} fontSize={52}>
-            CoW DAO Legal Overview
-          </ArticleMainTitle>
-
-          <BodyContent>
-            <p>An overview of all legal documents related to CoW DAO and its products.</p>
-
-            <ul>
-              {LEGAL_LINKS.map((link, index) => (
-                <li key={index}>
-                  <Link href={link.href} onClick={() => clickOnLegal(`click-${link.title}`)}>
-                    {link.title}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </BodyContent>
-        </ArticleContent>
-      </ContainerCard>
-    </Wrapper>
-  )
-}
+// ISR caching - revalidate every 12 hours
+export const revalidate = 43200

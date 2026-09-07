@@ -1,19 +1,19 @@
-import { Fragment } from 'react'
+import { Fragment, ReactNode } from 'react'
 
 import { Media } from '@cowprotocol/ui'
 import { useWalletInfo } from '@cowprotocol/wallet'
 
 import styled from 'styled-components/macro'
 
-import { useMultipleActivityDescriptors, groupActivitiesByDay } from 'legacy/hooks/useRecentActivity'
+import { groupActivitiesByDay, useMultipleActivityDescriptors } from 'legacy/hooks/useRecentActivity'
 
-import { renderActivities } from '../AccountDetails'
 import { AccountDetailsProps } from '../AccountDetails'
+import { ActivitiesList } from '../AccountDetails/ActivitiesList'
 import { LowerSectionSimple, Wrapper } from '../AccountDetails/styled'
 
-type StyledWrapperProps = { $margin?: string }
 type SimpleAccountDetailsProps = Pick<AccountDetailsProps, 'pendingTransactions' | 'confirmedTransactions'> &
   StyledWrapperProps
+type StyledWrapperProps = { $margin?: string }
 
 const SimpleWrapper = styled(Wrapper)<StyledWrapperProps>`
   ${({ $margin }) => $margin && `margin: ${$margin};`}
@@ -22,11 +22,11 @@ const SimpleWrapper = styled(Wrapper)<StyledWrapperProps>`
   }
 `
 
-export default function SimpleAccountDetails({
+export function SimpleAccountDetails({
   pendingTransactions = [],
   confirmedTransactions = [],
   ...styleProps
-}: SimpleAccountDetailsProps) {
+}: SimpleAccountDetailsProps): ReactNode | null {
   const { chainId } = useWalletInfo()
 
   const activities = useMultipleActivityDescriptors({ chainId, ids: pendingTransactions.concat(confirmedTransactions) })
@@ -39,7 +39,9 @@ export default function SimpleAccountDetails({
       <LowerSectionSimple>
         <div>
           {activitiesGroupedByDate.map(({ date, activities }) => (
-            <Fragment key={date.getTime()}>{renderActivities(activities)}</Fragment>
+            <Fragment key={date.getTime()}>
+              <ActivitiesList activities={activities} />
+            </Fragment>
           ))}
         </div>
       </LowerSectionSimple>

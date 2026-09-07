@@ -4,10 +4,13 @@ import { COW_SUBSIDY_DATA } from './constants'
 
 const SLICED_DATA = COW_SUBSIDY_DATA.slice(1)
 
-export function getDiscountFromBalance(balanceAtomsBn: BigNumber) {
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export function getDiscountFromBalance(balanceAtoms: bigint) {
+  const balanceAtomsBn = new BigNumber(balanceAtoms.toString())
   let tier = 0
   let [, discount] = COW_SUBSIDY_DATA[tier]
-  // Here we use a sliced verison of our data without index 0 (0 amt tier)
+  // Here we use a sliced version of our data without index 0 (0 amt tier)
   // because loop-wise a balance less than or equal to 0 and 100 (indices 0 and 1, respectively) are the same
   for (const [threshold, thresholdDiscount] of SLICED_DATA) {
     // Increase our tier number only if we're not at the end of our list

@@ -1,6 +1,7 @@
 import { useSetAtom } from 'jotai'
 import { useEffect } from 'react'
 
+import { getAddressKey } from '@cowprotocol/cow-sdk'
 import { useWalletInfo } from '@cowprotocol/wallet'
 
 import ms from 'ms.macro'
@@ -14,6 +15,8 @@ import { updateFallbackHandlerVerificationAtom } from '../state/fallbackHandlerV
 const FB_CACHE_TIME = ms`10m`
 const FB_UPDATE_TIME_KEY = 'fallbackHandlerUpdateTime'
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function FallbackHandlerVerificationUpdater() {
   const { account } = useWalletInfo()
   const update = useSetAtom(updateFallbackHandlerVerificationAtom)
@@ -36,7 +39,7 @@ export function FallbackHandlerVerificationUpdater() {
   useEffect(() => {
     if (!account || fallbackHandlerVerification === null) return
 
-    update({ [account.toLowerCase()]: fallbackHandlerVerification })
+    update({ [getAddressKey(account)]: fallbackHandlerVerification })
     localStorage.setItem(FB_UPDATE_TIME_KEY, Date.now().toString())
   }, [fallbackHandlerVerification, update, account])
 

@@ -1,11 +1,12 @@
-import { ReactNode } from 'react'
+import { ReactElement, ReactNode } from 'react'
 
-import { FiatAmount, InfoTooltip, Row, TokenAmount } from '@cowprotocol/ui'
-import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
+import { Currency, CurrencyAmount } from '@cowprotocol/currency'
+import { TEST_IDS } from '@cowprotocol/test-ids'
+import { CenteredDots, FiatAmount, InfoTooltip, TokenAmount } from '@cowprotocol/ui'
 
 import { Nullish } from 'types'
 
-import { Content } from 'modules/trade/pure/ConfirmDetailsItem/styled'
+import { Content, Label } from 'modules/trade/pure/ConfirmDetailsItem/styled'
 
 import { ConfirmDetailsItem } from '../ConfirmDetailsItem'
 import { ReceiveAmountTitle } from '../ReceiveAmountTitle'
@@ -20,6 +21,8 @@ export type ReviewOrderAmountRowProps = {
   isAmountAccurate?: boolean
   withTimelineDot?: boolean
   highlighted?: boolean
+  isLast?: boolean
+  loading?: boolean
 }
 
 export function ReviewOrderModalAmountRow({
@@ -32,31 +35,42 @@ export function ReviewOrderModalAmountRow({
   isAmountAccurate = true,
   withTimelineDot = false,
   highlighted = false,
-}: ReviewOrderAmountRowProps) {
-  const Amount = (
+  isLast = false,
+  loading = false,
+}: ReviewOrderAmountRowProps): ReactElement {
+  const Amount = loading ? (
+    <CenteredDots />
+  ) : (
     <Content highlighted={highlighted}>
       {children}
       {!isAmountAccurate && '≈ '}
       <TokenAmount amount={amount} defaultValue="-" tokenSymbol={amount?.currency} />
       {amountSuffix}
       {fiatAmount && (
-        <i>
-          &nbsp;(
-          <FiatAmount amount={fiatAmount} />)
-        </i>
+        <>
+          &nbsp;
+          <FiatAmount amount={fiatAmount} withParentheses />
+        </>
       )}
     </Content>
   )
 
   return (
-    <ConfirmDetailsItem tooltip={tooltip} label={highlighted ? undefined : label} withTimelineDot={withTimelineDot}>
+    <ConfirmDetailsItem
+      testId={TEST_IDS.confirmOrderAmount}
+      tooltip={tooltip}
+      label={highlighted ? undefined : label}
+      withTimelineDot={withTimelineDot}
+      isLast={isLast}
+    >
       {highlighted ? (
         <>
           <ReceiveAmountTitle>
-            <Row gap="6px">
-              <span>{label}</span>
-              {tooltip && <InfoTooltip content={tooltip} />}
-            </Row>
+            <Label>
+              <b>
+                {label} {tooltip && <InfoTooltip className="info-tooltip" content={tooltip} />}
+              </b>
+            </Label>
           </ReceiveAmountTitle>
           <span>{Amount}</span>
         </>

@@ -1,5 +1,7 @@
+import { ReactNode } from 'react'
+
+import { Currency, CurrencyAmount } from '@cowprotocol/currency'
 import { UI, FiatAmount } from '@cowprotocol/ui'
-import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
 
 import styled from 'styled-components/macro'
 import { Nullish } from 'types'
@@ -12,27 +14,21 @@ const FiatValueWrapper = styled.div<{ hasValue$: boolean }>`
   display: inline-block;
   font-size: 14px;
   color: ${({ hasValue$ }) => (hasValue$ ? 'inherit' : `var(${UI.COLOR_DANGER_TEXT})`)};
-  opacity: 0.7;
   transition: opacity var(${UI.ANIMATION_DURATION}) ease-in-out;
-
-  &:hover {
-    opacity: 1;
-  }
 `
 
-export function FiatValue({
-  fiatValue,
-  priceImpactParams,
-  className,
-}: {
+interface FiatValueProps {
   fiatValue?: Nullish<CurrencyAmount<Currency>>
   priceImpactParams?: PriceImpact
   className?: string
-}) {
+  isBridging?: boolean
+}
+
+export function FiatValue({ fiatValue, priceImpactParams, className, isBridging }: FiatValueProps): ReactNode {
   return (
     <FiatValueWrapper className={className} hasValue$={!!fiatValue}>
       {fiatValue ? <FiatAmount amount={fiatValue} /> : ''}
-      <PriceImpactIndicator priceImpactParams={priceImpactParams} />
+      <PriceImpactIndicator priceImpactParams={priceImpactParams} isBridging={isBridging} />
     </FiatValueWrapper>
   )
 }

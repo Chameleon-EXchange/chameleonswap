@@ -1,22 +1,24 @@
 import { useAtom } from 'jotai/index'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 
-import { mapSupportedNetworks, SupportedChainId } from '@cowprotocol/cow-sdk'
-import { BigNumber } from '@ethersproject/bignumber'
+import { getAddressKey, SupportedChainId } from '@cowprotocol/cow-sdk'
 
 import { balancesAtom, balancesCacheAtom } from '../state/balancesAtom'
 
-export function BalancesCacheUpdater({ chainId, account }: { chainId: SupportedChainId; account?: string }) {
+interface BalancesCacheUpdaterProps {
+  chainId: SupportedChainId
+  account: string | undefined
+  excludedTokens: Set<string>
+}
+
+export function BalancesCacheUpdater({ chainId, account, excludedTokens }: BalancesCacheUpdaterProps): null {
   const [balances, setBalances] = useAtom(balancesAtom)
   const [balancesCache, setBalancesCache] = useAtom(balancesCacheAtom)
-  const areBalancesRestoredFromCacheRef = useRef(false)
+  const lastChainCacheUpdateRef = useRef<SupportedChainId | null>(null)
 
   // Persist into localStorage only non-zero balances
   useEffect(() => {
-    if (!account) {
-      setBalancesCache(mapSupportedNetworks({}))
-      return
-    }
+    if (!account || balances.chainId !== chainId) return
 
     setBalancesCache((state) => {
       const balancesValues = balances.values
@@ -25,7 +27,7 @@ export function BalancesCacheUpdater({ chainId, account }: { chainId: SupportedC
         (acc, tokenAddress) => {
           const balance = balancesValues[tokenAddress]
 
-          if (balance && !balance.isZero()) {
+          if (balance) {
             acc[tokenAddress] = balance.toString()
           }
 
@@ -34,11 +36,11 @@ export function BalancesCacheUpdater({ chainId, account }: { chainId: SupportedC
         {} as Record<string, string>,
       )
 
-      const currentCache = state[chainId] || {}
+      const currentCache = state[chainId]?.[getAddressKey(account)] || {}
       // Remove zero balances from the current cache
       const updatedCache = Object.keys(currentCache).reduce(
         (acc, tokenAddress) => {
-          if (!balancesValues[tokenAddress]?.isZero()) {
+          if (balancesValues[tokenAddress]) {
             acc[tokenAddress] = currentCache[tokenAddress]
           }
 
@@ -50,46 +52,57 @@ export function BalancesCacheUpdater({ chainId, account }: { chainId: SupportedC
       return {
         ...state,
         [chainId]: {
-          ...updatedCache,
-          ...balancesToCache,
+          ...state[chainId],
+          [getAddressKey(account)]: {
+            ...updatedCache,
+            ...balancesToCache,
+          },
         },
       }
     })
-  }, [chainId, account, balances.values, setBalancesCache])
+  }, [chainId, account, balances.values, balances.chainId, setBalancesCache])
 
   // Restore balances from cache once
   useLayoutEffect(() => {
-    const cache = balancesCache[chainId]
-
     if (!account) return
-    if (areBalancesRestoredFromCacheRef.current) return
+    if (lastChainCacheUpdateRef.current === chainId) return
+
+    const cache = balancesCache[chainId]?.[getAddressKey(account)]
+
     if (!cache) return
 
     const cacheKeys = Object.keys(cache)
 
     if (cacheKeys.length === 0) return
 
-    areBalancesRestoredFromCacheRef.current = true
+    lastChainCacheUpdateRef.current = chainId
 
     setBalances((state) => {
       return {
+        fromCache: true,
+        chainId,
         isLoading: state.isLoading,
+        hasFirstLoad: state.hasFirstLoad,
+        error: state.error,
         values: {
           ...state.values,
           ...cacheKeys.reduce(
             (acc, tokenAddress) => {
-              acc[tokenAddress] = BigNumber.from(cache[tokenAddress])
+              // Do not override excludedTokens with cache
+              if (!excludedTokens.has(tokenAddress)) {
+                acc[tokenAddress] = BigInt(cache[tokenAddress])
+              }
 
               return acc
             },
-            {} as Record<string, BigNumber>,
+            {} as Record<string, bigint>,
           ),
         },
       }
     })
 
     return
-  }, [balancesCache, chainId, account, setBalances])
+  }, [balancesCache, chainId, account, excludedTokens, setBalances])
 
   return null
 }

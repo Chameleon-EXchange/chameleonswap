@@ -1,14 +1,10 @@
-# Chameleon swap React widget
+# CoW Swap React widget
 
-React component that creates a Chameleon swap widget. It is based on [https://npmjs.com/package/@cowprotocol/widget-lib](https://npmjs.com/package/@cowprotocol/widget-lib)
+React component that creates a CoW Swap widget. It is based on [https://npmjs.com/package/@cowprotocol/widget-lib](https://npmjs.com/package/@cowprotocol/widget-lib)
 
 ## Use it
 
 Install dependency
-
-```bash
-yarn add @cowprotocol/widget-react
-```
 
 ```bash
 npm install @cowprotocol/widget-react
@@ -34,7 +30,7 @@ const cowSwapWidgetParams: CowSwapWidgetParams = {
 Render the component:
 
 ```jsx
-<CowSwapWidget params={cowSwapWidgetParams} />
+<CowSwapWidget params={cowSwapWidgetParams} onReady={() => console.log('Widget ready')} />
 ```
 
 ## Developers

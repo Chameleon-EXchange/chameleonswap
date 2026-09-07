@@ -1,12 +1,14 @@
 import { useState } from 'react'
 
+import { MessageDescriptor } from '@lingui/core'
+
 import { getEtherscanLink, getWrappedToken } from '@cowprotocol/common-utils'
+import { Currency } from '@cowprotocol/currency'
 import { TokenLogo, useIsUnsupportedToken } from '@cowprotocol/tokens'
 import { AutoRow, ButtonEmpty, ExternalLink, Media, RowBetween } from '@cowprotocol/ui'
 import { useWalletInfo } from '@cowprotocol/wallet'
-import { Currency } from '@uniswap/sdk-core'
 
-import { Trans } from '@lingui/macro'
+import { useLingui } from '@lingui/react/macro'
 import styled from 'styled-components/macro'
 import { ThemedText, Z_INDEX, CloseIcon } from 'theme'
 
@@ -48,13 +50,16 @@ export const AddressText = styled(ThemedText.Blue)`
 `
 
 export interface UnsupportedCurrencyFooterParams {
-  show: boolean
   currencies: (Currency | null | undefined)[]
-  detailsTitle?: React.ReactNode
   detailsText?: React.ReactNode
-  showDetailsText?: React.ReactNode
+  detailsTitle?: MessageDescriptor
+  show: boolean
+  showDetailsText?: MessageDescriptor
 }
 
+// TODO: Break down this large function into smaller functions
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export default function UnsupportedCurrencyFooter({
   show,
   currencies,
@@ -62,16 +67,15 @@ export default function UnsupportedCurrencyFooter({
   detailsText,
   showDetailsText,
 }: UnsupportedCurrencyFooterParams) {
+  const { i18n } = useLingui()
   const { chainId } = useWalletInfo()
   const [showDetails, setShowDetails] = useState(false)
-
   const tokens =
     chainId && currencies
       ? currencies.map((currency) => {
           return currency && getWrappedToken(currency)
         })
       : []
-
   const isUnsupportedToken = useIsUnsupportedToken()
 
   return (
@@ -80,9 +84,7 @@ export default function UnsupportedCurrencyFooter({
         <Card padding="2rem">
           <AutoColumn gap="lg">
             <RowBetween>
-              <ThemedText.MediumHeader>
-                <Trans>{detailsTitle}</Trans>
-              </ThemedText.MediumHeader>
+              <ThemedText.MediumHeader>{detailsTitle ? i18n._(detailsTitle) : ''}</ThemedText.MediumHeader>
               <CloseIcon onClick={() => setShowDetails(false)} />
             </RowBetween>
             {tokens.map((token) => {
@@ -106,16 +108,14 @@ export default function UnsupportedCurrencyFooter({
               )
             })}
             <AutoColumn gap="lg">
-              <ThemedText.Body fontWeight={500}>
-                <Trans>{detailsText}</Trans>
-              </ThemedText.Body>
+              <ThemedText.Body fontWeight={500}>{detailsText}</ThemedText.Body>
             </AutoColumn>
           </AutoColumn>
         </Card>
       </Modal>
       <StyledButtonEmpty padding={'0'} onClick={() => setShowDetails(true)}>
         <ThemedText.Error error={!!showDetailsText} color={'danger'}>
-          <Trans>{showDetailsText}</Trans>
+          {showDetailsText ? i18n._(showDetailsText) : ''}
         </ThemedText.Error>
       </StyledButtonEmpty>
     </DetailsFooter>

@@ -1,28 +1,34 @@
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { ComposableCoW } from '@cowprotocol/abis'
+import { useDebounce } from '@cowprotocol/common-hooks'
 import { SupportedChainId } from '@cowprotocol/cow-sdk'
 import { useGnosisSafeInfo } from '@cowprotocol/wallet'
 
+import { twapOrdersAtom } from 'entities/twap'
 import ms from 'ms.macro'
 
+import type { ComposableCowContractData } from 'modules/advancedOrders'
+
 import { TWAP_PENDING_STATUSES } from '../const'
+import { useAllTwapOrdersInfo } from '../hooks/useAllTwapOrdersInfo'
 import { useFetchTwapOrdersFromSafe } from '../hooks/useFetchTwapOrdersFromSafe'
 import { useTwapOrdersAuthMulticall } from '../hooks/useTwapOrdersAuthMulticall'
 import { useTwapOrdersExecutions } from '../hooks/useTwapOrdersExecutions'
-import { deleteTwapOrdersFromListAtom, twapOrdersAtom, updateTwapOrdersListAtom } from '../state/twapOrdersListAtom'
-import { TwapOrderInfo, TwapOrderItem, TwapOrdersSafeData } from '../types'
+import { deleteTwapOrdersFromListAtom, updateTwapOrdersListAtom } from '../state/twapOrdersListAtom'
+import { TwapOrderInfo, TwapOrderItem } from '../types'
 import { buildTwapOrdersItems } from '../utils/buildTwapOrdersItems'
-import { getConditionalOrderId } from '../utils/getConditionalOrderId'
 import { isTwapOrderExpired } from '../utils/getTwapOrderStatus'
-import { parseTwapOrderStruct } from '../utils/parseTwapOrderStruct'
+
+const ORDERS_UPDATE_DEBOUNCE = ms`500ms`
+const TWAP_ORDERS_UPDATE_INTERVAL = ms`3s`
+const AUTH_TIME_THRESHOLD = ms`1m`
 
 export function TwapOrdersUpdater(props: {
   safeAddress: string
   chainId: SupportedChainId
-  composableCowContract: ComposableCoW
-}) {
+  composableCowContract: ComposableCowContractData
+}): null {
   const { safeAddress, chainId, composableCowContract } = props
 
   const twapOrdersList = useAtomValue(twapOrdersAtom)
@@ -30,44 +36,59 @@ export function TwapOrdersUpdater(props: {
   const deleteTwapOrders = useSetAtom(deleteTwapOrdersFromListAtom)
   const safeInfo = useGnosisSafeInfo()
   const ordersSafeData = useFetchTwapOrdersFromSafe(props)
+
+  const [updateTimestamp, setUpdateTimestamp] = useState(0)
   const safeNonce = safeInfo?.nonce
+  const lastUpdateTimestamp = useRef(0)
 
   const twapOrdersListRef = useRef(twapOrdersList)
+  // eslint-disable-next-line react-hooks/refs
   twapOrdersListRef.current = twapOrdersList
 
-  const allOrdersInfo = useMemo(() => parseOrdersSafeData(ordersSafeData), [ordersSafeData])
+  const allOrdersInfo = useDebounce(useAllTwapOrdersInfo(ordersSafeData), ORDERS_UPDATE_DEBOUNCE)
 
   const _twapOrderExecutions = useTwapOrdersExecutions(allOrdersInfo)
-
   const twapOrderExecutions = useRef(_twapOrderExecutions)
+  // eslint-disable-next-line react-hooks/refs
   twapOrderExecutions.current = _twapOrderExecutions
 
   // Here we can split all orders in two groups: 1. Not signed + expired, 2. Open + cancelled
-  const pendingTwapOrders = useMemo(() => {
-    return allOrdersInfo.filter((info) => shouldCheckOrderAuth(info, twapOrdersListRef.current[info.id]))
+  const pendingTwapOrderIds = useMemo(() => {
+    // eslint-disable-next-line react-hooks/refs
+    return allOrdersInfo.reduce<string[]>((acc, info) => {
+      if (shouldCheckOrderAuth(info, twapOrdersListRef.current[info.id])) {
+        acc.push(info.id)
+      }
+
+      return acc
+    }, [])
   }, [allOrdersInfo])
 
   // Here we know which orders are cancelled: if it's auth === false, then it's cancelled
-  const ordersAuthResult = useTwapOrdersAuthMulticall(safeAddress, composableCowContract, pendingTwapOrders)
+  const ordersAuthResult = useTwapOrdersAuthMulticall(safeAddress, composableCowContract, pendingTwapOrderIds)
 
-  /**
-   * Since, a transaction proposal might be rejected in Safe
-   * We should remove this TWAP order creation transactions from store
-   */
-  const ordersToDelete = useMemo(() => {
-    if (!safeNonce) return []
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setUpdateTimestamp(Date.now())
+    }, TWAP_ORDERS_UPDATE_INTERVAL)
 
-    return allOrdersInfo
-      .filter((data) => {
-        const { nonce, isExecuted } = data.safeData.safeTxParams
-
-        return !isExecuted && nonce < safeNonce
-      })
-      .map((item) => item.id)
-  }, [safeNonce, allOrdersInfo])
+    return () => {
+      clearInterval(interval)
+    }
+  }, [])
 
   useEffect(() => {
     if (!ordersAuthResult) return
+
+    // Do not update more often than once in 3 seconds
+    // At the same time, do updates every 3 seconds
+    if (
+      updateTimestamp &&
+      lastUpdateTimestamp.current &&
+      updateTimestamp - lastUpdateTimestamp.current < TWAP_ORDERS_UPDATE_INTERVAL
+    ) {
+      return
+    }
 
     const items = buildTwapOrdersItems(
       chainId,
@@ -77,54 +98,42 @@ export function TwapOrdersUpdater(props: {
       twapOrderExecutions.current,
     )
 
+    /**
+     * Since, a transaction proposal might be rejected in Safe
+     * We should remove this TWAP order creation transactions from store
+     */
+    const ordersToDelete = (() => {
+      if (!safeNonce) return []
+
+      return allOrdersInfo
+        .filter((data) => {
+          const { nonce, isExecuted } = data.safeData.safeTxParams
+
+          return !isExecuted && BigInt(nonce) < BigInt(safeNonce)
+        })
+        .map((item) => item.id)
+    })()
+
     ordersToDelete.forEach((id) => {
       delete items[id]
     })
 
+    lastUpdateTimestamp.current = Date.now()
     updateTwapOrders(items)
     deleteTwapOrders(ordersToDelete)
-  }, [chainId, safeAddress, allOrdersInfo, ordersAuthResult, updateTwapOrders, ordersToDelete, deleteTwapOrders])
+  }, [
+    chainId,
+    safeAddress,
+    safeNonce,
+    allOrdersInfo,
+    ordersAuthResult,
+    updateTimestamp,
+    updateTwapOrders,
+    deleteTwapOrders,
+  ])
 
   return null
 }
-
-function parseOrdersSafeData(ordersSafeData: TwapOrdersSafeData[]): TwapOrderInfo[] {
-  const ordersInfoMap = ordersSafeData.reduce<{ [id: string]: TwapOrderInfo }>((acc, data) => {
-    try {
-      const id = getConditionalOrderId(data.conditionalOrderParams)
-      const existingOrder = acc[id]
-
-      /**
-       * There might be two Safe transactions with the same order inside.
-       * But only one of them will be executed.
-       *
-       * For example, you propose a transaction with TWAP order and execute it.
-       * Then, you propose another transaction with the same TWAP order.
-       * After you realize that the proposed transaction is a duplicate, and you replace it or cancel.
-       * In this case we should skip the second transaction, because the first one is already executed.
-       */
-      if (existingOrder?.safeData.safeTxParams.isExecuted) {
-        return acc
-      }
-
-      const info = {
-        id,
-        orderStruct: parseTwapOrderStruct(data.conditionalOrderParams.staticInput),
-        safeData: data,
-      }
-
-      acc[id] = info
-    } catch {
-      // Do nothing
-    }
-
-    return acc
-  }, {})
-
-  return Object.values(ordersInfoMap)
-}
-
-const AUTH_TIME_THRESHOLD = ms`1m`
 
 function shouldCheckOrderAuth(info: TwapOrderInfo, existingOrder: TwapOrderItem | undefined): boolean {
   const { isExecuted, confirmations, executionDate: _executionDate } = info.safeData.safeTxParams

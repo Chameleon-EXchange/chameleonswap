@@ -4,15 +4,17 @@ import { TokenWithLogo } from '@cowprotocol/common-const'
 
 import { useUpdateSelectTokenWidgetState } from './useUpdateSelectTokenWidgetState'
 
-export function useAddTokenImportCallback() {
+/**
+ * Callback to set a token for import.
+ * The actual consent/restriction logic is handled by the token selector's customFlows.
+ */
+export function useAddTokenImportCallback(): (tokenToImport: TokenWithLogo) => void {
   const updateSelectTokenWidget = useUpdateSelectTokenWidgetState()
 
   return useCallback(
     (tokenToImport: TokenWithLogo) => {
-      updateSelectTokenWidget({
-        tokenToImport,
-      })
+      updateSelectTokenWidget({ tokenToImport })
     },
-    [updateSelectTokenWidget]
+    [updateSelectTokenWidget],
   )
 }

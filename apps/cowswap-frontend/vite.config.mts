@@ -1,0 +1,360 @@
+/// <reference types="vitest" />
+import { lingui } from '@lingui/vite-plugin'
+
+import { sentryVitePlugin } from '@sentry/vite-plugin'
+import react from '@vitejs/plugin-react-swc'
+import { bundleStats } from 'rollup-plugin-bundle-stats'
+import { visualizer } from 'rollup-plugin-visualizer'
+import { defineConfig, searchForWorkspaceRoot } from 'vite'
+import macrosPlugin from 'vite-plugin-babel-macros'
+import { meta } from 'vite-plugin-meta-tags'
+import { nodePolyfills } from 'vite-plugin-node-polyfills'
+import { VitePWA } from 'vite-plugin-pwa'
+import svgr from 'vite-plugin-svgr'
+import viteTsConfigPaths from 'vite-tsconfig-paths'
+
+import { execSync } from 'child_process'
+import { readFile } from 'node:fs/promises'
+import * as path from 'path'
+
+import pkg from './package.json'
+
+import { formatChunkFileName } from '../../tools/formatChunkFileName'
+import { getReactProcessEnv } from '../../tools/getReactProcessEnv'
+import { NODE_STD_LIBS } from '../../tools/nodeStdLibs'
+import { robotsPlugin } from '../../tools/vite-plugins/robotsPlugin'
+
+// eslint-disable-next-line @typescript-eslint/no-restricted-imports
+import type { TemplateType } from 'rollup-plugin-visualizer/dist/plugin/template-types'
+import type { PluginOption } from 'vite'
+
+// Trezor getAccountsAsync() requires crypto and stream (the module is lazy-loaded)
+const nodeDepsToInclude = ['crypto', 'stream']
+
+const analyzeBundle = process.env.ANALYZE_BUNDLE === 'true'
+const analyzeBundleTemplate: TemplateType = (process.env.ANALYZE_BUNDLE_TEMPLATE as TemplateType) || 'treemap' //  "sunburst" | "treemap" | "network" | "raw-data" | "list";
+const defaultSentryOrg = 'cowprotocol'
+const defaultSentryProject = 'cowswap'
+const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN
+const sentryOrg = process.env.SENTRY_ORG || defaultSentryOrg
+const sentryProject = process.env.SENTRY_PROJECT || defaultSentryProject
+const sentryReleaseName = `CowSwap@v${pkg.version}`
+
+function getGitBuildInfo(): {
+  commitHash: string
+  commitDate: string
+  releaseTag: string
+} {
+  if (process.env.BUNDLE_SIZE_BUILD === 'true') {
+    return { commitHash: '0000000', commitDate: '1970-01-01T00:00:00+00:00', releaseTag: 'v1.0.0' }
+  }
+
+  try {
+    const commitHash = execSync('git rev-parse --short=7 HEAD').toString().trim()
+    const commitDate = execSync('git show -s --format=%cI HEAD').toString().trim()
+    let releaseTag = ''
+    try {
+      const tag = execSync('git describe --exact-match --tags HEAD').toString().trim()
+      if (tag.startsWith('cowswap-v')) {
+        releaseTag = tag
+      }
+    } catch {
+      // HEAD is not on an exact tag
+    }
+    return { commitHash, commitDate, releaseTag }
+  } catch {
+    return {
+      commitHash: process.env.REACT_APP_GIT_COMMIT_HASH || '',
+      commitDate: process.env.REACT_APP_GIT_COMMIT_DATE || '',
+      releaseTag: process.env.REACT_APP_GIT_RELEASE_TAG || '',
+    }
+  }
+}
+
+// eslint-disable-next-line max-lines-per-function
+export default defineConfig(({ mode, isPreview }) => {
+  const isProduction = mode === 'production'
+  const gitBuildInfo = getGitBuildInfo()
+
+  const plugins: PluginOption[] = [
+    nodePolyfills({
+      exclude: NODE_STD_LIBS.filter((dep) => !nodeDepsToInclude.includes(dep)),
+      globals: {
+        Buffer: true,
+        global: true,
+        process: true,
+      },
+      protocolImports: true,
+    }),
+    react(),
+    viteTsConfigPaths({
+      root: '../../',
+    }),
+    macrosPlugin(),
+    lingui({
+      cwd: 'apps/cowswap-frontend',
+    }),
+    svgr(),
+    VitePWA({
+      injectRegister: null,
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'service-worker.ts',
+      minify: true,
+      injectManifest: {
+        // Preview build currently emits a large main chunk.
+        // If this value is smaller, pnpm preview will fail to start and Playwright will hang in CI and eventually timeout.
+        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10 MiB
+        globPatterns: ['**/*.{js,css,html,png,jpg,svg,json,woff,woff2,md}'],
+      },
+    }),
+    robotsPlugin({
+      robotsDir: 'robots',
+      publicPath: path.resolve(__dirname, './public'),
+    }),
+  ]
+
+  if (analyzeBundle) {
+    plugins.push(
+      bundleStats() as PluginOption,
+      visualizer({
+        template: analyzeBundleTemplate,
+        open: true,
+        gzipSize: true,
+        brotliSize: true,
+        emitFile: true,
+        filename: 'analyse.html', // will be saved in build/cowswap/analyse.html
+      }) as PluginOption,
+    )
+  }
+
+  if (isProduction && sentryAuthToken) {
+    plugins.push(
+      ...sentryVitePlugin({
+        org: sentryOrg,
+        project: sentryProject,
+        authToken: sentryAuthToken,
+        telemetry: false,
+        release: {
+          name: sentryReleaseName,
+          inject: false,
+          create: true,
+          finalize: true,
+        },
+        sourcemaps: {
+          // Use absolute globs so cleanup works both in Nx builds from the repo root
+          // and direct Vite builds from the app directory.
+          filesToDeleteAfterUpload: [
+            path.resolve(__dirname, '../../build/cowswap/**/*.map'),
+            path.resolve(__dirname, './dist/**/*.map'),
+          ],
+        },
+      }),
+    )
+  }
+
+  // Disable page indexing for non-prod envs
+  if (!isProduction) {
+    plugins.push(
+      meta({}, undefined, [
+        {
+          tag: 'meta',
+          injectTo: 'head-prepend',
+          attrs: { name: 'robots', content: 'noindex,nofollow' },
+        },
+      ]),
+    )
+  }
+
+  return {
+    root: path.resolve(__dirname, './'),
+    base: './',
+    define: {
+      ...getReactProcessEnv(mode),
+      'process.env.REACT_APP_GIT_COMMIT_HASH': JSON.stringify(gitBuildInfo.commitHash),
+      'process.env.REACT_APP_GIT_COMMIT_DATE': JSON.stringify(gitBuildInfo.commitDate),
+      'process.env.REACT_APP_GIT_RELEASE_TAG': JSON.stringify(gitBuildInfo.releaseTag),
+    },
+
+    assetsInclude: ['**/*.md'],
+
+    cacheDir: '../../node_modules/.vite/cowswap-frontend',
+
+    server: {
+      port: process.env.PORT ? Number(process.env.PORT) : 3000,
+      host: '0.0.0.0',
+      allowedHosts: true,
+      fs: {
+        allow: [
+          // search up for workspace root
+          searchForWorkspaceRoot(process.cwd()),
+          // your custom rules
+          'apps/cowswap-frontend/src',
+          'libs',
+        ],
+      },
+      proxy: {
+        '/hook-dapp-omnibridge': {
+          target: 'http://localhost:4317',
+          changeOrigin: true,
+        },
+      },
+    },
+
+    preview: {
+      port: process.env.PORT ? Number(process.env.PORT) : 3000,
+      host: '0.0.0.0',
+      allowedHosts: true,
+    },
+
+    optimizeDeps: {
+      esbuildOptions: {
+        // force esm usage for misconfigured deps' package.json (e.g. @safe-global/safe-apps-sdk)
+        mainFields: ['exports', 'module', 'main'],
+        plugins: [
+          {
+            // During pre-bundling, esbuild walks @base-org/account internals using relative
+            // paths, so the top-level resolve.alias entry isn't enough. This plugin rewrites
+            // any resolution that lands on getInjectedProvider.js to our local shim.
+            // See: src/shims/baseAccountGetInjectedProvider.ts
+            name: 'cow-base-account-getInjectedProvider-shim',
+            setup(build) {
+              const shim = path.resolve(__dirname, 'src/shims/baseAccountGetInjectedProvider.ts')
+              build.onResolve({ filter: /(^|[\\/])getInjectedProvider(\.js)?$/ }, (args) => {
+                if (args.importer.includes('@base-org/account')) {
+                  return { path: shim }
+                }
+                return null
+              })
+            },
+          },
+          {
+            // @reown/appkit ships .js.map files whose `sources` point at the original
+            // TypeScript (exports/react.ts, src/**/*.ts) without inlining `sourcesContent`,
+            // and the published tarball doesn't include those .ts files. esbuild follows the
+            // sourceMappingURL pragma during prebundling and propagates the null sources into
+            // the optimized dep map, so devtools 404s on every reown source ("DevTools failed
+            // to load source map"). Drop the pragma for @reown files so esbuild treats the
+            // shipped compiled .js as the source and embeds real `sourcesContent` instead.
+            name: 'cow-reown-strip-sourcemap',
+            setup(build) {
+              build.onLoad({ filter: /[\\/]@reown[\\/].*\.js$/ }, async (args) => {
+                const contents = await readFile(args.path, 'utf8')
+                return {
+                  contents: contents.replace(/\n?\/\/# sourceMappingURL=.*$/gm, ''),
+                  loader: 'js',
+                }
+              })
+            },
+          },
+          {
+            // @1inch/permit-signed-approvals-utils ships .js.map files whose `sources` point at
+            // the original TypeScript (../src/**/*.ts) with no inlined `sourcesContent`, and the
+            // published tarball doesn't include those .ts files. Same failure mode as @reown above:
+            // esbuild follows the sourceMappingURL pragma during prebundling and devtools then 404s
+            // on every @1inch source ("DevTools failed to load source map"). Drop the pragma so
+            // esbuild treats the shipped compiled .js as the source and embeds real `sourcesContent`.
+            name: 'cow-1inch-strip-sourcemap',
+            setup(build) {
+              build.onLoad({ filter: /[\\/]@1inch[\\/].*\.js$/ }, async (args) => {
+                const contents = await readFile(args.path, 'utf8')
+                return {
+                  contents: contents.replace(/\n?\/\/# sourceMappingURL=.*$/gm, ''),
+                  loader: 'js',
+                }
+              })
+            },
+          },
+        ],
+      },
+      // Only include packages that are direct or resolvable from the app; transitive
+      // WalletConnect deps (universal-provider, utils, sign-client) are not resolvable here.
+      include: ['@walletconnect/ethereum-provider'],
+    },
+
+    resolve: {
+      alias: {
+        'node-fetch': 'isomorphic-fetch',
+        // @base-org/account@2.4.0 (pinned exactly by @reown/appkit-utils@1.8.19) reads
+        // `window.top?.ethereum` without try/catch, which throws SecurityError when the
+        // widget is loaded in a cross-origin iframe (e.g. widget-configurator) and aborts
+        // the Base Account connector's connect() before its popup can open.
+        // The fix landed in @base-org/account@2.5.x; until AppKit relaxes the pin, redirect
+        // that single file to a local shim with the try/catch.
+        '@base-org/account/dist/interface/builder/core/getInjectedProvider.js': path.resolve(
+          __dirname,
+          'src/shims/baseAccountGetInjectedProvider.ts',
+        ),
+      },
+      // force esm usage for misconfigured deps' "exports" field (e.g. @use-gesture/core)
+      conditions: ['module', 'import', 'browser', 'default'],
+      // Dedupe packages that rely on shared React context across workspace libs.
+      // Without this, pnpm creates separate copies per workspace package (different peer dep sets),
+      // causing context mismatches (e.g. WagmiProvider in libs/wallet vs useConnection in libs/wallet-provider).
+      // @reown/appkit-controllers IS deduped because it holds AppKit's valtio state
+      // singletons (ConnectorController, OptionsController, ...). Since libs/wallet pulled
+      // in @reown/appkit-adapter-solana (#7709), pnpm resolves the appkit family to two
+      // peer-instances; without deduping the controllers package, code in libs/wallet reads
+      // an empty ConnectorController while the deduped appkit/adapter-wagmi populate the other.
+      dedupe: [
+        'react-router',
+        '@reown/appkit',
+        '@reown/appkit-adapter-wagmi',
+        '@reown/appkit-adapter-solana',
+        '@reown/appkit-controllers',
+        'wagmi',
+      ],
+    },
+
+    build: {
+      manifest: true,
+      assetsInlineLimit: 0, // prevent inlining assets
+      assetsDir: 'static', // All assets go to /static/ directory
+      sourcemap: !isPreview,
+      rollupOptions: {
+        output: {
+          // Remove hash for font files to enable preloading
+          assetFileNames: (assetInfo) => {
+            if (assetInfo.name && (/StudioFeixen/i.test(assetInfo.name) || /Inter-/i.test(assetInfo.name))) {
+              return 'static/[name][extname]' // Fonts without hash
+            }
+            return 'static/[name]-[hash][extname]' // Everything else with hash
+          },
+          // add distinguishable prefixes to chunk names
+          chunkFileNames(chunk) {
+            const chunkFileName = formatChunkFileName(chunk, {
+              '/src/pages/': 'static/page-[name]-[hash].js',
+              '/web3-react/connectors/': 'static/connectors-[name]-[hash].js',
+              '/node_modules/lottie-react/': 'static/lottie-react-[name]-[hash].js',
+              '/node_modules/@walletconnect/': 'static/@walletconnect-[name]-[hash].js',
+              '/node_modules/@safe-global/': 'static/@safe-global-[name]-[hash].js',
+              '/node_modules/framer-motion/': 'static/framer-motion-[name]-[hash].js',
+            })
+            if (chunkFileName) return chunkFileName
+            return 'static/[name]-[hash].js'
+          },
+
+          manualChunks(id) {
+            if (id.includes('@safe-global/safe-apps-sdk')) return '@safe-global-safe-apps-sdk' // used by some deps
+            if (id.includes('@sentry')) return '@sentry'
+            if (id.includes('@uniswap')) return '@uniswap'
+            if (id.includes('crypto-es/lib')) return 'crypto-es'
+            if (id.includes('web3/dist')) return 'web3' // was used by @1inch
+            if (id.includes('@ethersproject')) return '@ethersproject'
+          },
+        },
+      },
+    },
+
+    plugins,
+
+    // Uncomment this if you are using workers.
+    // worker: {
+    //  plugins: [
+    //    viteTsConfigPaths({
+    //      root: '../../',
+    //    }),
+    //  ],
+    // },
+  }
+})

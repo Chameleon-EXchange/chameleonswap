@@ -1,22 +1,8 @@
-import { SafeMultisigTransactionResponse } from '@safe-global/safe-core-sdk-types'
+import type { SafeMultisigTransactionResponse } from '@safe-global/types-kit'
 
 import { createAction } from '@reduxjs/toolkit'
 
 import { EnhancedTransactionDetails } from './reducer'
-
-export interface SerializableTransactionReceipt {
-  to: string
-  from: string
-  contractAddress: string
-  transactionIndex: number
-  blockHash: string
-  transactionHash: string
-  blockNumber: number
-  status?: number
-}
-
-type WithChainId = { chainId: number }
-type WithData = { data?: any }
 
 export type AddTransactionParams = WithChainId &
   WithData &
@@ -36,6 +22,22 @@ export type AddTransactionParams = WithChainId &
     | 'ethFlow'
     | 'onChainCancellation'
   >
+
+export interface SerializableTransactionReceipt {
+  to: string | null
+  from: string
+  contractAddress: string | null
+  transactionIndex: number
+  blockHash: string
+  transactionHash: string
+  blockNumber: number
+  status?: string
+}
+type WithChainId = { chainId: number }
+
+// TODO: Replace any with proper type definitions
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type WithData = { data?: any }
 
 export const addTransaction = createAction<AddTransactionParams>('enhancedTransactions/addTransaction')
 

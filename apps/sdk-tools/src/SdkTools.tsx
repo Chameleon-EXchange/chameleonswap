@@ -1,16 +1,18 @@
-import React from 'react'
+import React, { ReactNode } from 'react'
 
+import { COMPOSABLE_COW } from '@cowprotocol/cow-sdk'
 import {
-  COMPOSABLE_COW,
   ConditionalOrder,
   ConditionalOrderFactory,
   DEFAULT_CONDITIONAL_ORDER_REGISTRY,
   IsValidResult,
-} from '@cowprotocol/cow-sdk'
+} from '@cowprotocol/sdk-composable'
 
 import styled from 'styled-components/macro'
 
-const ordersFactory = new ConditionalOrderFactory(DEFAULT_CONDITIONAL_ORDER_REGISTRY)
+import { cowSdkAdapter } from './cowSdkAdapter'
+
+const ordersFactory = new ConditionalOrderFactory(DEFAULT_CONDITIONAL_ORDER_REGISTRY, cowSdkAdapter)
 
 const Container = styled.div`
   padding: 20px;
@@ -145,19 +147,9 @@ const ButtonContainer = styled.div`
   margin-top: 20px;
 `
 
-function IsValid({ isValid }: { isValid: IsValidResult }) {
-  if (isValid.isValid) {
-    return <span style={{ color: 'green' }}>true</span>
-  }
-
-  return <span style={{ color: 'red' }}>false: {isValid.reason}</span>
-}
-
-function BooleanValue({ value }: { value: boolean }) {
-  return <span style={{ color: value ? 'green' : 'red' }}>{Boolean(value).toString()}</span>
-}
-
-export function SdkTools() {
+// TODO: Break down this large function into smaller functions
+// eslint-disable-next-line max-lines-per-function
+export function SdkTools(): ReactNode {
   const [handler, setHandler] = React.useState('0x6cF1e9cA41f7611dEf408122793c358a3d11E5a5')
   const [salt, setSalt] = React.useState('0x000000000000000000000000000000000000000000000000000000192a56162a')
   const [staticInput, setStaticInput] = React.useState(
@@ -166,6 +158,9 @@ export function SdkTools() {
   const [conditionalOrder, setConditionalOrder] = React.useState<ConditionalOrder<unknown, unknown> | undefined>()
   const [error, setError] = React.useState<React.ReactNode | undefined>()
 
+  // TODO: Break down this large function into smaller functions
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError(undefined)
@@ -306,4 +301,16 @@ export function SdkTools() {
       )}
     </Container>
   )
+}
+
+function BooleanValue({ value }: { value: boolean }): ReactNode {
+  return <span style={{ color: value ? 'green' : 'red' }}>{Boolean(value).toString()}</span>
+}
+
+function IsValid({ isValid }: { isValid: IsValidResult }): ReactNode {
+  if (isValid.isValid) {
+    return <span style={{ color: 'green' }}>true</span>
+  }
+
+  return <span style={{ color: 'red' }}>false: {isValid.reason}</span>
 }

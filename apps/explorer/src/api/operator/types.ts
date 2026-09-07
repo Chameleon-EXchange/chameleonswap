@@ -1,4 +1,11 @@
-import { EnrichedOrder, OrderKind, Trade as TradeMetaData } from '@cowprotocol/cow-sdk'
+import {
+  AddressKey,
+  CompetitionOrderStatus,
+  EnrichedOrder,
+  OrderKind,
+  SolverCompetitionResponse,
+  Trade as TradeMetaData,
+} from '@cowprotocol/cow-sdk'
 
 import { TokenErc20 } from '@gnosis.pm/dex-js'
 import BigNumber from 'bignumber.js'
@@ -6,11 +13,61 @@ import { Network } from 'types'
 
 export type TxHash = string
 
-export type OrderStatus = 'open' | 'filled' | 'cancelled' | 'cancelling' | 'expired' | 'signing'
-export type RawOrderStatusFromAPI = 'presignaturePending' | 'open' | 'fullfilled' | 'cancelled' | 'expired'
+export enum OrderStatus {
+  Open = 'open',
+  Filled = 'filled',
+  Cancelled = 'cancelled',
+  Cancelling = 'cancelling',
+  Expired = 'expired',
+  Signing = 'signing',
+  PartiallyFilled = 'partially filled',
+}
 
-// Raw API response
-export type RawOrder = EnrichedOrder
+export const RAW_ORDER_STATUS = {
+  PRESIGNATURE_PENDING: 'presignaturePending',
+  OPEN: 'open',
+  FULFILLED: 'fullfilled', // Note: API has typo "fullfilled"
+  CANCELLED: 'cancelled',
+  EXPIRED: 'expired',
+} as const
+
+export const ORDER_FINAL_FAILED_STATUSES = [OrderStatus.Expired, OrderStatus.Cancelled]
+
+export type GetAccountOrdersParams = WithNetworkId & {
+  owner: string
+  offset?: number
+  limit?: number
+}
+
+export type GetOrderCompetitionStatusParams = WithNetworkId & {
+  orderId: string
+}
+export type GetOrderParams = WithNetworkId & {
+  orderId: string
+}
+
+export type GetOrdersParams = WithNetworkId & {
+  owner: string
+  minValidTo: number
+  sellToken?: string
+  buyToken?: string
+}
+
+export type GetSolverCompetitionByTxHashParams = WithNetworkId & {
+  txHash: string
+}
+
+export type GetTradesParams = WithNetworkId & {
+  owner?: string
+  orderId?: string
+  offset?: number
+  limit?: number
+}
+
+export type GetTxOrdersParams = WithNetworkId & {
+  txHash: TxHash
+}
+
 /**
  * Enriched Order type.
  * Applies some transformations on the raw api data.
@@ -45,6 +102,10 @@ export type Order = Pick<
   executedFeeAmount: BigNumber
   executedFee: BigNumber | null
   totalFee: BigNumber
+  // Derived client-side from the trades. Undefined when unknown; `[]` means no fee was charged.
+  protocolFees?: ProtocolFee[]
+  // Native-token wei, from the orderbook. Undefined if unsettled, or settled before it was recorded.
+  gasCost?: BigNumber
   cancelled: boolean
   status: OrderStatus
   partiallyFilled: boolean
@@ -53,7 +114,24 @@ export type Order = Pick<
   filledPercentage: BigNumber
   surplusAmount: BigNumber
   surplusPercentage: BigNumber
+  bridgeProviderId?: string
 }
+
+export type OrderCompetitionStatus = CompetitionOrderStatus
+
+/** One fee policy's total across all of an order's fills. */
+export type ProtocolFee = {
+  amount: BigNumber
+  tokenAddress: AddressKey
+  type: ProtocolFeeType
+  // Index in a fill's `executedProtocolFees`; preserves the order the fees were applied in.
+  position: number
+}
+
+// TODO: drop the `gasCost` intersection once `EnrichedOrder` in @cowprotocol/cow-sdk declares it.
+export type RawOrder = EnrichedOrder & { gasCost?: string | null }
+
+export type RawOrderStatusFromAPI = (typeof RAW_ORDER_STATUS)[keyof typeof RAW_ORDER_STATUS]
 
 /**
  * Raw API trade response type
@@ -81,28 +159,11 @@ export type Trade = Pick<RawTrade, 'blockNumber' | 'logIndex' | 'owner' | 'txHas
 
 export type WithNetworkId = { networkId: Network }
 
-export type GetOrderParams = WithNetworkId & {
-  orderId: string
+export enum ProtocolFeeType {
+  Surplus = 'surplus',
+  Volume = 'volume',
+  PriceImprovement = 'priceImprovement',
+  Unknown = 'unknown',
 }
 
-export type GetAccountOrdersParams = WithNetworkId & {
-  owner: string
-  offset?: number
-  limit?: number
-}
-
-export type GetOrdersParams = WithNetworkId & {
-  owner: string
-  minValidTo: number
-  sellToken?: string
-  buyToken?: string
-}
-
-export type GetTxOrdersParams = WithNetworkId & {
-  txHash: TxHash
-}
-
-export type GetTradesParams = WithNetworkId & {
-  owner?: string
-  orderId?: string
-}
+export type { SolverCompetitionResponse }

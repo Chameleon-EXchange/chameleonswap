@@ -9,4 +9,3 @@ export { default as AvalancheLogo } from './images/logo-avalanche.svg'
 export { default as LineaLogo } from './images/logo-linea.svg'
 export { default as BnbLogo } from './images/logo-bnb.svg'
 export { default as PlasmaLogo } from './images/logo-plasma.svg'
-

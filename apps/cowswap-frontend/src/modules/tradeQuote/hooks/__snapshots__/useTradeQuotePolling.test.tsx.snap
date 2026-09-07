@@ -1,33 +1,91 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
-exports[`useTradeQuotePolling() When wallet is NOT connected Then the "useAddress" field in the quote request should be 0x000...0000 1`] = `
+exports[`useTradeQuotePolling() When wallet is NOT connected Then the "receiver" field in the quote request should be undefined 1`] = `
 {
-  "appData": "{"version":"1.3.0","appCode":"Chameleon swap","metadata":{}}",
-  "appDataHash": "0x2b75dd3fccea5d141e8782354d789fb147bbf51a454c2cd0384ad2d76216116e",
-  "buyToken": "0x0625aFB445C3B6B7B929342a04A22599fd5dBB59",
-  "from": "0x0000000000000000000000000000000000000000",
+  "account": "0x19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A",
+  "amount": 10000000n,
+  "appCode": "CoW Swap",
+  "buyTokenAddress": "0x0625aFB445C3B6B7B929342a04A22599fd5dBB59",
+  "buyTokenChainId": 11155111,
+  "buyTokenDecimals": 18,
+  "ethFlowContractOverride": {
+    "1": "0xba3cb449bd2b4adddbc894d8697f5170800eadec",
+    "100": "0xba3cb449bd2b4adddbc894d8697f5170800eadec",
+    "11155111": "0xba3cb449bd2b4adddbc894d8697f5170800eadec",
+    "137": "0xba3cb449bd2b4adddbc894d8697f5170800eadec",
+    "42161": "0xba3cb449bd2b4adddbc894d8697f5170800eadec",
+    "43114": "0xba3cb449bd2b4adddbc894d8697f5170800eadec",
+    "56": "0xba3cb449bd2b4adddbc894d8697f5170800eadec",
+    "57073": "0xba3cb449bd2b4adddbc894d8697f5170800eadec",
+    "59144": "0xba3cb449bd2b4adddbc894d8697f5170800eadec",
+    "8453": "0xba3cb449bd2b4adddbc894d8697f5170800eadec",
+    "9745": "0xba3cb449bd2b4adddbc894d8697f5170800eadec",
+  },
   "kind": "sell",
+  "owner": "0x19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A",
   "partiallyFillable": false,
-  "priceQuality": "optimal",
-  "receiver": "0x0000000000000000000000000000000000000000",
-  "sellAmountBeforeFee": "10000000",
-  "sellToken": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+  "receiver": undefined,
+  "sellTokenAddress": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+  "sellTokenChainId": 11155111,
+  "sellTokenDecimals": 18,
   "validFor": 1800,
 }
 `;
 
-exports[`useTradeQuotePolling() When wallet is connected Then should put account address into "useAddress" field in the quote request 1`] = `
-{
-  "appData": "{"version":"1.3.0","appCode":"Chameleon swap","metadata":{}}",
-  "appDataHash": "0x2b75dd3fccea5d141e8782354d789fb147bbf51a454c2cd0384ad2d76216116e",
-  "buyToken": "0x0625aFB445C3B6B7B929342a04A22599fd5dBB59",
-  "from": "0x333333f332a06ecb5d20d35da44ba07986d6e203",
-  "kind": "sell",
-  "partiallyFillable": false,
-  "priceQuality": "optimal",
-  "receiver": "0x333333f332a06ecb5d20d35da44ba07986d6e203",
-  "sellAmountBeforeFee": "10000000",
-  "sellToken": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
-  "validFor": 1800,
-}
+exports[`useTradeQuotePolling() When wallet is connected Then should put account address into "receiver" field in the quote request 1`] = `
+[
+  {
+    "account": "0x333333f332a06ecb5d20d35da44ba07986d6e203",
+    "amount": 10000000n,
+    "appCode": "CoW Swap",
+    "bridgeRecipient": "0x333333f332a06ecb5d20d35da44ba07986d6e203",
+    "buyTokenAddress": "0x0625aFB445C3B6B7B929342a04A22599fd5dBB59",
+    "buyTokenChainId": 11155111,
+    "buyTokenDecimals": 18,
+    "ethFlowContractOverride": {
+      "1": "0xba3cb449bd2b4adddbc894d8697f5170800eadec",
+      "100": "0xba3cb449bd2b4adddbc894d8697f5170800eadec",
+      "11155111": "0xba3cb449bd2b4adddbc894d8697f5170800eadec",
+      "137": "0xba3cb449bd2b4adddbc894d8697f5170800eadec",
+      "42161": "0xba3cb449bd2b4adddbc894d8697f5170800eadec",
+      "43114": "0xba3cb449bd2b4adddbc894d8697f5170800eadec",
+      "56": "0xba3cb449bd2b4adddbc894d8697f5170800eadec",
+      "57073": "0xba3cb449bd2b4adddbc894d8697f5170800eadec",
+      "59144": "0xba3cb449bd2b4adddbc894d8697f5170800eadec",
+      "8453": "0xba3cb449bd2b4adddbc894d8697f5170800eadec",
+      "9745": "0xba3cb449bd2b4adddbc894d8697f5170800eadec",
+    },
+    "kind": "sell",
+    "owner": "0x333333f332a06ecb5d20d35da44ba07986d6e203",
+    "partiallyFillable": false,
+    "receiver": "0x333333f332a06ecb5d20d35da44ba07986d6e203",
+    "sellTokenAddress": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+    "sellTokenChainId": 11155111,
+    "sellTokenDecimals": 18,
+    "signer": {
+      "address": "0x19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A",
+      "getAddress": [Function],
+      "nonceManager": undefined,
+      "publicKey": "0x044f355bdcb7cc0af728ef3cceb9615d90684bb5b2ca5f859ab0f0b704075871aa385b6b1b8ead809ca67454d9683fcf2ba03456d6fe2c4abe2b07f0fbdbb2f1c1",
+      "sign": [Function],
+      "signAuthorization": [Function],
+      "signMessage": [Function],
+      "signTransaction": [Function],
+      "signTypedData": [Function],
+      "source": "privateKey",
+      "type": "local",
+    },
+    "validFor": 1800,
+  },
+  {
+    "allowIntermediateEqSellToken": true,
+    "appData": undefined,
+    "getCorrelatedTokens": [Function],
+    "getSlippageSuggestion": undefined,
+    "quoteRequest": {
+      "priceQuality": "optimal",
+    },
+    "quoteSigner": undefined,
+  },
+]
 `;

@@ -1,22 +1,28 @@
+/* eslint-disable @typescript-eslint/no-restricted-imports */ // TODO: Don't use 'modules' import
 import { useSetAtom } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 
 import { NATIVE_CURRENCIES } from '@cowprotocol/common-const'
 import { EnrichedOrder, EthflowData, OrderClass, SupportedChainId as ChainId } from '@cowprotocol/cow-sdk'
 import { TokensByAddress, useAllActiveTokens } from '@cowprotocol/tokens'
+import { UiOrderType } from '@cowprotocol/types'
 import { useIsSafeWallet, useWalletInfo } from '@cowprotocol/wallet'
 
+import { useAddOrderToSurplusQueue } from 'entities/surplusModal'
+
 import { Order, OrderStatus } from 'legacy/state/orders/actions'
-import { useAddOrUpdateOrders, useClearOrdersStorage } from 'legacy/state/orders/hooks'
+import { useAddOrUpdateOrders, useAllOrdersMap, useClearOrdersStorage } from 'legacy/state/orders/hooks'
+import { PartialOrdersMap } from 'legacy/state/orders/reducer'
 import { classifyOrder, OrderTransitionStatus } from 'legacy/state/orders/utils'
+import { deserializeOrder } from 'legacy/state/orders/utils/deserializeOrder'
 
 import { getTokensListFromOrders, useTokensForOrdersList } from 'modules/orders'
 import { apiOrdersAtom } from 'modules/orders/state/apiOrdersAtom'
 
 import { useOrdersFromOrderBook } from 'api/cowProtocol/hooks'
+import { getIsBridgeOrder } from 'common/utils/getIsBridgeOrder'
 import { getTokenFromMapping } from 'utils/orderUtils/getTokenFromMapping'
-
-import { computeOrderSummary } from './utils'
+import { getUiOrderType } from 'utils/orderUtils/getUiOrderType'
 
 // TODO: update this for ethflow states
 const statusMapping: Record<OrderTransitionStatus, OrderStatus | undefined> = {
@@ -29,6 +35,147 @@ const statusMapping: Record<OrderTransitionStatus, OrderStatus | undefined> = {
   unknown: undefined,
 }
 
+/**
+ * Orders that just transitioned into `FULFILLED` (per `allOrdersMap`'s previously-known status) and
+ * are eligible for the "Transaction completed" surplus modal — mirrors `PendingOrdersUpdater`'s own
+ * eligibility check (plain swap orders only, not bridge legs). An order with no previously-known
+ * status (never seen locally before, e.g. a past order the API returns on first load) is excluded —
+ * only a genuine local pending→fulfilled transition should pop the modal.
+ */
+export function _getOrdersToQueueForSurplusModal(orders: Order[], allOrdersMap: PartialOrdersMap): Order[] {
+  return orders.filter((order) => {
+    if (order.status !== OrderStatus.FULFILLED) return false
+
+    const previousStatus = deserializeOrder(allOrdersMap[order.id])?.status
+    if (previousStatus === undefined || previousStatus === OrderStatus.FULFILLED) return false
+
+    return getUiOrderType(order) === UiOrderType.SWAP && !getIsBridgeOrder(order)
+  })
+}
+
+/**
+ * Updater for orders
+ *
+ * This updater fetches orders from CoWProtocol backend API instead of onchain (since we work with offline orders)
+ * It will:
+ * - Fetch the most recent orders (up to ~100), once, on every account/chainId change
+ * - Transform them from `OrderMetaData` into the local order representation type `Order`
+ * - Identify and try to load tokens present in the orders but not in the local list of tokens
+ * - Ignore orders for which a token could not be found
+ * - Persist the new tokens and orders on redux
+ */
+export function OrdersFromApiUpdater(): null {
+  const isSafeWallet = useIsSafeWallet()
+  const clearOrderStorage = useClearOrdersStorage()
+
+  const { account, chainId } = useWalletInfo()
+  const allTokens = useAllActiveTokens().tokens
+  const tokensAreLoaded = useMemo(() => Object.keys(allTokens).length > 0, [allTokens])
+  const addOrUpdateOrders = useAddOrUpdateOrders()
+  const addOrderToSurplusQueue = useAddOrderToSurplusQueue()
+  const updateApiOrders = useSetAtom(apiOrdersAtom)
+  const { orders: ordersFromOrderBook, isLoadingMore } = useOrdersFromOrderBook()
+  const getTokensForOrdersList = useTokensForOrdersList()
+  const allOrdersMap = useAllOrdersMap({ chainId })
+
+  // Using a ref to store allTokens to avoid re-fetching when new tokens are added
+  // but still use the latest whenever the callback is invoked
+  const allTokensRef = useRef(allTokens)
+  // Updated on every change
+  // eslint-disable-next-line react-hooks/refs
+  allTokensRef.current = allTokens
+
+  // Same reasoning as `allTokensRef`: read the latest inside `updateOrders` without adding it to
+  // that callback's own deps (it changes on every order update, which would otherwise recreate the
+  // callback — and the interval effect that calls it — on every poll).
+  const allOrdersMapRef = useRef(allOrdersMap)
+  // eslint-disable-next-line react-hooks/refs
+  allOrdersMapRef.current = allOrdersMap
+
+  const updateOrders = useCallback(
+    async (chainId: ChainId): Promise<void> => {
+      try {
+        if (!ordersFromOrderBook?.length) {
+          return
+        }
+
+        const tokensToFetch = getTokensListFromOrders(ordersFromOrderBook)
+        // Merge fetched tokens with what's currently loaded
+        const reallyAllTokens = await getTokensForOrdersList(tokensToFetch)
+
+        // Build store order objects, for all orders which we found both input/output tokens
+        // Don't add order for those we didn't
+        const orders = _filterOrders(ordersFromOrderBook, reallyAllTokens, chainId)
+        console.debug(`OrdersFromApiUpdater::will add/update ${orders.length} out of ${ordersFromOrderBook.length}`)
+
+        /**
+         * This updater and `PendingOrdersUpdater` both poll independently and write order status
+         * into the same store — `PendingOrdersUpdater` is the one that normally detects a
+         * pending→fulfilled transition and queues the "Transaction completed" surplus modal, but it
+         * only sees orders still in its own locally-tracked "pending" bucket. If this updater's poll
+         * (interval configurable via `ORDER_BOOK_API_UPDATE_INTERVAL`, which e2e's fast-polling mode
+         * compresses down to the same ~2s as `PendingOrdersUpdater`'s own interval, making the race
+         * far more likely than in production where it normally polls every 30s) writes the fulfilled
+         * status here first, the order drops out of that pending bucket before `PendingOrdersUpdater`
+         * ever gets a chance to notice the transition — the modal then silently never appears
+         */
+        const ordersToQueue = _getOrdersToQueueForSurplusModal(orders, allOrdersMapRef.current)
+
+        // Add orders to redux state
+        orders.length && addOrUpdateOrders({ orders, chainId, isSafeWallet })
+
+        ordersToQueue.forEach((order) => addOrderToSurplusQueue(order.id))
+        // TODO: Replace any with proper type definitions
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } catch (e: any) {
+        console.error(`OrdersFromApiUpdater::Failed to fetch orders`, e)
+      }
+    },
+    [addOrUpdateOrders, addOrderToSurplusQueue, ordersFromOrderBook, getTokensForOrdersList, isSafeWallet],
+  )
+
+  useEffect(() => {
+    updateApiOrders({ orders: ordersFromOrderBook, isLoadingMore })
+  }, [isLoadingMore, ordersFromOrderBook, updateApiOrders])
+
+  useEffect(() => {
+    if (account && chainId && tokensAreLoaded) {
+      updateOrders(chainId)
+    }
+  }, [account, chainId, tokensAreLoaded, updateOrders])
+
+  useEffect(() => {
+    clearOrderStorage()
+
+    return function () {
+      clearOrderStorage()
+    }
+  }, [clearOrderStorage])
+
+  return null
+}
+
+function _filterOrders(orders: EnrichedOrder[], tokens: TokensByAddress, chainId: ChainId): Order[] {
+  return orders.reduce<Order[]>((acc, order) => {
+    const storeOrder = _transformOrderBookOrderToStoreOrder(order, chainId, tokens)
+    if (storeOrder) {
+      acc.push(storeOrder)
+    }
+    return acc
+  }, [])
+}
+
+function _getInputToken(
+  isEthFlow: boolean,
+  chainId: ChainId,
+  sellToken: string,
+  allTokens: TokensByAddress,
+): ReturnType<typeof getTokenFromMapping> {
+  return isEthFlow ? NATIVE_CURRENCIES[chainId] : getTokenFromMapping(sellToken, chainId, allTokens)
+}
+
+// TODO: Reduce function complexity by extracting logic
+// eslint-disable-next-line complexity
 function _transformOrderBookOrderToStoreOrder(
   order: EnrichedOrder,
   chainId: ChainId,
@@ -76,7 +223,6 @@ function _transformOrderBookOrderToStoreOrder(
     outputToken,
     id,
     creationTime,
-    summary: '',
     status,
     receiver: receiver || '',
     fullAppData: order.fullAppData,
@@ -91,10 +237,6 @@ function _transformOrderBookOrderToStoreOrder(
     sellTokenBalance: order.sellTokenBalance,
   }
 
-  // The function to compute the summary needs the Order instance to exist already
-  // That's why it's not used before and an empty string is set instead
-  storeOrder.summary = computeOrderSummary({ orderFromStore: storeOrder, orderFromApi: order }) || ''
-
   // EthFlow adjustments
   // It can happen that EthFlow cancellation is identified in the app before the API is aware
   // In that case
@@ -104,98 +246,4 @@ function _transformOrderBookOrderToStoreOrder(
   }
 
   return storeOrder
-}
-
-function _getInputToken(
-  isEthFlow: boolean,
-  chainId: ChainId,
-  sellToken: string,
-  allTokens: TokensByAddress,
-): ReturnType<typeof getTokenFromMapping> {
-  return isEthFlow ? NATIVE_CURRENCIES[chainId] : getTokenFromMapping(sellToken, chainId, allTokens)
-}
-
-function _filterOrders(orders: EnrichedOrder[], tokens: TokensByAddress, chainId: ChainId): Order[] {
-  return orders.reduce<Order[]>((acc, order) => {
-    const storeOrder = _transformOrderBookOrderToStoreOrder(order, chainId, tokens)
-    if (storeOrder) {
-      acc.push(storeOrder)
-    }
-    return acc
-  }, [])
-}
-
-/**
- * Updater for orders
- *
- * This updater fetches orders from CoWProtocol backend API instead of onchain (since we work with offline orders)
- * It will:
- * - Fetch the most recent orders (up to ~100), once, on every account/chainId change
- * - Transform them from `OrderMetaData` into the local order representation type `Order`
- * - Identify and try to load tokens present in the orders but not in the local list of tokens
- * - Ignore orders for which a token could not be found
- * - Persist the new tokens and orders on redux
- */
-export function OrdersFromApiUpdater(): null {
-  const isSafeWallet = useIsSafeWallet()
-  const clearOrderStorage = useClearOrdersStorage()
-
-  const { account, chainId } = useWalletInfo()
-  const allTokens = useAllActiveTokens()
-  const tokensAreLoaded = useMemo(() => Object.keys(allTokens).length > 0, [allTokens])
-  const addOrUpdateOrders = useAddOrUpdateOrders()
-  const updateApiOrders = useSetAtom(apiOrdersAtom)
-  const ordersFromOrderBook = useOrdersFromOrderBook()
-  const getTokensForOrdersList = useTokensForOrdersList()
-
-  // Using a ref to store allTokens to avoid re-fetching when new tokens are added
-  // but still use the latest whenever the callback is invoked
-  const allTokensRef = useRef(allTokens)
-  // Updated on every change
-  allTokensRef.current = allTokens
-
-  const updateOrders = useCallback(
-    async (chainId: ChainId): Promise<void> => {
-      try {
-        if (!ordersFromOrderBook?.length) {
-          return
-        }
-
-        const tokensToFetch = getTokensListFromOrders(ordersFromOrderBook)
-        // Merge fetched tokens with what's currently loaded
-        const reallyAllTokens = await getTokensForOrdersList(tokensToFetch)
-
-        // Build store order objects, for all orders which we found both input/output tokens
-        // Don't add order for those we didn't
-        const orders = _filterOrders(ordersFromOrderBook, reallyAllTokens, chainId)
-        console.debug(`OrdersFromApiUpdater::will add/update ${orders.length} out of ${ordersFromOrderBook.length}`)
-
-        // Add orders to redux state
-        orders.length && addOrUpdateOrders({ orders, chainId, isSafeWallet })
-      } catch (e: any) {
-        console.error(`OrdersFromApiUpdater::Failed to fetch orders`, e)
-      }
-    },
-    [addOrUpdateOrders, ordersFromOrderBook, getTokensForOrdersList, isSafeWallet],
-  )
-
-  useEffect(() => {
-    updateApiOrders(ordersFromOrderBook)
-  }, [ordersFromOrderBook, updateApiOrders])
-
-  useEffect(() => {
-    if (account && chainId && tokensAreLoaded) {
-      updateOrders(chainId)
-    }
-  }, [account, chainId, tokensAreLoaded, updateOrders])
-
-  useEffect(() => {
-    clearOrderStorage()
-
-    return function () {
-      clearOrderStorage()
-    }
-  }, [clearOrderStorage])
-
-  return null
 }

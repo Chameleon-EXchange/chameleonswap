@@ -2,7 +2,7 @@ import { HTMLAttributes } from 'react'
 
 import { ChevronDown, Star } from 'react-feather'
 import { ButtonProps } from 'rebass/styled-components'
-import styled from 'styled-components/macro'
+import styled, { css } from 'styled-components/macro'
 
 import {
   ButtonConfirmedStyle as ButtonConfirmedStyleMod,
@@ -11,13 +11,57 @@ import {
 } from './ButtonMod'
 import { ButtonSize } from './types'
 
+import { Media } from '../../consts'
 import { UI } from '../../enum'
+import { getStatusColorEnums, StatusColorVariant } from '../../theme/statusColors'
 import { RowBetween } from '../Row'
 
-export * from './ButtonMod'
-export * from './types'
+export { BaseButton, ButtonEmpty, ButtonYellow } from './ButtonMod'
+export { BUTTON_SIZES_STYLE, ButtonSize } from './types'
 
-export const ButtonPrimary = styled(ButtonPrimaryMod)`
+export type ButtonPrimaryProps = HTMLAttributes<HTMLButtonElement> &
+  ButtonProps & {
+    altDisabledStyle?: boolean
+    buttonSize?: ButtonSize
+    padding?: string
+    status?: StatusColorVariant
+    width?: string
+    $borderRadius?: string
+    $gap?: string
+  }
+type ButtonSecondaryStyleProps = {
+  $fontSize?: string
+  $minHeight?: string
+}
+
+function getButtonStatusStyles(status?: StatusColorVariant): ReturnType<typeof css> | undefined {
+  if (!status || status === StatusColorVariant.Default) {
+    return undefined
+  }
+
+  const colorEnums = getStatusColorEnums(status)
+
+  return css`
+    background: var(${colorEnums.bg});
+    color: var(${colorEnums.text});
+
+    &:not(:disabled):focus {
+      background: var(${colorEnums.bg});
+      color: var(${colorEnums.text});
+    }
+
+    &:not(:disabled):hover,
+    &:not(:disabled):active,
+    &:not(:disabled):focus-visible {
+      background: var(${colorEnums.text});
+      color: var(${UI.COLOR_PAPER});
+    }
+  `
+}
+
+export const ButtonPrimary = styled(ButtonPrimaryMod).withConfig({
+  shouldForwardProp: (prop) => String(prop) !== 'status',
+})<{ status?: StatusColorVariant }>`
   // CSS overrides
   background: var(${UI.COLOR_PRIMARY});
   color: var(${UI.COLOR_BUTTON_TEXT});
@@ -28,7 +72,9 @@ export const ButtonPrimary = styled(ButtonPrimaryMod)`
   border-radius: 16px;
   position: relative;
   min-height: 58px;
-  transition: background var(${UI.ANIMATION_DURATION}) ease-in-out, color var(${UI.ANIMATION_DURATION}) ease-in-out;
+  transition:
+    background var(${UI.ANIMATION_DURATION}) ease-in-out,
+    color var(${UI.ANIMATION_DURATION}) ease-in-out;
   margin: 0;
   flex-flow: row wrap;
 
@@ -46,52 +92,11 @@ export const ButtonPrimary = styled(ButtonPrimaryMod)`
     background-color: var(${UI.COLOR_PAPER_DARKER});
     color: var(${UI.COLOR_BUTTON_TEXT_DISABLED});
     border: 0;
-    cursor: auto;
     animation: none;
     transform: none;
   }
-`
 
-export const ButtonLight = styled(ButtonPrimary)`
-  color: ${({ theme }) => theme.text1};
-  font-weight: 800;
-  border: ${({ theme }) => `4px solid ${theme.black}`};
-  box-shadow: ${({ theme }) => `4px 4px 0px ${theme.black}`};
-  overflow: hidden;
-  position: relative;
-
-  > div {
-    font-size: inherit;
-    font-weight: inherit;
-  }
-
-  &:focus {
-    box-shadow: ${({ theme }) => `4px 4px 0px ${theme.black}`};
-    background-color: ${({ theme }) => theme.bg2};
-  }
-
-  &:hover {
-    background-color: ${({ theme }) => theme.bg2};
-  }
-
-  &:active {
-    box-shadow: ${({ theme }) => `4px 4px 0px ${theme.black}`};
-    background-color: ${({ theme }) => theme.bg2};
-  }
-
-  &:disabled {
-    opacity: 0.4;
-    cursor: auto;
-    animation: none;
-    color: ${({ theme }) => theme.text1};
-
-    &:hover {
-      cursor: auto;
-      background-color: ${({ theme }) => theme.bg2};
-      box-shadow: none;
-      outline: none;
-    }
-  }
+  ${({ status }) => getButtonStatusStyles(status)}
 `
 
 export const ButtonGray = styled(ButtonGrayMod)`
@@ -103,14 +108,32 @@ export const ButtonGray = styled(ButtonGrayMod)`
   }
 `
 
-export const ButtonSecondary = styled(ButtonPrimary)`
+export const ButtonSecondary = styled(ButtonPrimary)<ButtonSecondaryStyleProps>`
   // CSS overrides
-  min-height: 0;
+  min-height: ${({ $minHeight }) => $minHeight ?? '0'};
   border: 0;
-  border-radius: 21px;
+  border-radius: ${({ $borderRadius }) => $borderRadius ?? '21px'};
   box-shadow: none;
-  padding: 6px 8px;
+  font-size: ${({ $fontSize }) => $fontSize ?? '18px'};
+  padding: ${({ padding }) => padding ?? '6px 8px'};
   transform: none;
+`
+
+export const ButtonIcon = styled.span`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+`
+
+export const ButtonLabel = styled.span<{ $hideOnMobile?: boolean }>`
+  ${({ $hideOnMobile }) =>
+    $hideOnMobile &&
+    css`
+      ${Media.upToMedium()} {
+        display: none;
+      }
+    `}
 `
 
 export const ButtonOutlined = styled.button<{ disabled?: boolean; margin?: string; minHeight?: number }>`
@@ -125,8 +148,11 @@ export const ButtonOutlined = styled.button<{ disabled?: boolean; margin?: strin
   padding: 5px 10px;
   min-height: ${({ minHeight }) => (minHeight ? `${minHeight}px` : 'initial')};
   margin: ${({ margin }) => margin || '0'};
-  transition: background var(${UI.ANIMATION_DURATION}) ease-in-out, color var(${UI.ANIMATION_DURATION}) ease-in-out,
-    border var(${UI.ANIMATION_DURATION}) ease-in-out, opacity var(${UI.ANIMATION_DURATION}) ease-in-out;
+  transition:
+    background var(${UI.ANIMATION_DURATION}) ease-in-out,
+    color var(${UI.ANIMATION_DURATION}) ease-in-out,
+    border var(${UI.ANIMATION_DURATION}) ease-in-out,
+    opacity var(${UI.ANIMATION_DURATION}) ease-in-out;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -170,14 +196,14 @@ export const ButtonConfirmedStyle = styled(ButtonConfirmedStyleMod)`
 export const ButtonErrorStyle = styled(ButtonPrimary)`
   // CSS overrides
   background: var(${UI.COLOR_DANGER});
-  color: var(${UI.COLOR_BUTTON_TEXT});
+  color: var(${UI.COLOR_PAPER});
   transition: background var(${UI.ANIMATION_DURATION}) ease-in-out;
 
   &:focus,
   &:hover,
   &:active {
     background: var(${UI.COLOR_DANGER});
-    color: var(${UI.COLOR_BUTTON_TEXT});
+    color: var(${UI.COLOR_PAPER});
   }
 `
 
@@ -213,6 +239,8 @@ type ButtonCustomProps = ButtonProps & {
   buttonSize?: ButtonSize
 }
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function ButtonConfirmed({
   confirmed,
   altDisabledStyle,
@@ -225,14 +253,8 @@ export function ButtonConfirmed({
   }
 }
 
-export function ButtonError({ error, ...rest }: { error?: boolean } & ButtonCustomProps) {
-  if (error) {
-    return <ButtonErrorStyle {...rest} />
-  } else {
-    return <ButtonPrimary {...rest} />
-  }
-}
-
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function ButtonDropdown({ disabled = false, children, ...rest }: { disabled?: boolean } & ButtonCustomProps) {
   return (
     <ButtonPrimary {...rest} disabled={disabled}>
@@ -244,11 +266,23 @@ export function ButtonDropdown({ disabled = false, children, ...rest }: { disabl
   )
 }
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export function ButtonError({ error, ...rest }: { error?: boolean } & ButtonCustomProps) {
+  if (error) {
+    return <ButtonErrorStyle {...rest} />
+  } else {
+    return <ButtonPrimary {...rest} />
+  }
+}
+
 export const ButtonStar = ({
   fill = 'transparent',
   size = '18px',
   stroke,
   ...rest
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 }: { fill?: string; size?: string; stroke: string } & HTMLAttributes<HTMLDivElement>) => {
   return (
     <HoverIcon {...rest}>

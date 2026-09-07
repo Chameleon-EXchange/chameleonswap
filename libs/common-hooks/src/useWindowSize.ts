@@ -1,20 +1,18 @@
 import { useEffect, useState } from 'react'
 
-const isClient = typeof window === 'object'
-
-function getSize() {
-  return {
-    width: isClient ? window.innerWidth : undefined,
-    height: isClient ? window.innerHeight : undefined,
-  }
+interface WindowSize {
+  width?: number
+  height?: number
 }
 
+const isClient = typeof window === 'object'
+
 // https://usehooks.com/useWindowSize/
-export function useWindowSize() {
+export function useWindowSize(): WindowSize {
   const [windowSize, setWindowSize] = useState(getSize)
 
   useEffect(() => {
-    function handleResize() {
+    function handleResize(): void {
       setWindowSize(getSize())
     }
 
@@ -28,4 +26,11 @@ export function useWindowSize() {
   }, [])
 
   return windowSize
+}
+
+function getSize(): WindowSize {
+  return {
+    width: isClient ? window.innerWidth : undefined,
+    height: isClient ? window.innerHeight : undefined,
+  }
 }

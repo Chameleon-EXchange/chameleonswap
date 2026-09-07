@@ -15,7 +15,7 @@ export const HeaderControls = styled.div`
     margin: 0 0 0 auto;
     height: 56px;
     width: 100%;
-    position: sticky;
+    position: fixed;
     bottom: 0;
     left: 0;
     z-index: 10;
@@ -47,8 +47,8 @@ export const LogoImage = styled.div<{ isMobileMenuOpen?: boolean }>`
 
   ${Media.upToLarge()} {
     ${({ isMobileMenuOpen }) =>
-    isMobileMenuOpen &&
-    css`
+      isMobileMenuOpen &&
+      css`
         height: 34px;
         width: auto;
       `}

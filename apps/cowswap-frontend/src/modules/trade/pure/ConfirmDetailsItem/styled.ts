@@ -11,6 +11,7 @@ export const Wrapper = styled.div`
   gap: 6px;
   width: 100%;
   font-size: 13px;
+  min-height: 20px;
 
   > svg:first-child {
     margin: 0 4px 0 0;
@@ -25,14 +26,16 @@ export const Row = styled(StyledRowBetween)`
   justify-content: space-between;
 `
 
-export const Content = styled.div<{ highlighted?: boolean }>`
+export const Content = styled.div<{ highlighted?: boolean; contentTextColor?: string }>`
   display: flex;
   flex-flow: row wrap;
   align-items: center;
   justify-content: flex-end;
   margin: 0 0 0 auto;
+  flex: 1 1 auto;
   font-weight: ${({ highlighted }) => (highlighted ? 700 : 500)};
   font-size: 13px;
+  color: ${({ contentTextColor }) => contentTextColor};
 
   ${Media.upToSmall()} {
     margin: 0;
@@ -41,28 +44,34 @@ export const Content = styled.div<{ highlighted?: boolean }>`
   > span {
     display: block;
     text-align: right;
-    word-break: break-all;
+    word-break: normal;
   }
 
   i {
     font-style: normal;
-    opacity: 0.7;
     word-break: break-all;
     text-align: right;
   }
 `
 
 export const Label = styled.span<{ labelOpacity?: boolean }>`
-  display: flex;
   align-items: center;
+  color: inherit;
+  display: flex;
+  flex-flow: row;
+  flex: 0 1 auto;
   font-weight: 400;
-  gap: 5px;
-  text-align: left;
+  gap: 4px;
+  hyphens: auto;
+  line-height: 1.2;
   opacity: ${({ labelOpacity }) => (labelOpacity ? 0.7 : 1)};
+  overflow-wrap: normal;
+  text-align: left;
+  white-space: normal;
+  word-break: normal;
   transition:
     color var(${UI.ANIMATION_DURATION}) ease-in-out,
     opacity var(${UI.ANIMATION_DURATION}) ease-in-out;
-  color: inherit;
 
   &:hover {
     opacity: 1;

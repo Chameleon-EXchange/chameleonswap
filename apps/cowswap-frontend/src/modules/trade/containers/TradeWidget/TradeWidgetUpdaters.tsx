@@ -1,16 +1,14 @@
-import { ReactNode, useEffect } from 'react'
-
-import { PriorityTokensUpdater } from '@cowprotocol/balances-and-allowances'
-import { useWalletInfo } from '@cowprotocol/wallet'
+import { JSX, ReactNode } from 'react'
 
 import { TradeFormValidationUpdater } from 'modules/tradeFormValidation'
-import { TradeQuoteState, TradeQuoteUpdater, useUpdateTradeQuote } from 'modules/tradeQuote'
-import { SmartSlippageUpdater } from 'modules/tradeSlippage'
+import { TradeQuoteUpdater } from 'modules/tradeQuote'
 
-import { usePriorityTokenAddresses } from '../../hooks/usePriorityTokenAddresses'
+import { useIsQuoteUpdatePossible } from '../../hooks/useIsQuoteUpdatePossible'
 import { useResetRecipient } from '../../hooks/useResetRecipient'
+import { useTradeConfirmState } from '../../hooks/useTradeConfirmState'
 import { CommonTradeUpdater } from '../../updaters/CommonTradeUpdater'
 import { DisableNativeTokenSellingUpdater } from '../../updaters/DisableNativeTokenSellingUpdater'
+import { ForbidSwapSameTokenUpdater } from '../../updaters/ForbidSwapSameTokenUpdater'
 import { PriceImpactUpdater } from '../../updaters/PriceImpactUpdater'
 import { RecipientAddressUpdater } from '../../updaters/RecipientAddressUpdater'
 
@@ -18,41 +16,42 @@ interface TradeWidgetUpdatersProps {
   disableQuotePolling: boolean
   disableNativeSelling: boolean
   enableSmartSlippage?: boolean
+  enableSellEqBuy?: boolean
+  disableSuggestedSlippageApi?: boolean
+  allowSwapSameToken: boolean
   children: ReactNode
-  tradeQuoteStateOverride?: TradeQuoteState | null
   onChangeRecipient: (recipient: string | null) => void
 }
 
 export function TradeWidgetUpdaters({
   disableQuotePolling,
   disableNativeSelling,
-  tradeQuoteStateOverride,
-  enableSmartSlippage,
+  enableSellEqBuy = false,
+  disableSuggestedSlippageApi,
   onChangeRecipient,
+  allowSwapSameToken,
   children,
-}: TradeWidgetUpdatersProps) {
-  const { chainId, account } = useWalletInfo()
-  const updateQuoteState = useUpdateTradeQuote()
-  const priorityTokenAddresses = usePriorityTokenAddresses()
+}: TradeWidgetUpdatersProps): JSX.Element {
+  const { isOpen: isConfirmOpen, pendingTrade } = useTradeConfirmState()
 
-  useEffect(() => {
-    if (disableQuotePolling && tradeQuoteStateOverride) {
-      updateQuoteState(tradeQuoteStateOverride)
-    }
-  }, [tradeQuoteStateOverride, disableQuotePolling, updateQuoteState])
+  const isQuoteUpdatePossible = useIsQuoteUpdatePossible()
 
   useResetRecipient(onChangeRecipient)
 
   return (
     <>
-      <PriorityTokensUpdater account={account} chainId={chainId} tokenAddresses={priorityTokenAddresses} />
       <RecipientAddressUpdater />
 
-      {!disableQuotePolling && <TradeQuoteUpdater />}
+      <TradeQuoteUpdater
+        useSuggestedSlippageApi={!disableSuggestedSlippageApi}
+        isConfirmOpen={isConfirmOpen}
+        isQuoteUpdatePossible={isQuoteUpdatePossible && !disableQuotePolling}
+        hasPendingTrade={!!pendingTrade}
+      />
       <PriceImpactUpdater />
       <TradeFormValidationUpdater />
-      <CommonTradeUpdater />
-      {enableSmartSlippage && <SmartSlippageUpdater />}
+      <CommonTradeUpdater enableSellEqBuy={enableSellEqBuy} />
+      {!allowSwapSameToken && <ForbidSwapSameTokenUpdater />}
       {disableNativeSelling && <DisableNativeTokenSellingUpdater />}
       {children}
     </>

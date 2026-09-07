@@ -1,13 +1,15 @@
 import { ReactNode } from 'react'
 
-import EqualIcon from '@cowprotocol/assets/cow-swap/equal.svg'
+import svgEqualSrc from '@cowprotocol/assets/cow-swap/equal.svg'
 import { UI } from '@cowprotocol/ui'
 
+import { t } from '@lingui/core/macro'
 import SVG from 'react-inlinesvg'
-import { Text } from 'rebass'
 import styled from 'styled-components/macro'
 
-const EqualSign = styled.div<{ size?: number }>`
+type EqualSignVariant = 'default' | 'success'
+
+const EqualSign = styled.div<{ size?: number; variant?: EqualSignVariant }>`
   --size: ${({ size }) => `${size ? size : 14}px`};
   padding: 3px;
   display: flex;
@@ -22,9 +24,10 @@ const EqualSign = styled.div<{ size?: number }>`
 
   &::before {
     content: '';
-    background: var(${UI.COLOR_TEXT});
+    background: ${({ variant = 'default' }) =>
+      variant === 'success' ? `var(${UI.COLOR_SUCCESS_BG})` : `var(${UI.COLOR_TEXT})`};
     border-radius: var(--size);
-    opacity: 0.15;
+    opacity: ${({ variant = 'default' }) => (variant === 'success' ? 1 : 0.15)};
     width: 100%;
     height: 100%;
     position: absolute;
@@ -39,7 +42,8 @@ const EqualSign = styled.div<{ size?: number }>`
     object-fit: contain;
 
     > g {
-      fill: var(${UI.COLOR_TEXT});
+      fill: ${({ variant = 'default' }) =>
+        variant === 'success' ? `var(${UI.COLOR_SUCCESS_TEXT})` : `var(${UI.COLOR_TEXT})`};
     }
   }
 `
@@ -54,17 +58,29 @@ const Wrapper = styled.div`
 interface ReceiveAmountTitleProps {
   children: ReactNode
   className?: string
+  icon?: ReactNode
+  variant?: EqualSignVariant
 }
 
-export function ReceiveAmountTitle({ className, children }: ReceiveAmountTitleProps) {
+export function ReceiveAmountTitle({ className, children, icon, variant }: ReceiveAmountTitleProps): ReactNode {
   return (
     <Wrapper className={className}>
-      <EqualSign>
-        <SVG src={EqualIcon} />
-      </EqualSign>{' '}
-      <Text>
-        <b>{children}</b>
-      </Text>
+      {icon ? (
+        typeof icon === 'string' ? (
+          icon.endsWith('.svg') ? (
+            <SVG src={icon} />
+          ) : (
+            <img src={icon} alt={t`icon`} />
+          )
+        ) : (
+          icon
+        )
+      ) : (
+        <EqualSign variant={variant}>
+          <SVG src={svgEqualSrc} />
+        </EqualSign>
+      )}{' '}
+      {children}
     </Wrapper>
   )
 }

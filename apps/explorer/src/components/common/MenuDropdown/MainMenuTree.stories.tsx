@@ -4,17 +4,24 @@ import { useMediaQuery } from '@cowprotocol/common-hooks'
 import { Media } from '@cowprotocol/ui'
 
 import { Story, Meta } from '@storybook/react/types-6-0'
-import IMAGE_APPDATA from 'assets/img/code.svg'
-import IMAGE_COW from 'assets/img/CowProtocol-logo.svg'
-import IMAGE_DISCORD from 'assets/img/discord.svg'
-import IMAGE_DOC from 'assets/img/doc.svg'
-import IMAGE_ANALYTICS from 'assets/img/pie.svg'
+import svgCodeSrc from 'assets/img/code.svg'
+import svgCowProtocolSrc from 'assets/img/CowProtocol-logo.svg'
+import svgDiscordSrc from 'assets/img/discord.svg'
+import svgDocSrc from 'assets/img/doc.svg'
+import svgPieSrc from 'assets/img/pie.svg'
 import { MenuTree, MenuTreeProps } from 'components/common/MenuDropdown/MenuTree'
 import { GlobalStyles, ThemeToggler, Router } from 'storybook/decorators'
 
 import { MenuItemKind, MenuTreeItem } from './types'
 
-import { DOCS_LINK, DISCORD_LINK, PROTOCOL_LINK, DUNE_DASHBOARD_LINK, Routes } from '../../../explorer/const'
+import {
+  DOCS_LINK,
+  DISCORD_LINK,
+  PROTOCOL_LINK,
+  COWSWAP_LINK,
+  DUNE_DASHBOARD_LINK,
+  Routes,
+} from '../../../explorer/const'
 
 export default {
   title: 'Common/Menu',
@@ -35,22 +42,28 @@ const DropdownMenu: MenuTreeItem[] = [
         sectionTitle: 'OVERVIEW',
         links: [
           {
+            title: 'CoW Swap',
+            url: COWSWAP_LINK,
+            kind: MenuItemKind.EXTERNAL_LINK,
+            iconSVG: svgCowProtocolSrc,
+          },
+          {
             title: 'CoW Protocol',
             url: PROTOCOL_LINK,
             kind: MenuItemKind.EXTERNAL_LINK,
-            iconSVG: IMAGE_COW,
+            iconSVG: svgCowProtocolSrc,
           },
           {
             title: 'Documentation',
             url: DOCS_LINK,
             kind: MenuItemKind.EXTERNAL_LINK,
-            iconSVG: IMAGE_DOC,
+            iconSVG: svgDocSrc,
           },
           {
             title: 'Analytics',
             url: DUNE_DASHBOARD_LINK,
             kind: MenuItemKind.EXTERNAL_LINK,
-            iconSVG: IMAGE_ANALYTICS,
+            iconSVG: svgPieSrc,
           },
         ],
       },
@@ -60,7 +73,7 @@ const DropdownMenu: MenuTreeItem[] = [
           {
             title: 'Discord',
             url: DISCORD_LINK,
-            iconSVG: IMAGE_DISCORD, // If icon is a <SVG> inline component
+            iconSVG: svgDiscordSrc, // If icon is a <SVG> inline component
             kind: MenuItemKind.EXTERNAL_LINK,
           },
         ],
@@ -71,7 +84,7 @@ const DropdownMenu: MenuTreeItem[] = [
           {
             title: 'AppData',
             url: Routes.APPDATA,
-            iconSVG: IMAGE_APPDATA,
+            iconSVG: svgCodeSrc,
           },
         ],
       },

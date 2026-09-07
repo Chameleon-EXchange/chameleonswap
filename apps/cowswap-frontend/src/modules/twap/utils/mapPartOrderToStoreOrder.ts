@@ -1,9 +1,7 @@
-import { EnrichedOrder } from '@cowprotocol/cow-sdk'
+import { EnrichedOrder, getAddressKey } from '@cowprotocol/cow-sdk'
 import { TokensByAddress } from '@cowprotocol/tokens'
 
 import { Order } from 'legacy/state/orders/actions'
-
-import { computeOrderSummary } from 'common/updaters/orders/utils'
 
 import { getIsLastPartOrder } from './getIsLastPartOrder'
 import { getPartOrderStatus } from './getPartOrderStatus'
@@ -13,44 +11,34 @@ import { TwapOrderItem, TwapOrderStatus } from '../types'
 
 export function mapPartOrderToStoreOrder(
   item: TwapPartOrderItem,
-  enrichedOrder: EnrichedOrder,
+  enrichedOrder: Omit<EnrichedOrder, 'settlementContract'>,
   isVirtualPart: boolean,
   parent: TwapOrderItem,
-  tokensByAddress: TokensByAddress
+  tokensByAddress: TokensByAddress,
 ): Order | null {
   const isCancelling = item.isCancelling || parent.status === TwapOrderStatus.Cancelling
   const status = getPartOrderStatus(enrichedOrder, parent, isVirtualPart)
 
-  const inputToken = tokensByAddress[enrichedOrder.sellToken.toLowerCase()]
-  const outputToken = tokensByAddress[enrichedOrder.buyToken.toLowerCase()]
+  const inputToken = tokensByAddress[getAddressKey(enrichedOrder.sellToken)]
+  const outputToken = tokensByAddress[getAddressKey(enrichedOrder.buyToken)]
 
   if (!inputToken || !outputToken) return null
 
-  const storeOrder: Order = {
+  return {
     ...enrichedOrder,
     id: enrichedOrder.uid,
     composableCowInfo: {
       isVirtualPart,
       isTheLastPart: getIsLastPartOrder(item, parent),
       parentId: parent.id,
+      twapOrderHash: parent.hash,
     },
     sellAmountBeforeFee: enrichedOrder.sellAmount,
     inputToken,
     outputToken,
     creationTime: enrichedOrder.creationDate,
-    summary: '',
     status,
     apiAdditionalInfo: enrichedOrder,
     isCancelling,
   }
-
-  const summary = computeOrderSummary({ orderFromStore: storeOrder, orderFromApi: enrichedOrder })
-
-  storeOrder.summary = summary || ''
-
-  return storeOrder
-}
-
-export function isOrder(order: Order | undefined): order is Order {
-  return !!order
 }

@@ -1,9 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
 
-import ICON_HOOK from '@cowprotocol/assets/cow-swap/hook.svg'
+import svgHookSrc from '@cowprotocol/assets/cow-swap/hook.svg'
 import { HookDappWalletCompatibility } from '@cowprotocol/hook-dapp-lib'
 import { Command } from '@cowprotocol/types'
 import { BannerOrientation, DismissableInlineBanner } from '@cowprotocol/ui'
+
+import { t } from '@lingui/core/macro'
+import { Trans } from '@lingui/react/macro'
 
 import { NewModal } from 'common/pure/NewModal'
 
@@ -31,7 +34,9 @@ interface HookStoreModal {
   walletType: HookDappWalletCompatibility
 }
 
-export function HookRegistryList({ onDismiss, isPreHook, hookToEdit, walletType }: HookStoreModal) {
+// TODO: Break down this large function into smaller functions
+// eslint-disable-next-line max-lines-per-function
+export function HookRegistryList({ onDismiss, isPreHook, hookToEdit, walletType }: HookStoreModal): ReactNode {
   const [selectedDapp, setSelectedDapp] = useState<HookDapp | null>(null)
   const [dappDetails, setDappDetails] = useState<HookDapp | null>(null)
   const [isAllHooksTab, setIsAllHooksTab] = useState<boolean>(true)
@@ -48,11 +53,19 @@ export function HookRegistryList({ onDismiss, isPreHook, hookToEdit, walletType 
   )
 
   const filteredDapps = useMemo(() => {
-    if (!searchQuery) return currentDapps
-    const lowerQuery = searchQuery.toLowerCase()
-    return currentDapps.filter(({ name = '', descriptionShort = '' }) =>
-      [name, descriptionShort].some((text) => text.toLowerCase().includes(lowerQuery)),
-    )
+    const lowerQuery = searchQuery?.toLowerCase()
+
+    return currentDapps.filter((item) => {
+      const { name = '', descriptionShort = '' } = item
+
+      const instance = isHookDappIframe(item) ? item.url : item.component
+
+      if (!instance) return false
+
+      if (!lowerQuery) return true
+
+      return [name, descriptionShort].some((text) => text.toLowerCase().includes(lowerQuery))
+    })
   }, [currentDapps, searchQuery])
 
   const sortedFilteredDapps = useMemo(() => {
@@ -66,7 +79,7 @@ export function HookRegistryList({ onDismiss, isPreHook, hookToEdit, walletType 
   const customHooksCount = customHookDapps.length
   const allHooksCount = internalHookDapps.length + customHooksCount
 
-  const title = selectedDapp?.name || (dappDetails ? 'Hook description' : 'Hook Store')
+  const title = selectedDapp?.name || (dappDetails ? t`Hook description` : t`Hook Store`)
 
   const onDismissModal = useCallback(() => {
     if (hookToEdit) {
@@ -101,9 +114,9 @@ export function HookRegistryList({ onDismiss, isPreHook, hookToEdit, walletType 
     () =>
       isAllHooksTab
         ? searchQuery
-          ? 'No hooks match your search.'
-          : 'No hooks available.'
-        : "You haven't added any custom hooks yet. Add a custom hook to get started.",
+          ? t`No hooks match your search.`
+          : t`No hooks available.`
+        : t`You haven't added any custom hooks yet. Add a custom hook to get started.`,
     [isAllHooksTab, searchQuery],
   )
 
@@ -113,24 +126,24 @@ export function HookRegistryList({ onDismiss, isPreHook, hookToEdit, walletType 
         <HookSearchInput
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value?.trim())}
-          placeholder="Search hooks by title or description"
-          ariaLabel="Search hooks"
+          placeholder={t`Search hooks by title or description`}
+          ariaLabel={t`Search hooks`}
           onClear={handleClearSearch}
         />
 
         {isAllHooksTab && (
           <DismissableInlineBanner
             orientation={BannerOrientation.Horizontal}
-            customIcon={ICON_HOOK}
+            customIcon={svgHookSrc}
             iconSize={36}
             bannerId="hooks-store-banner-tradeContainer-customHooks"
             margin="10px 10px 0"
             width="auto"
           >
             <p>
-              Can't find a hook that you like?{' '}
+              <Trans>Can't find a hook that you like?</Trans>{' '}
               <span onClick={handleAddCustomHook} style={{ cursor: 'pointer', textDecoration: 'underline' }}>
-                Add a custom hook
+                <Trans>Add a custom hook</Trans>
               </span>
             </p>
           </DismissableInlineBanner>
@@ -155,14 +168,14 @@ export function HookRegistryList({ onDismiss, isPreHook, hookToEdit, walletType 
       </>
     ),
     [
-      isAllHooksTab,
       searchQuery,
-      sortedFilteredDapps,
-      handleAddCustomHook,
       handleClearSearch,
+      isAllHooksTab,
+      handleAddCustomHook,
+      sortedFilteredDapps,
       emptyListMessage,
-      removeCustomHookDapp,
       walletType,
+      removeCustomHookDapp,
     ],
   )
 

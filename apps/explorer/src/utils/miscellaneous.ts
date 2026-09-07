@@ -1,23 +1,18 @@
+import { getAddressKey } from '@cowprotocol/cow-sdk'
 import { Command } from '@cowprotocol/types'
 
-import BigNumber from 'bignumber.js'
-import BN from 'bn.js'
 import { DEFAULT_TIMEOUT, NATIVE_TOKEN_ADDRESS } from 'const'
 import { Network, Unpromise } from 'types'
 import Web3 from 'web3'
 
-import { AssertionError } from 'assert'
-
 const toChecksumAddress = Web3.utils.toChecksumAddress
 
-export function assertNonNull<T>(val: T, message: string): asserts val is NonNullable<T> {
-  if (val === undefined || val === null) {
-    throw new AssertionError({ message })
-  }
-}
-
+// TODO: Replace any with proper type definitions
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function noop(..._args: any[]): void {}
 
+// TODO: Replace any with proper type definitions
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const logInfo = process.env.NODE_ENV === 'test' ? noop : (...args: any[]): void => console.log(...args)
 
 let debugEnabled = process.env.NODE_ENV === 'development'
@@ -33,12 +28,14 @@ window.toggleDebug = (): boolean => {
   return debugEnabled
 }
 
-export const logDebug = (...args: any[]): void => {
+export const logDebug = (...args: unknown[]): void => {
   if (debugEnabled) {
     console.log(...args)
   }
 }
 
+// TODO: Replace any with proper type definitions
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const debug = process.env.NODE_ENV === 'development' ? noop : (...args: any[]): void => console.log(...args)
 
 export const delay = <T = void>(ms = 100, result?: T): Promise<T> =>
@@ -46,6 +43,7 @@ export const delay = <T = void>(ms = 100, result?: T): Promise<T> =>
 
 /**
  * Uses images from https://github.com/trustwallet/tokens
+ * @deprecated TODO5(daniel)
  */
 export function getImageUrl(tokenAddress?: string): string | undefined {
   if (!tokenAddress) return undefined
@@ -58,33 +56,22 @@ export function getImageUrl(tokenAddress?: string): string | undefined {
 }
 
 export function isNativeToken(address: string): boolean {
-  return address.toLowerCase() === NATIVE_TOKEN_ADDRESS.toLowerCase()
+  return getAddressKey(address) === getAddressKey(NATIVE_TOKEN_ADDRESS)
 }
 
-export function getImageAddress(address: string, network: Network): string {
-  if (isNativeToken(address)) {
-    // What is going on here?
-    // Well, this address here is the path on `src/assets/tokens/`
-    // So these special values will use the local images,
-    // because they are native tokens and don't really have an address
-    return network === Network.GNOSIS_CHAIN ? 'xdai' : 'eth'
-  }
-  return address
-}
-
-export async function silentPromise<T>(promise: Promise<T>, customMessage?: string): Promise<T | undefined> {
-  try {
-    return await promise
-  } catch (e) {
-    logDebug(customMessage || 'Failed to fetch promise', e.message)
-    return
-  }
-}
-
-export function setStorageItem(key: string, data: unknown): void {
-  // localStorage API accepts only strings
-  const formattedData = JSON.stringify(data)
-  return localStorage.setItem(key, formattedData)
+const NetworkImageAddressMap: Record<Network, string> = {
+  [Network.MAINNET]: 'eth',
+  [Network.BASE]: 'eth',
+  [Network.ARBITRUM_ONE]: 'eth',
+  [Network.GNOSIS_CHAIN]: 'xdai',
+  [Network.POLYGON]: 'pol',
+  [Network.AVALANCHE]: 'avax',
+  [Network.SEPOLIA]: 'eth',
+  [Network.BNB]: 'bnb',
+  [Network.LINEA]: 'eth',
+  [Network.PLASMA]: 'xpl',
+  [Network.INK]: 'eth',
+  [Network.SOLANA]: 'sol',
 }
 
 interface RetryOptions {
@@ -93,17 +80,19 @@ interface RetryOptions {
   exponentialBackOff?: boolean
 }
 
-/**
- * Retry function with delay.
- *
- * Inspired by: https://gitlab.com/snippets/1775781
- *
- * @param fn Parameterless function to retry
- * @param retriesLeft How many retries. Defaults to 3
- * @param interval How long to wait between retries. Defaults to 1s
- * @param exponentialBackOff Whether to use exponential back off, doubling wait interval. Defaults to true
- */
+export function getImageAddress(address: string, network: Network): string {
+  if (isNativeToken(address)) {
+    // What is going on here?
+    // Well, this address here is the path on `src/assets/tokens/`
+    // So these special values will use the local images,
+    // because they are native tokens and don't really have an address
+    return NetworkImageAddressMap[network]
+  }
+  return address
+}
 
+// TODO: Replace any with proper type definitions
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function retry<T extends () => any>(fn: T, options?: RetryOptions): Promise<Unpromise<ReturnType<T>>> {
   const { retriesLeft = 3, interval = 1000, exponentialBackOff = true } = options || {}
 
@@ -124,16 +113,30 @@ export async function retry<T extends () => any>(fn: T, options?: RetryOptions):
   }
 }
 
-export function flattenMapOfLists<K, T>(map: Map<K, T[]>): T[] {
-  return Array.from(map.values()).reduce<T[]>((acc, list) => acc.concat(list), [])
+export function setStorageItem(key: string, data: unknown): void {
+  // localStorage API accepts only strings
+  const formattedData = JSON.stringify(data)
+  return localStorage.setItem(key, formattedData)
 }
 
-export function flattenMapOfSets<K, T>(map: Map<K, Set<T>>): T[] {
-  return Array.from(map.values()).reduce<T[]>((acc, set) => acc.concat(Array.from(set)), [])
-}
+/**
+ * Retry function with delay.
+ *
+ * Inspired by: https://gitlab.com/snippets/1775781
+ *
+ * @param fn Parameterless function to retry
+ * @param retriesLeft How many retries. Defaults to 3
+ * @param interval How long to wait between retries. Defaults to 1s
+ * @param exponentialBackOff Whether to use exponential back off, doubling wait interval. Defaults to true
+ */
 
-export function divideBN(numerator: BN, denominator: BN): BigNumber {
-  return new BigNumber(numerator.toString()).dividedBy(denominator.toString())
+export async function silentPromise<T>(promise: Promise<T>, customMessage?: string): Promise<T | undefined> {
+  try {
+    return await promise
+  } catch (e) {
+    logDebug(customMessage || 'Failed to fetch promise', e.message)
+    return
+  }
 }
 
 export const RequireContextMock = Object.assign(() => '', {
@@ -142,16 +145,14 @@ export const RequireContextMock = Object.assign(() => '', {
   id: '',
 })
 
-export function notEmpty<TValue>(value: TValue | null | undefined): value is TValue {
-  return value !== null && value !== undefined
-}
-
-export const isNonZeroNumber = (value?: string | number): boolean => !!value && !!+value
-
 export interface TimeoutParams<T> {
   time?: number
   result?: T
   timeoutErrorMsg?: string
+}
+
+export function notEmpty<TValue>(value: TValue | null | undefined): value is TValue {
+  return value !== null && value !== undefined
 }
 
 export function timeout(params: TimeoutParams<undefined>): Promise<never> // never means function throws
@@ -208,6 +209,7 @@ export function cleanNetworkName(networkName: string | undefined): string {
 
   return networkName.replace(/\s+/g, '').toLowerCase()
 }
+
 /**
  * Returns the difference in percentage between two numbers
  *

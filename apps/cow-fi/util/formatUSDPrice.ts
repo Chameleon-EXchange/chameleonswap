@@ -1,9 +1,6 @@
+import { Nullish } from '@cowprotocol/types'
+
 export type Address = string
-export type AddressTo<T> = Record<Address, T>
-export type Mutable<T> = { -readonly [P in keyof T]: T[P] }
-export type Nullable<T> = T | null
-export type Nullish<T> = Nullable<T> | undefined
-export type Primitive = number | string | boolean | bigint | symbol | null | undefined
 
 const FIVE_DECIMALS_MAX_TWO_DECIMALS_MIN = new Intl.NumberFormat('en-US', {
   notation: 'standard',
@@ -289,6 +286,36 @@ const TYPE_TO_FORMATTER_RULES = {
   [NumberType.NFTCollectionStats]: ntfCollectionStatsFormatter,
 }
 
+/** Formats USD and non-USD prices */
+export function formatFiatPrice(price: Nullish<number>, currency = 'USD'): string {
+  if (price === null || price === undefined) return '-'
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(price)
+}
+
+export function formatNumber(
+  input: Nullish<number>,
+  type: NumberType = NumberType.TokenNonTx,
+  placeholder = '-',
+): string {
+  if (input === null || input === undefined) {
+    return placeholder
+  }
+
+  const formatter = getFormatterRule(input, type)
+  if (typeof formatter === 'string') return formatter
+  return formatter.format(input)
+}
+
+export function formatNumberOrString(price: Nullish<number | string>, type: NumberType): string {
+  if (price === null || price === undefined) return '-'
+  if (typeof price === 'string') return formatNumber(parseFloat(price), type)
+  return formatNumber(price, type)
+}
+
+export function formatUSDPrice(price: Nullish<number | string>, type: NumberType = NumberType.FiatTokenPrice): string {
+  return formatNumberOrString(price, type)
+}
+
 function getFormatterRule(input: number, type: NumberType): Format {
   const rules = TYPE_TO_FORMATTER_RULES[type]
   for (const rule of rules) {
@@ -301,35 +328,4 @@ function getFormatterRule(input: number, type: NumberType): Format {
   }
 
   throw new Error(`formatter for type ${type} not configured correctly`)
-}
-
-export function formatNumber(
-  input: Nullish<number>,
-  type: NumberType = NumberType.TokenNonTx,
-  placeholder = '-'
-): string {
-  if (input === null || input === undefined) {
-    return placeholder
-  }
-
-  const formatter = getFormatterRule(input, type)
-  if (typeof formatter === 'string') return formatter
-  return formatter.format(input)
-}
-
-
-export function formatNumberOrString(price: Nullish<number | string>, type: NumberType): string {
-  if (price === null || price === undefined) return '-'
-  if (typeof price === 'string') return formatNumber(parseFloat(price), type)
-  return formatNumber(price, type)
-}
-
-export function formatUSDPrice(price: Nullish<number | string>, type: NumberType = NumberType.FiatTokenPrice): string {
-  return formatNumberOrString(price, type)
-}
-
-/** Formats USD and non-USD prices */
-export function formatFiatPrice(price: Nullish<number>, currency = 'USD'): string {
-  if (price === null || price === undefined) return '-'
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(price)
 }

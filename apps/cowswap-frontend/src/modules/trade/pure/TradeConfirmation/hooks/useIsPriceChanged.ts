@@ -1,9 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-export function useIsPriceChanged(inputAmount: string | undefined, outputAmount: string | undefined) {
-  const initialAmounts = useRef<{ inputAmount?: string; outputAmount?: string }>()
+interface PriceChangedResult {
+  isPriceChanged: boolean
+  resetPriceChanged(): void
+}
 
-  const [isPriceChanged, setIsPriceChanged] = useState(false)
+export function useIsPriceChanged(
+  inputAmount: string | undefined,
+  outputAmount: string | undefined,
+  defaultState: boolean = false,
+): PriceChangedResult {
+  const initialAmounts = useRef<{ inputAmount?: string; outputAmount?: string }>({})
+
+  const [isPriceChanged, setIsPriceChanged] = useState(defaultState)
 
   const resetPriceChanged = useCallback(() => {
     initialAmounts.current = { inputAmount, outputAmount }
@@ -24,6 +33,10 @@ export function useIsPriceChanged(inputAmount: string | undefined, outputAmount:
       setIsPriceChanged(true)
     }
   }, [inputAmount, outputAmount])
+
+  useEffect(() => {
+    setIsPriceChanged(defaultState)
+  }, [defaultState])
 
   return useMemo(() => ({ isPriceChanged, resetPriceChanged }), [isPriceChanged, resetPriceChanged])
 }

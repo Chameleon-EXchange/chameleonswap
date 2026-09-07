@@ -7,55 +7,28 @@ import { GnosisSafeInfo, useGnosisSafeInfo } from '@cowprotocol/wallet'
 import { EnhancedTransactionDetails, HashType } from 'legacy/state/enhancedTransactions/reducer'
 import { Order, OrderStatus } from 'legacy/state/orders/actions'
 
-import { ActivityDerivedState, OrderCreationTxInfo } from 'modules/account/containers/Transaction'
+import { ActivityDerivedState, ActivityStatus, ActivityType, OrderCreationTxInfo } from 'common/types/activity'
 
-import { ActivityDescriptors, ActivityStatus, ActivityType } from './useRecentActivity'
+import { ActivityDescriptors } from './useRecentActivity'
 
 import { useAllTransactions } from '../state/enhancedTransactions/hooks'
 
-export function useActivityDerivedState({
-  chainId,
-  activity,
-}: {
-  chainId: number | undefined
-  activity: ActivityDescriptors | undefined
-}): ActivityDerivedState | null {
-  const allTransactions = useAllTransactions()
-  const gnosisSafeInfo = useGnosisSafeInfo()
-
-  const orderCreationTxInfo: OrderCreationTxInfo | undefined = useMemo(() => {
-    if (!activity) {
-      return undefined
-    }
-
-    const isOrder = activity.type === ActivityType.ORDER
-    const order = isOrder ? (activity.activity as Order) : undefined
-
-    if (order?.orderCreationHash) {
-      const orderCreationTx = allTransactions[order.orderCreationHash]
-      const orderCreationLinkedTx = orderCreationTx?.linkedTransactionHash
-        ? allTransactions[orderCreationTx.linkedTransactionHash]
-        : undefined
-
-      return {
-        orderCreationTx,
-        orderCreationLinkedTx,
-      }
-    }
-
-    return undefined
-  }, [allTransactions, activity])
-
-  // Get some derived information about the activity. It helps to simplify the rendering of the subcomponents
-  return useMemo(() => {
-    if (!activity) {
-      return null
-    }
-
-    return getActivityDerivedState({ chainId, activityData: activity, gnosisSafeInfo, orderCreationTxInfo })
-  }, [chainId, activity, gnosisSafeInfo, orderCreationTxInfo])
+export enum ActivityState {
+  OPEN = 'open',
+  FILLED = 'filled',
+  EXECUTED = 'executed',
+  EXPIRED = 'expired',
+  FAILED = 'failed',
+  CANCELLED = 'cancelled',
+  PENDING = 'pending',
+  SIGNING = 'signing',
+  CANCELLING = 'cancelling',
+  CREATING = 'creating',
+  LOADING = 'loading',
 }
 
+// TODO: Reduce function complexity by extracting logic
+// eslint-disable-next-line complexity
 export function getActivityDerivedState(props: {
   chainId?: number
   activityData: ActivityDescriptors | null
@@ -115,6 +88,8 @@ export function getActivityDerivedState(props: {
   }
 }
 
+// TODO: Reduce function complexity by extracting logic
+// eslint-disable-next-line complexity
 export function getActivityLinkUrl(params: {
   chainId: number
   id: string
@@ -154,18 +129,8 @@ export function getActivityLinkUrl(params: {
   return undefined
 }
 
-type ActivityState =
-  | 'open'
-  | 'filled'
-  | 'executed'
-  | 'expired'
-  | 'failed'
-  | 'cancelled'
-  | 'pending'
-  | 'signing'
-  | 'cancelling'
-  | 'creating'
-
+// TODO: Reduce function complexity by extracting logic
+// eslint-disable-next-line complexity
 export function getActivityState({
   isPending,
   isOrder,
@@ -176,46 +141,94 @@ export function getActivityState({
   isCancelled,
   isCreating,
   isFailed,
+  isLoading,
   enhancedTransaction,
 }: ActivityDerivedState): ActivityState {
+  if (isLoading) {
+    return ActivityState.LOADING
+  }
+
   if (isPending) {
     if (enhancedTransaction) {
       const { safeTransaction, transactionHash } = enhancedTransaction
       if (safeTransaction && !transactionHash) {
-        return 'signing'
+        return ActivityState.SIGNING
       }
     }
 
-    return isOrder ? 'open' : 'pending'
+    return isOrder ? ActivityState.OPEN : ActivityState.PENDING
   }
 
   if (isConfirmed) {
-    return isOrder ? 'filled' : 'executed'
+    return isOrder ? ActivityState.FILLED : ActivityState.EXECUTED
   }
 
   if (isExpired) {
-    return isOrder ? 'expired' : 'failed'
+    return isOrder ? ActivityState.EXPIRED : ActivityState.FAILED
   }
 
   if (isCancelling) {
-    return 'cancelling'
+    return ActivityState.CANCELLING
   }
 
   if (isPresignaturePending) {
-    return 'signing'
+    return ActivityState.SIGNING
   }
 
   if (isCancelled) {
-    return 'cancelled'
+    return ActivityState.CANCELLED
   }
 
   if (isCreating) {
-    return 'creating'
+    return ActivityState.CREATING
   }
 
   if (isFailed) {
-    return 'failed'
+    return ActivityState.FAILED
   }
 
-  return 'open'
+  return ActivityState.OPEN
+}
+
+export function useActivityDerivedState({
+  chainId,
+  activity,
+}: {
+  chainId: number | undefined
+  activity: ActivityDescriptors | undefined
+}): ActivityDerivedState | null {
+  const allTransactions = useAllTransactions()
+  const gnosisSafeInfo = useGnosisSafeInfo()
+
+  const orderCreationTxInfo: OrderCreationTxInfo | undefined = useMemo(() => {
+    if (!activity) {
+      return undefined
+    }
+
+    const isOrder = activity.type === ActivityType.ORDER
+    const order = isOrder ? (activity.activity as Order) : undefined
+
+    if (order?.orderCreationHash) {
+      const orderCreationTx = allTransactions[order.orderCreationHash]
+      const orderCreationLinkedTx = orderCreationTx?.linkedTransactionHash
+        ? allTransactions[orderCreationTx.linkedTransactionHash]
+        : undefined
+
+      return {
+        orderCreationTx,
+        orderCreationLinkedTx,
+      }
+    }
+
+    return undefined
+  }, [allTransactions, activity])
+
+  // Get some derived information about the activity. It helps to simplify the rendering of the subcomponents
+  return useMemo(() => {
+    if (!activity) {
+      return null
+    }
+
+    return getActivityDerivedState({ chainId, activityData: activity, gnosisSafeInfo, orderCreationTxInfo })
+  }, [chainId, activity, gnosisSafeInfo, orderCreationTxInfo])
 }

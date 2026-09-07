@@ -1,10 +1,15 @@
-import { ComposableCoW } from '@cowprotocol/abis'
-import { delay, isTruthy } from '@cowprotocol/common-utils'
-import type SafeApiKit from '@safe-global/api-kit'
+import { decodeFunctionData } from 'viem'
+import type { Hex } from 'viem'
+
+import { delay, isTruthy, logSafeApi } from '@cowprotocol/common-utils'
+import { getSafeApiUrl, normalizeSafeError, SAFE_RATE_LIMIT_MSG } from '@cowprotocol/core'
+import { SupportedChainId } from '@cowprotocol/cow-sdk'
 import type { AllTransactionsListResponse } from '@safe-global/api-kit'
-import type { SafeMultisigTransactionResponse } from '@safe-global/safe-core-sdk-types'
+import type { SafeMultisigTransactionResponse } from '@safe-global/types-kit'
 
 import ms from 'ms.macro'
+
+import { ComposableCowContractData } from 'modules/advancedOrders/hooks/useComposableCowContract'
 
 import { SafeTransactionParams } from 'common/types'
 
@@ -12,105 +17,260 @@ import { ConditionalOrderParams, TwapOrdersSafeData } from '../types'
 
 // ComposableCoW.createWithContext method
 const CREATE_COMPOSABLE_ORDER_SELECTOR = '0d0d9800'
-// Each page contains 20 transactions by default, so we need to fetch 10 pages to get 200 transactions
-const SAFE_TX_HISTORY_DEPTH = 10
+// Each page contains 100 transactions by default, so we need to fetch 40 pages to get 4000 transactions
+const SAFE_TX_HISTORY_DEPTH = 40
 // Just in case, make a short delay between requests
 const SAFE_TX_REQUEST_DELAY = ms`100ms`
 
+const HISTORY_TX_COUNT_LIMIT = 100
+
+const SAFE_API_AUTH_TOKEN = process.env.REACT_APP_SAFE_API_AUTH_TOKEN
+
+export type FetchTwapOrdersFromSafeResult = {
+  orders: TwapDataArray
+  newestSubmissionDate?: string
+  complete: boolean
+}
+
+export type TwapDataArray = TwapOrdersSafeData[]
+
+type SafeTransactionsChunk = AllTransactionsListResponse & { fetchError?: boolean }
+
 export async function fetchTwapOrdersFromSafe(
+  chainId: SupportedChainId,
   safeAddress: string,
-  safeApiKit: SafeApiKit,
-  composableCowContract: ComposableCoW,
-  /**
-   * Example of the second chunk url:
-   * https://safe-transaction-goerli.safe.global/api/v1/safes/0xe9B79591E270B3bCd0CC7e84f7B7De74BA3D0E2F/all-transactions/?executed=false&limit=20&offset=40&queued=true&trusted=true
-   */
+  composableCowContract: ComposableCowContractData,
+  executedSince?: string,
   nextUrl?: string,
-  accumulator: TwapOrdersSafeData[][] = [],
-): Promise<TwapOrdersSafeData[]> {
-  const response = await fetchSafeTransactionsChunk(safeAddress, safeApiKit, nextUrl)
+  accumulator: TwapDataArray[] = [],
+  onProgress?: (state: TwapDataArray) => void,
+): Promise<FetchTwapOrdersFromSafeResult> {
+  const response = await fetchSafeTransactionsChunk(chainId, safeAddress, nextUrl)
 
   const results = response?.results || []
-  const parsedResults = parseSafeTranasctionsResult(safeAddress, composableCowContract, results)
+  const parsedResults = parseSafeTransactionsResult(composableCowContract, results)
 
   accumulator.push(parsedResults)
 
+  const flattenState = accumulator.flat()
+  onProgress?.(mergeTwapOrdersByHash(flattenState))
+
   // Exit from the recursion if we have enough transactions or there is no next page
+
   if (accumulator.length >= SAFE_TX_HISTORY_DEPTH || !response?.next) {
-    return accumulator.flat()
+    /**
+     * Also fetch recently executed transactions (one page, newest-first).
+     * For Safe via WalletConnect, executed transactions disappear from the pending
+     * queue (executed=false), so we need a separate pass to capture them and set
+     * isExecuted=true — which lets the status logic correctly transition the order
+     * away from WaitSigning.
+     */
+    const executedResult = await fetchRecentlyExecutedTransactions(
+      chainId,
+      safeAddress,
+      composableCowContract,
+      executedSince,
+    )
+
+    return {
+      orders: mergeTwapOrdersByHash([...flattenState, ...executedResult.orders]),
+      newestSubmissionDate: executedResult.newestSubmissionDate,
+      complete: !response.fetchError && executedResult.complete,
+    }
   }
 
-  return fetchTwapOrdersFromSafe(safeAddress, safeApiKit, composableCowContract, response.next, accumulator)
+  return fetchTwapOrdersFromSafe(
+    chainId,
+    safeAddress,
+    composableCowContract,
+    executedSince,
+    response.next,
+    accumulator,
+    onProgress,
+  )
+}
+
+/**
+ * Merge two TwapDataArrays by safeTxHash, preferring entries with isExecuted=true.
+ * This ensures that if the same transaction appears in both the pending and executed
+ * fetches (e.g. a tx that just executed), we keep the executed version.
+ */
+export function mergeTwapOrdersByHash(items: TwapDataArray): TwapDataArray {
+  const map = new Map<string, TwapOrdersSafeData>()
+
+  for (const item of items) {
+    const hash = item.safeTxParams.safeTxHash
+    const existing = map.get(hash)
+
+    if (!existing || (!existing.safeTxParams.isExecuted && item.safeTxParams.isExecuted)) {
+      map.set(hash, item)
+    }
+  }
+
+  return Array.from(map.values())
+}
+
+async function fetchRecentlyExecutedTransactions(
+  chainId: SupportedChainId,
+  safeAddress: string,
+  composableCowContract: ComposableCowContractData,
+  since?: string,
+  nextUrl?: string,
+  accumulator: TwapDataArray[] = [],
+  newestSubmissionDate?: string,
+): Promise<FetchTwapOrdersFromSafeResult> {
+  try {
+    const url = getExecutedTransactionsUrl(chainId, safeAddress, since, nextUrl)
+    const headers = getSafeApiHeaders()
+
+    logExecutedTransactionsFetch(nextUrl, since)
+    const response = await fetchWithFallback<AllTransactionsListResponse>(url, headers)
+    const results = response?.results || []
+    const parsedResults = parseSafeTransactionsResult(composableCowContract, results)
+    const nextNewestSubmissionDate = getNewestSubmissionDate([
+      newestSubmissionDate,
+      ...results.map(getTransactionSubmissionDate),
+    ])
+
+    accumulator.push(parsedResults)
+
+    const nextExecutedPage = getNextExecutedPage(response, accumulator)
+
+    if (nextExecutedPage) {
+      return fetchRecentlyExecutedTransactions(
+        chainId,
+        safeAddress,
+        composableCowContract,
+        since,
+        nextExecutedPage,
+        accumulator,
+        nextNewestSubmissionDate,
+      )
+    }
+
+    return {
+      orders: accumulator.flat(),
+      newestSubmissionDate: nextNewestSubmissionDate,
+      complete: !response.next,
+    }
+  } catch (err: unknown) {
+    const error = normalizeSafeError(err)
+    if (error.statusCode === 429) {
+      logSafeApi.error(new Error(SAFE_RATE_LIMIT_MSG))
+    } else {
+      logSafeApi.error(new Error('Failed to fetch executed Safe transactions', { cause: error }))
+    }
+    return { orders: [], complete: false }
+  }
 }
 
 async function fetchSafeTransactionsChunk(
+  chainId: SupportedChainId,
   safeAddress: string,
-  safeApiKit: SafeApiKit,
   nextUrl?: string,
-): Promise<AllTransactionsListResponse> {
+): Promise<SafeTransactionsChunk> {
+  const headers = getSafeApiHeaders()
+
   if (nextUrl) {
     try {
-      const response: AllTransactionsListResponse = await fetch(nextUrl).then((res) => res.json())
+      logSafeApi.debug('Fetch TWAP pending orders (next page)')
+      const response = await fetchWithFallback<AllTransactionsListResponse>(nextUrl, headers)
 
       await delay(SAFE_TX_REQUEST_DELAY)
 
       return response
-    } catch (error) {
-      console.error('Error fetching Safe transactions', { safeAddress, nextUrl }, error)
+    } catch (err: unknown) {
+      const error = normalizeSafeError(err)
+      if (error.statusCode === 429) {
+        logSafeApi.error(new Error(SAFE_RATE_LIMIT_MSG))
+      } else {
+        logSafeApi.error(new Error('Failed to fetch Safe transactions', { cause: error }), undefined, { nextUrl })
+      }
 
-      return { results: [], count: 0 }
+      return { results: [], count: 0, fetchError: true }
     }
   }
 
-  return safeApiKit.getAllTransactions(safeAddress)
-}
+  const url = getSafeHistoryRequestUrl(chainId, safeAddress, false)
 
-function parseSafeTranasctionsResult(
-  safeAddress: string,
-  composableCowContract: ComposableCoW,
-  results: AllTransactionsListResponse['results'],
-): TwapOrdersSafeData[] {
-  return results
-    .map<TwapOrdersSafeData | null>((result) => {
-      if (!result.data || !isSafeMultisigTransactionListResponse(result)) return null
-
-      const selectorIndex = result.data.indexOf(CREATE_COMPOSABLE_ORDER_SELECTOR)
-
-      if (selectorIndex < 0) return null
-
-      const callData = '0x' + result.data.substring(selectorIndex)
-
-      const conditionalOrderParams = parseConditionalOrderParams(safeAddress, composableCowContract, callData)
-
-      if (!conditionalOrderParams) return null
-
-      const safeTxParams = getSafeTransactionParams(result)
-
-      return {
-        conditionalOrderParams,
-        safeTxParams,
-      }
-    })
-    .filter(isTruthy)
-}
-
-function isSafeMultisigTransactionListResponse(response: any): response is SafeMultisigTransactionResponse {
-  return !!response.data && !!response.submissionDate
-}
-
-function parseConditionalOrderParams(
-  safeAddress: string,
-  composableCowContract: ComposableCoW,
-  callData: string,
-): ConditionalOrderParams | null {
   try {
-    const _result = composableCowContract.interface.decodeFunctionData('createWithContext', callData)
-    const { params } = _result as any as { params: ConditionalOrderParams }
+    logSafeApi.debug('Fetch TWAP pending orders (first page)')
+    return await fetchWithFallback(url, headers)
+  } catch (err: unknown) {
+    const error = normalizeSafeError(err)
+    if (error.statusCode === 429) {
+      logSafeApi.error(new Error(SAFE_RATE_LIMIT_MSG))
+    } else {
+      logSafeApi.error(new Error('Failed to fetch Safe transactions', { cause: error }))
+    }
 
-    return { handler: params.handler, salt: params.salt, staticInput: params.staticInput }
-  } catch {
-    return null
+    return { results: [], count: 0, fetchError: true }
   }
+}
+
+function fetchWithFallback<T>(url: string, headers: HeadersInit): Promise<T> {
+  return fetch(url, { headers })
+    .then((res) => {
+      if (res.status === 429 || res.status === 403) {
+        logSafeApi.debug('Fetching without API Key (fallback)')
+        return fetch(url)
+      }
+      return res
+    })
+    .then((res) => {
+      if (res.status === 429) {
+        const error = new Error('Safe API rate limited') as Error & { statusCode: number }
+        error.statusCode = 429
+        throw error
+      }
+
+      return res
+    })
+    .then((res) => res.json())
+}
+
+function getExecutedTransactionsUrl(
+  chainId: SupportedChainId,
+  safeAddress: string,
+  since?: string,
+  nextUrl?: string,
+): string {
+  return nextUrl || getSafeHistoryRequestUrl(chainId, safeAddress, true, since)
+}
+
+function getNewestSubmissionDate(dates: (string | undefined)[]): string {
+  return dates.filter(isTruthy).reduce((latest, date) => (date > latest ? date : latest), '')
+}
+
+function getNextExecutedPage(response: AllTransactionsListResponse, accumulator: TwapDataArray[]): string | undefined {
+  return accumulator.length < SAFE_TX_HISTORY_DEPTH ? response.next || undefined : undefined
+}
+
+function getSafeApiHeaders(): HeadersInit {
+  if (!SAFE_API_AUTH_TOKEN) return {}
+  return { Authorization: `Bearer ${SAFE_API_AUTH_TOKEN}` }
+}
+
+function getSafeHistoryRequestUrl(
+  chainId: SupportedChainId,
+  safeAddress: string,
+  executed: boolean,
+  since?: string,
+): string {
+  const params = new URLSearchParams({
+    executed: String(executed),
+    limit: String(HISTORY_TX_COUNT_LIMIT),
+    ordering: '-submissionDate',
+    trusted: 'true',
+  })
+
+  if (since) params.set('submission_date__gte', since)
+
+  if (!executed) {
+    params.set('queued', 'true')
+  }
+
+  return `${getSafeApiUrl(chainId)}/v2/safes/${safeAddress}/multisig-transactions/?${params.toString()}`
 }
 
 function getSafeTransactionParams(result: SafeMultisigTransactionResponse): SafeTransactionParams {
@@ -125,4 +285,68 @@ function getSafeTransactionParams(result: SafeMultisigTransactionResponse): Safe
     safeTxHash,
     nonce,
   }
+}
+
+function getTransactionSubmissionDate(transaction: unknown): string | undefined {
+  return isSafeMultisigTransactionListResponse(transaction) ? transaction.submissionDate : undefined
+}
+
+// TODO: Replace any with proper type definitions
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isSafeMultisigTransactionListResponse(response: any): response is SafeMultisigTransactionResponse {
+  return !!response.data && !!response.submissionDate
+}
+
+function logExecutedTransactionsFetch(nextUrl?: string, since?: string): void {
+  const page = nextUrl ? 'next' : 'first'
+  const sinceText = since && !nextUrl ? ` since ${since}` : ''
+
+  logSafeApi.debug(`Fetch TWAP executed orders (${page} page${sinceText})`)
+}
+
+function parseConditionalOrderParams(
+  composableCowContract: ComposableCowContractData,
+  callData: Hex,
+): ConditionalOrderParams | null {
+  try {
+    const { args } = decodeFunctionData({
+      abi: composableCowContract.abi,
+      data: callData,
+    })
+
+    const [params] = args as unknown as [ConditionalOrderParams]
+
+    return { handler: params.handler, salt: params.salt, staticInput: params.staticInput }
+  } catch {
+    return null
+  }
+}
+
+function parseSafeTransactionsResult(
+  composableCowContract: ComposableCowContractData,
+  results: AllTransactionsListResponse['results'],
+): TwapOrdersSafeData[] {
+  return results
+    .map<TwapOrdersSafeData | null>((result) => {
+      if (!result.data || !isSafeMultisigTransactionListResponse(result)) return null
+
+      const selectorIndex = result.data.indexOf(CREATE_COMPOSABLE_ORDER_SELECTOR)
+
+      if (selectorIndex < 0) return null
+
+      const conditionalOrderParams = parseConditionalOrderParams(
+        composableCowContract,
+        `0x${result.data.substring(selectorIndex)}`,
+      )
+
+      if (!conditionalOrderParams) return null
+
+      const safeTxParams = getSafeTransactionParams(result)
+
+      return {
+        conditionalOrderParams,
+        safeTxParams,
+      }
+    })
+    .filter(isTruthy)
 }

@@ -1,19 +1,22 @@
 import { useAtom } from 'jotai'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { BalancesState } from '@cowprotocol/balances-and-allowances'
 import { TokenWithLogo } from '@cowprotocol/common-const'
 import { useFilterTokens, usePrevious } from '@cowprotocol/common-hooks'
-import { closableBannersStateAtom } from '@cowprotocol/ui'
-import { CurrencyAmount } from '@uniswap/sdk-core'
+import { getAddressKey } from '@cowprotocol/cow-sdk'
+import { safeFromRawAmount } from '@cowprotocol/currency'
+import { closableBannersStateAtom, Loader } from '@cowprotocol/ui'
 
-import { Trans } from '@lingui/macro'
+import { t } from '@lingui/core/macro'
+import { Trans } from '@lingui/react/macro'
 
 import { useErrorModal } from 'legacy/hooks/useErrorMessageAndModal'
 import { useToggleWalletModal } from 'legacy/state/application/hooks'
 
+import { usePendingApprovalModal } from 'modules/erc20Approve'
+
 import { BANNER_IDS } from 'common/constants/banners'
-import { usePendingApprovalModal } from 'common/hooks/usePendingApprovalModal'
 import { CowModal } from 'common/pure/Modal'
 
 import { balanceComparator, useTokenComparator } from './sorting'
@@ -21,6 +24,7 @@ import {
   Arrow,
   ArrowButton,
   ClickableText,
+  DelegateRow,
   IndexLabel,
   Label,
   NoResults,
@@ -30,40 +34,44 @@ import {
   Table,
   TableHeader,
   Wrapper,
-  DelegateRow,
 } from './styled'
 import { TokensTableRow } from './TokensTableRow'
 
 const MAX_ITEMS = 20
+
+type TokenTableParams = {
+  tokensData: TokenWithLogo[] | undefined
+  maxItems?: number
+  balances?: BalancesState['values']
+  allowances: Record<string, bigint | undefined> | undefined
+  page: number
+  setPage: (page: number) => void
+  query: string
+  prevQuery: string
+  debouncedQuery: string
+  children?: ReactNode
+}
 
 enum SORT_FIELD {
   NAME = 'name',
   BALANCE = 'balance',
 }
 
-type TokenTableParams = {
-  tokensData: TokenWithLogo[] | undefined
-  maxItems?: number
-  balances?: BalancesState['values']
-  page: number
-  setPage: (page: number) => void
-  query: string
-  prevQuery: string
-  debouncedQuery: string
-  children?: React.ReactNode
-}
-
-export default function TokenTable({
+// TODO: Break down this large function into smaller functions
+// TODO: Reduce function complexity by extracting logic
+// eslint-disable-next-line max-lines-per-function
+export function TokenTable({
   tokensData: rawTokensData = [],
   maxItems = MAX_ITEMS,
   balances,
+  allowances,
   page,
   setPage,
   query,
   prevQuery,
   debouncedQuery,
   children,
-}: TokenTableParams) {
+}: TokenTableParams): ReactNode {
   const toggleWalletModal = useToggleWalletModal()
   const tableRef = useRef<HTMLTableElement | null>(null)
   const [bannerState] = useAtom(closableBannersStateAtom)
@@ -121,8 +129,8 @@ export default function TokenTable({
               // If the sort field is Balance
               if (!balances) return 0
 
-              const balanceA = balances[tokenA.address.toLowerCase()]
-              const balanceB = balances[tokenB.address.toLowerCase()]
+              const balanceA = balances[getAddressKey(tokenA.address)]
+              const balanceB = balances[getAddressKey(tokenB.address)]
               const balanceComp = balanceComparator(balanceA, balanceB)
 
               return applyDirection(balanceComp > 0, sortDirection)
@@ -201,21 +209,29 @@ export default function TokenTable({
           <TableHeader>
             <IndexLabel>#</IndexLabel>
             <ClickableText onClick={() => handleSort(SORT_FIELD.NAME)}>
-              <Trans>Token {arrow(SORT_FIELD.NAME)}</Trans>
+              <Trans>Token</Trans> {arrow(SORT_FIELD.NAME)}
             </ClickableText>
             <ClickableText disabled={true} /* onClick={() => (account ? handleSort(SORT_FIELD.BALANCE) : false)} */>
-              <Trans>Balance {arrow(SORT_FIELD.BALANCE)}</Trans>
+              <Trans>Balance</Trans> {arrow(SORT_FIELD.BALANCE)}
             </ClickableText>
-            <Label>Value</Label>
-            <Label>Actions</Label>
+            <Label>
+              <Trans>Value</Trans>
+            </Label>
+            <Label>
+              <Trans>Actions</Trans>
+            </Label>
           </TableHeader>
 
           {children && !isDelegateBannerDismissed && <DelegateRow>{children}</DelegateRow>}
 
           {tokensData && sortedTokens.length !== 0 ? (
             sortedTokens.map((data, i) => {
-              const balanceRaw = balances && balances[data.address.toLowerCase()]
-              const balance = balanceRaw ? CurrencyAmount.fromRawAmount(data, balanceRaw.toHexString()) : undefined
+              const balanceRaw = balances?.[getAddressKey(data.address)]
+              const balance = balanceRaw !== undefined ? safeFromRawAmount(data, balanceRaw.toString()) : undefined
+
+              const allowancesRaw = allowances?.[getAddressKey(data.address)]
+              const allowance =
+                allowancesRaw !== undefined ? safeFromRawAmount(data, allowancesRaw.toString()) : undefined
 
               if (data) {
                 return (
@@ -224,6 +240,7 @@ export default function TokenTable({
                       key={data.address}
                       toggleWalletModal={toggleWalletModal}
                       balance={balance}
+                      allowance={allowance}
                       openApproveModal={openApproveModal}
                       closeApproveModal={closeApproveModal}
                       index={getTokenIndex(i)}
@@ -234,10 +251,14 @@ export default function TokenTable({
               }
               return null
             })
-          ) : (
+          ) : query?.trim() ? (
             <NoResults>
-              <h3>No results found ¯\_(ツ)_/¯</h3>
+              <h3>
+                <Trans>No results found</Trans> ¯\_(ツ)_/¯
+              </h3>
             </NoResults>
+          ) : (
+            <Loader />
           )}
         </Table>
 
@@ -251,9 +272,7 @@ export default function TokenTable({
               <Arrow faded={page === 1}>←</Arrow>
             </ArrowButton>
 
-            <PaginationText>
-              <Trans>{'Page ' + page + ' of ' + maxPage}</Trans>
-            </PaginationText>
+            <PaginationText>{t`Page ${page} of ${maxPage}`}</PaginationText>
 
             <ArrowButton onClick={() => setPage(nextPage)}>
               <Arrow faded={page === maxPage}>→</Arrow>

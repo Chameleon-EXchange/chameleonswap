@@ -1,15 +1,19 @@
 import React from 'react'
-import styled from 'styled-components/macro'
-import { clickOnKnowledgeBase } from 'modules/analytics'
-import { Color, Media } from '@cowprotocol/ui'
+
+import { useCowAnalytics } from '@cowprotocol/analytics'
+import { Media, UI } from '@cowprotocol/ui'
+
 import Link from 'next/link'
-interface Category {
+import { CowFiCategory } from 'src/common/analytics/types'
+import styled from 'styled-components/macro'
+
+interface CategoryItem {
   name: string
   slug: string
 }
 
 interface CategoryLinksProps {
-  allCategories: Category[]
+  allCategories: CategoryItem[]
   noDivider?: boolean
 }
 
@@ -23,10 +27,10 @@ const CategoryLinksWrapper = styled.ul<{ noDivider?: boolean }>`
   list-style: none;
   font-size: 16px;
   font-weight: 500;
-  color: ${Color.neutral50};
+  color: var(${UI.COLOR_NEUTRAL_50});
   width: 100%;
   scrollbar-width: thin;
-  scrollbar-color: ${Color.neutral70} ${Color.neutral90};
+  scrollbar-color: var(${UI.COLOR_NEUTRAL_70}) var(${UI.COLOR_NEUTRAL_90});
   -webkit-overflow-scrolling: touch;
 
   &::-webkit-scrollbar {
@@ -34,17 +38,17 @@ const CategoryLinksWrapper = styled.ul<{ noDivider?: boolean }>`
   }
 
   &::-webkit-scrollbar-track {
-    background: ${Color.neutral90};
+    background: var(${UI.COLOR_NEUTRAL_90});
     border-radius: 10px;
   }
 
   &::-webkit-scrollbar-thumb {
-    background: ${Color.neutral70};
+    background: var(${UI.COLOR_NEUTRAL_70});
     border-radius: 10px;
   }
 
   &::-webkit-scrollbar-thumb:hover {
-    background: ${Color.neutral50};
+    background: var(${UI.COLOR_NEUTRAL_50});
   }
 
   ${Media.upToMedium()} {
@@ -77,34 +81,53 @@ const CategoryLinksWrapper = styled.ul<{ noDivider?: boolean }>`
   }
 
   a {
-    color: ${Color.neutral40};
+    color: var(${UI.COLOR_NEUTRAL_40});
     text-decoration: none;
     transition: color 0.2s ease-in-out;
     white-space: nowrap;
     line-height: 1;
 
     &:hover {
-      color: ${Color.neutral0};
+      color: var(${UI.COLOR_NEUTRAL_0});
     }
   }
 `
 
-export const CategoryLinks: React.FC<CategoryLinksProps> = ({ allCategories, noDivider }) => (
-  <CategoryLinksWrapper noDivider={noDivider}>
-    <li>
-      <Link href="/learn" onClick={() => clickOnKnowledgeBase('click-categories-home')}>
-        Knowledge Base
-      </Link>
-    </li>
-    {allCategories.map((category) => (
-      <li key={category.slug}>
+export const CategoryLinks: React.FC<CategoryLinksProps> = ({ allCategories, noDivider }) => {
+  const analytics = useCowAnalytics()
+
+  return (
+    <CategoryLinksWrapper noDivider={noDivider}>
+      <li>
         <Link
-          href={`/learn/topic/${category.slug}`}
-          onClick={() => clickOnKnowledgeBase(`click-categories-${category.name}`)}
+          href="/learn"
+          onClick={() =>
+            analytics.sendEvent({
+              category: CowFiCategory.KNOWLEDGEBASE,
+              action: 'Click category',
+              label: 'home',
+            })
+          }
         >
-          {category.name}
+          Knowledge Base
         </Link>
       </li>
-    ))}
-  </CategoryLinksWrapper>
-)
+      {allCategories.map((category) => (
+        <li key={category.slug}>
+          <Link
+            href={`/learn/topic/${category.slug}`}
+            onClick={() =>
+              analytics.sendEvent({
+                category: CowFiCategory.KNOWLEDGEBASE,
+                action: 'Click category',
+                label: category.name,
+              })
+            }
+          >
+            {category.name}
+          </Link>
+        </li>
+      ))}
+    </CategoryLinksWrapper>
+  )
+}

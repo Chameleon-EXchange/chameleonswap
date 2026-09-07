@@ -1,6 +1,7 @@
-import IMG_CLOSE_ICON from '@cowprotocol/assets/cow-swap/x.svg'
+import svgXSrc from '@cowprotocol/assets/cow-swap/x.svg'
 import { SearchInput } from '@cowprotocol/ui'
 
+import { t } from '@lingui/core/macro'
 import SVG from 'react-inlinesvg'
 import styled from 'styled-components/macro'
 
@@ -23,10 +24,6 @@ const ButtonIcon = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
-  background: transparent;
-  border: none;
-  cursor: pointer;
   width: 24px;
   height: 24px;
   transition: opacity 0.2s ease-in-out;
@@ -41,10 +38,6 @@ const ClearButton = styled(ButtonIcon)`
   right: 20px;
   top: 50%;
   transform: translateY(-50%);
-  padding: 0;
-  background: transparent;
-  border: none;
-  cursor: pointer;
   opacity: 0.4;
   transition: all 0.2s ease-in-out;
 
@@ -53,8 +46,8 @@ const ClearButton = styled(ButtonIcon)`
   }
 
   > svg {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     color: inherit;
   }
 
@@ -63,26 +56,21 @@ const ClearButton = styled(ButtonIcon)`
   }
 `
 
-export function HookSearchInput({
-  value,
-  onChange,
-  placeholder = 'Search hooks...',
-  ariaLabel = 'Search hooks',
-  onClear,
-}: HookSearchInputProps) {
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export function HookSearchInput({ value, onChange, placeholder, ariaLabel, onClear }: HookSearchInputProps) {
   return (
     <SearchContainer>
       <SearchInput
-        type="text"
-        placeholder={placeholder}
+        placeholder={placeholder ? placeholder : t`Search hooks...`}
         value={value}
         onChange={onChange}
-        aria-label={ariaLabel}
+        aria-label={ariaLabel ? ariaLabel : t`Search hooks`}
         style={{ paddingRight: '38px' }}
       />
       {value && (
-        <ClearButton onClick={onClear} aria-label="Clear search input">
-          <SVG src={IMG_CLOSE_ICON} />
+        <ClearButton onClick={onClear} aria-label={t`Clear search input`}>
+          <SVG src={svgXSrc} />
         </ClearButton>
       )}
     </SearchContainer>

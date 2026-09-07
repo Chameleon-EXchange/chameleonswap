@@ -24,10 +24,14 @@ export const WIDGET_MAX_WIDTH = {
   swap: '470px',
   limit: '1350px',
   content: '680px',
+  tokenSelect: '590px',
+  tokenSelectSidebar: '700px',
 }
 
-export const TextWrapper = styled(Text)<{ color: keyof Colors; override?: boolean }>`
+const TextWrapper = styled(Text)<{ color: keyof Colors; override?: boolean }>`
   color: ${({ color, theme, override }) => {
+    // TODO: Replace any with proper type definitions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const colour = (theme as any)[color]
     if (colour && override) {
       return colour + '!important'

@@ -1,13 +1,6 @@
 import { useCallback, useMemo } from 'react'
 
-import { useLocation } from 'react-router'
-import { useNavigate } from 'react-router-dom'
-
-export function useQuery(): URLSearchParams {
-  const { search } = useLocation()
-
-  return useMemo(() => new URLSearchParams(search), [search])
-}
+import { useLocation, useNavigate } from 'react-router'
 
 /**
  * Syntactic sugar to build search queries
@@ -16,6 +9,12 @@ export function useQuery(): URLSearchParams {
  */
 export function buildSearchQuery(params: { [key in string]: string }): URLSearchParams {
   return new URLSearchParams(params)
+}
+
+export function useQuery(): URLSearchParams {
+  const { search } = useLocation()
+
+  return useMemo(() => new URLSearchParams(search), [search])
 }
 
 export function useUpdateQueryString(): (key: string, value: string) => void {
@@ -28,6 +27,6 @@ export function useUpdateQueryString(): (key: string, value: string) => void {
 
       navigate({ search: query.toString() })
     },
-    [navigate, query]
+    [navigate, query],
   )
 }

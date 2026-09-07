@@ -1,3 +1,5 @@
+import type { Hex } from 'viem'
+
 import { FractionUtils, getCurrencyAddress } from '@cowprotocol/common-utils'
 
 import { TWAPOrder, TWAPOrderStruct } from '../types'
@@ -16,6 +18,6 @@ export function twapOrderToStruct(order: TWAPOrder): TWAPOrderStruct {
     n: order.numOfParts,
     t: order.timeInterval,
     span: order.span,
-    appData: order.appData,
+    appData: order.appData as Hex,
   }
 }

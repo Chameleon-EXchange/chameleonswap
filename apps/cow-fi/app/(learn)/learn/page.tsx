@@ -1,34 +1,26 @@
-'use server'
+import type { ReactNode } from 'react'
 
-import { getArticles, getCategories } from '../../../services/cms'
+import { Category, getArticles, getCategories } from '../../../services/cms'
 
 import { LearnPageComponent } from '@/components/LearnPageComponent'
+import { FEATURED_ARTICLES_PAGE_SIZE } from '@/const/pagination'
 
-export default async function Page() {
-  const categoriesResponse = await getCategories()
-  const articlesResponse = await getArticles()
+// Next.js requires revalidate to be a literal number for static analysis
+// 12 hours (43200 seconds) - balanced between freshness and cache efficiency
+export const revalidate = 43200
 
+export default async function LearnPage(): Promise<ReactNode> {
+  // Fetch featured articles
   const featuredArticlesResponse = await getArticles({
-    filters: { featured: { $eq: true } },
-    pageSize: 6,
+    filters: {
+      featured: {
+        $eq: true,
+      },
+    },
+    pageSize: FEATURED_ARTICLES_PAGE_SIZE,
   })
 
-  const categories =
-    categoriesResponse?.map((category: any) => {
-      const imageUrl = category?.attributes?.image?.data?.attributes?.url || ''
-
-      return {
-        name: category?.attributes?.name || '',
-        slug: category?.attributes?.slug || '',
-        description: category?.attributes?.description || '',
-        bgColor: category?.attributes?.backgroundColor || '#fff',
-        textColor: category?.attributes?.textColor || '#000',
-        link: `/learn/topic/${category?.attributes?.slug}`,
-        iconColor: '#fff',
-        imageUrl,
-      }
-    }) || []
-
+  // Format featured articles for the component
   const featuredArticles = featuredArticlesResponse.data.map((article) => {
     const attributes = article.attributes
     return {
@@ -39,7 +31,42 @@ export default async function Page() {
     }
   })
 
-  return (
-    <LearnPageComponent categories={categories} articles={articlesResponse.data} featuredArticles={featuredArticles} />
-  )
+  const categoriesResponse = await getCategories()
+  // Pass raw categories data to client component for styling
+  const categories = categoriesResponse?.map(formatCategoryForComponent) || []
+
+  return <LearnPageComponent featuredArticles={featuredArticles} categories={categories} />
+}
+
+function formatCategoryForComponent(category: Category): {
+  name: string
+  slug: string
+  description: string
+  bgColor: string
+  textColor: string
+  link: string
+  imageUrl: string
+} {
+  const attrs = category?.attributes
+  if (!attrs) {
+    return {
+      name: '',
+      slug: '',
+      description: '',
+      bgColor: '',
+      textColor: '',
+      link: '/learn/topic/',
+      imageUrl: '',
+    }
+  }
+
+  return {
+    name: attrs.name ?? '',
+    slug: attrs.slug ?? '',
+    description: attrs.description ?? '',
+    bgColor: attrs.backgroundColor ?? '',
+    textColor: attrs.textColor ?? '',
+    link: `/learn/topic/${attrs.slug ?? ''}`,
+    imageUrl: attrs.image?.data?.attributes?.url ?? '',
+  }
 }

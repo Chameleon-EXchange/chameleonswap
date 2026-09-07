@@ -3,30 +3,44 @@ import { getCacheKeyForURL, matchPrecache } from 'workbox-precaching'
 import { Route } from 'workbox-routing'
 
 const fileExtensionRegexp = new RegExp('/[^/?]+\\.[^/]+$')
-// eslint-disable-next-line no-restricted-globals
+const STATIC_DOCUMENT_PATHS = ['/dev-hook-review-fixture']
+
 export const DOCUMENT = self.location.origin + '/index.html'
-
-/**
- * Matches with App Shell-style routing, so that navigation requests are fulfilled with an index.html shell.
- * See https://developers.google.com/web/fundamentals/architecture/app-shell
- */
-export function matchDocument({ request, url }: RouteMatchCallbackOptions) {
-  // If this isn't a navigation, skip.
-  if (request.mode !== 'navigate') {
-    return false
-  }
-
-  // If this looks like a resource (ie has a file extension), skip.
-  if (url.pathname.match(fileExtensionRegexp)) {
-    return false
-  }
-
-  return true
-}
 
 type HandlerContext = {
   offlineDocument?: Response
 } | void
+
+/**
+ * A cache-specific version of the document.
+ * This document sets the local `__isDocumentCached` variable to true.
+ */
+export class CachedDocument extends Response {
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+  static async from(response: Response) {
+    const text = await response.text()
+
+    // Set the content-type explicitly. Some browsers (Android 12; Chrome 91) use an invalid content-type header.
+    const headers = new Headers(response.headers)
+    headers.set('Content-Type', 'text/html; charset=utf-8')
+    const init = { ...response, headers }
+
+    // Injects a marker into the document so that client code knows it was served from cache.
+    // The marker should be injected immediately in the <body> so it is available to client code.
+    return new CachedDocument(text.replace('<body>', '<body><script>window.__isDocumentCached=true</script>'), init)
+  }
+
+  private constructor(text: string, response: Response) {
+    super(text, response)
+  }
+}
+
+export class DocumentRoute extends Route {
+  constructor(offlineDocument?: Response) {
+    super(matchDocument, handleDocument.bind({ offlineDocument }), 'GET')
+  }
+}
 
 /**
  * The returned document should always be fresh, so this handler uses a custom strategy:
@@ -42,6 +56,9 @@ type HandlerContext = {
  *
  * In addition, this handler may serve an offline document if there is no internet connection.
  */
+// TODO: Add proper return type annotation
+// TODO: Reduce function complexity by extracting logic
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type, complexity
 export async function handleDocument(this: HandlerContext, { event: _event, request }: RouteHandlerCallbackOptions) {
   // If we are offline, serve the offline document.
   if ('onLine' in navigator && !navigator.onLine) return this?.offlineDocument?.clone() || fetch(request)
@@ -59,6 +76,8 @@ export async function handleDocument(this: HandlerContext, { event: _event, requ
     if (!cachedResponse) {
       return new Response(response.body, response)
     }
+    // TODO: Replace any with proper type definitions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (e: any) {
     if (!cachedResponse) throw e
     return CachedDocument.from(cachedResponse)
@@ -77,31 +96,26 @@ export async function handleDocument(this: HandlerContext, { event: _event, requ
   return new Response(response.body, response)
 }
 
-export class DocumentRoute extends Route {
-  constructor(offlineDocument?: Response) {
-    super(matchDocument, handleDocument.bind({ offlineDocument }), 'GET')
-  }
-}
-
 /**
- * A cache-specific version of the document.
- * This document sets the local `__isDocumentCached` variable to true.
+ * Matches with App Shell-style routing, so that navigation requests are fulfilled with an index.html shell.
+ * See https://developers.google.com/web/fundamentals/architecture/app-shell
  */
-export class CachedDocument extends Response {
-  static async from(response: Response) {
-    const text = await response.text()
-
-    // Set the content-type explicitly. Some browsers (Android 12; Chrome 91) use an invalid content-type header.
-    const headers = new Headers(response.headers)
-    headers.set('Content-Type', 'text/html; charset=utf-8')
-    const init = { ...response, headers }
-
-    // Injects a marker into the document so that client code knows it was served from cache.
-    // The marker should be injected immediately in the <body> so it is available to client code.
-    return new CachedDocument(text.replace('<body>', '<body><script>window.__isDocumentCached=true</script>'), init)
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export function matchDocument({ request, url }: RouteMatchCallbackOptions) {
+  // If this isn't a navigation, skip.
+  if (request.mode !== 'navigate') {
+    return false
   }
 
-  private constructor(text: string, response: Response) {
-    super(text, response)
+  if (STATIC_DOCUMENT_PATHS.some((path) => url.pathname === path || url.pathname.startsWith(`${path}/`))) {
+    return false
   }
+
+  // If this looks like a resource (ie has a file extension), skip.
+  if (url.pathname.match(fileExtensionRegexp)) {
+    return false
+  }
+
+  return true
 }

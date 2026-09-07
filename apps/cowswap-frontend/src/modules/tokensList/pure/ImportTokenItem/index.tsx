@@ -1,5 +1,9 @@
-import { TokenWithLogo } from '@cowprotocol/common-const'
+import { ReactNode } from 'react'
 
+import { TokenWithLogo } from '@cowprotocol/common-const'
+import { HoverTooltip } from '@cowprotocol/ui'
+
+import { Trans } from '@lingui/react/macro'
 import { CheckCircle } from 'react-feather'
 
 import * as styledEl from './styled'
@@ -12,23 +16,44 @@ export interface ImportTokenItemProps {
   importToken?(token: TokenWithLogo): void
   existing?: true
   shadowed?: boolean
+  wrapperId?: string
+  isFirstInSection?: boolean
+  isLastInSection?: boolean
+  disabledReason?: string
 }
 
-export function ImportTokenItem(props: ImportTokenItemProps) {
-  const { token, importToken, shadowed, existing } = props
+export function ImportTokenItem(props: ImportTokenItemProps): ReactNode {
+  const { token, importToken, shadowed, existing, wrapperId, isFirstInSection, isLastInSection, disabledReason } = props
+
+  const tokenInfo = (
+    <div style={{ opacity: shadowed ? 0.6 : 1 }}>
+      <TokenInfo token={token} />
+    </div>
+  )
+
   return (
-    <styledEl.Wrapper>
-      <div style={{ opacity: shadowed ? 0.6 : 1 }}>
-        <TokenInfo token={token} />
-      </div>
+    <styledEl.Wrapper id={wrapperId} $isFirst={isFirstInSection} $isLast={isLastInSection}>
+      {disabledReason ? (
+        <HoverTooltip wrapInContainer placement="top" content={disabledReason}>
+          {tokenInfo}
+        </HoverTooltip>
+      ) : (
+        tokenInfo
+      )}
       <div>
         {existing && (
           <styledEl.ActiveToken>
             <CheckCircle size={16} strokeWidth={2} />
-            <span>Active</span>
+            <span>
+              <Trans>Active</Trans>
+            </span>
           </styledEl.ActiveToken>
         )}
-        {importToken && <ImportButton onClick={() => importToken(token)}>Import</ImportButton>}
+        {importToken && (
+          <ImportButton onClick={() => importToken(token)}>
+            <Trans>Import</Trans>
+          </ImportButton>
+        )}
       </div>
     </styledEl.Wrapper>
   )

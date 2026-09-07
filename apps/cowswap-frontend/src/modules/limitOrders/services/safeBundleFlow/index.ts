@@ -1,10 +1,17 @@
+import { maxUint256 } from 'viem'
+import { Config } from 'wagmi'
+
+import { captureError, ERROR_TYPES, normalizeError } from '@cowprotocol/common-utils'
+import { SigningScheme } from '@cowprotocol/cow-sdk'
+import { Percent } from '@cowprotocol/currency'
 import { Command, UiOrderType } from '@cowprotocol/types'
-import { MetaTransactionData } from '@safe-global/safe-core-sdk-types'
-import { Percent } from '@uniswap/sdk-core'
+import type { MetaTransactionData } from '@safe-global/types-kit'
+
+import { tradingSdk } from 'tradingSdk/tradingSdk'
 
 import { PriceImpact } from 'legacy/hooks/usePriceImpact'
 import { partialOrderUpdate } from 'legacy/state/orders/utils'
-import { signAndPostOrder } from 'legacy/utils/trade'
+import { mapUnsignedOrderToOrder, wrapErrorInOperatorError } from 'legacy/utils/trade'
 
 import { removePermitHookFromAppData } from 'modules/appData'
 import { LOW_RATE_THRESHOLD_PERCENT } from 'modules/limitOrders/const/trade'
@@ -12,24 +19,36 @@ import { PriceImpactDeclineError, SafeBundleFlowContext } from 'modules/limitOrd
 import { LimitOrdersSettingsState } from 'modules/limitOrders/state/limitOrdersSettingsAtom'
 import { calculateLimitOrdersDeadline } from 'modules/limitOrders/utils/calculateLimitOrdersDeadline'
 import { buildApproveTx } from 'modules/operations/bundle/buildApproveTx'
-import { buildPresignTx } from 'modules/operations/bundle/buildPresignTx'
 import { buildZeroApproveTx } from 'modules/operations/bundle/buildZeroApproveTx'
 import { emitPostedOrderEvent } from 'modules/orders'
 import { addPendingOrderStep } from 'modules/trade/utils/addPendingOrderStep'
 import { logTradeFlow } from 'modules/trade/utils/logger'
-import { getSwapErrorMessage } from 'modules/trade/utils/swapErrorHelper'
-import { TradeFlowAnalyticsContext, tradeFlowAnalytics } from 'modules/trade/utils/tradeFlowAnalytics'
+import { TradeFlowAnalytics, TradeFlowAnalyticsContext } from 'modules/trade/utils/tradeFlowAnalytics'
 import { shouldZeroApprove as shouldZeroApproveFn } from 'modules/zeroApproval'
+
+import { getSwapErrorMessage } from 'common/utils/getSwapErrorMessage'
 
 const LOG_PREFIX = 'LIMIT ORDER SAFE BUNDLE FLOW'
 
-export async function safeBundleFlow(
-  params: SafeBundleFlowContext,
-  priceImpact: PriceImpact,
-  settingsState: LimitOrdersSettingsState,
-  confirmPriceImpactWithoutFee: (priceImpact: Percent) => Promise<boolean>,
-  beforeTrade?: Command,
-): Promise<string> {
+// TODO: Break down this large function into smaller functions
+// eslint-disable-next-line max-lines-per-function
+export async function safeBundleFlow({
+  params,
+  priceImpact,
+  settingsState,
+  confirmPriceImpactWithoutFee,
+  analytics,
+  beforeTrade,
+  config,
+}: {
+  params: SafeBundleFlowContext
+  priceImpact: PriceImpact
+  settingsState: LimitOrdersSettingsState
+  confirmPriceImpactWithoutFee: (priceImpact: Percent) => Promise<boolean>
+  analytics: TradeFlowAnalytics
+  beforeTrade?: Command
+  config: Config
+}): Promise<string> {
   logTradeFlow(LOG_PREFIX, 'STEP 1: confirm price impact')
   const isTooLowRate = params.rateImpact < LOW_RATE_THRESHOLD_PERCENT
 
@@ -51,19 +70,14 @@ export async function safeBundleFlow(
   }
 
   logTradeFlow(LOG_PREFIX, 'STEP 2: send transaction')
-  tradeFlowAnalytics.approveAndPresign(swapFlowAnalyticsContext)
+  analytics.approveAndPresign({
+    ...swapFlowAnalyticsContext,
+    quoteId: params.postOrderParams.quoteId,
+    allowsOffchainSigning: params.postOrderParams.allowsOffchainSigning,
+  })
   beforeTrade?.()
 
-  const {
-    chainId,
-    postOrderParams,
-    provider,
-    erc20Contract,
-    spender,
-    dispatch,
-    settlementContract,
-    sendBatchTransactions,
-  } = params
+  const { chainId, postOrderParams, spender, dispatch, sendBatchTransactions, amountToApprove } = params
 
   const validTo = calculateLimitOrdersDeadline(settingsState, params.quoteState)
 
@@ -72,16 +86,49 @@ export async function safeBundleFlow(
     // In the feature users will be able to sort/add steps as they see fit
     logTradeFlow(LOG_PREFIX, 'STEP 2: build approval tx')
     const approveTx = await buildApproveTx({
-      erc20Contract,
+      tokenAddress: sellToken.address,
       spender,
-      amountToApprove: inputAmount,
+      amountToApprove: amountToApprove ?? maxUint256,
     })
 
     logTradeFlow(LOG_PREFIX, 'STEP 3: post order')
-    const { id: orderId, order } = await signAndPostOrder({
-      ...postOrderParams,
-      signer: provider.getSigner(),
-      validTo,
+    const {
+      orderId,
+      signature,
+      signingScheme,
+      orderToSign: unsignedOrder,
+    } = await wrapErrorInOperatorError(() =>
+      tradingSdk.postLimitOrder(
+        {
+          sellAmount: postOrderParams.inputAmount.quotient.toString(),
+          buyAmount: postOrderParams.outputAmount.quotient.toString(),
+          sellToken: postOrderParams.sellToken.address,
+          buyToken: postOrderParams.buyToken.address,
+          sellTokenDecimals: postOrderParams.sellToken.decimals,
+          buyTokenDecimals: postOrderParams.buyToken.decimals,
+          kind: postOrderParams.kind,
+          partiallyFillable: postOrderParams.partiallyFillable,
+          receiver: postOrderParams.recipient,
+          validTo,
+          quoteId: postOrderParams.quoteId,
+        },
+        {
+          appData: postOrderParams.appData.doc,
+          additionalParams: {
+            signingScheme: SigningScheme.PRESIGN,
+          },
+        },
+      ),
+    )
+
+    const order = mapUnsignedOrderToOrder({
+      unsignedOrder,
+      additionalParams: {
+        ...postOrderParams,
+        orderId,
+        signingScheme,
+        signature,
+      },
     })
 
     logTradeFlow(LOG_PREFIX, 'STEP 4: add order, but hidden')
@@ -99,26 +146,26 @@ export async function safeBundleFlow(
     )
 
     logTradeFlow(LOG_PREFIX, 'STEP 5: build presign tx')
-    const presignTx = await buildPresignTx({ settlementContract, orderId })
+    const presignTx = await tradingSdk.getPreSignTransaction({ orderUid: orderId })
 
     logTradeFlow(LOG_PREFIX, 'STEP 6: send safe tx')
     const safeTransactionData: MetaTransactionData[] = [
       { to: approveTx.to!, data: approveTx.data!, value: '0', operation: 0 },
-      { to: presignTx.to!, data: presignTx.data!, value: '0', operation: 0 },
+      { to: presignTx.to, data: presignTx.data, value: '0', operation: 0 },
     ]
 
     const shouldZeroApprove = await shouldZeroApproveFn({
-      tokenContract: erc20Contract,
+      tokenAddress: sellToken.address,
       spender,
-      amountToApprove: inputAmount,
-      isBundle: true,
+      amountToApprove: amountToApprove ?? maxUint256,
+      forceApprove: true,
+      config,
     })
 
     if (shouldZeroApprove) {
       const zeroApproveTx = await buildZeroApproveTx({
-        erc20Contract,
+        tokenAddress: sellToken.address,
         spender,
-        currency: inputAmount.currency,
       })
       safeTransactionData.unshift({
         to: zeroApproveTx.to!,
@@ -135,6 +182,7 @@ export async function safeBundleFlow(
       id: orderId,
       orderCreationHash: safeTxHash,
       kind: postOrderParams.kind,
+      quoteId: postOrderParams.quoteId,
       receiver: recipientAddressOrName,
       inputAmount,
       outputAmount,
@@ -155,14 +203,17 @@ export async function safeBundleFlow(
       },
       dispatch,
     )
-    tradeFlowAnalytics.sign(swapFlowAnalyticsContext)
+    analytics.sign(swapFlowAnalyticsContext)
 
     return orderId
-  } catch (error: any) {
-    logTradeFlow(LOG_PREFIX, 'STEP 8: ERROR: ', error)
-    const swapErrorMessage = getSwapErrorMessage(error)
+  } catch (err: unknown) {
+    const error = normalizeError(err)
 
-    tradeFlowAnalytics.error(error, swapErrorMessage, swapFlowAnalyticsContext)
+    logTradeFlow(LOG_PREFIX, 'STEP 8: ERROR: ', error)
+    const swapErrorMessage = getSwapErrorMessage(error, chainId)
+
+    captureError(error, ERROR_TYPES.ON_SWAP, { swapErrorMessage })
+    analytics.error(error, swapErrorMessage, swapFlowAnalyticsContext)
 
     throw error
   }

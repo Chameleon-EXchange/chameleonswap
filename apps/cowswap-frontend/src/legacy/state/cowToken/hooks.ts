@@ -1,12 +1,11 @@
 import { useCallback, useMemo } from 'react'
 
 import { V_COW } from '@cowprotocol/common-const'
+import { Currency, CurrencyAmount } from '@cowprotocol/currency'
 import { Command } from '@cowprotocol/types'
 import { useWalletInfo } from '@cowprotocol/wallet'
-import type { BigNumber } from '@ethersproject/bignumber'
-import { TransactionResponse } from '@ethersproject/providers'
-import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
 
+import { useLingui } from '@lingui/react/macro'
 import useSWR from 'swr'
 
 import { GAS_LIMIT_DEFAULT } from 'common/constants/common'
@@ -20,6 +19,11 @@ import { AppState } from '../index'
 
 export type SetSwapVCowStatusCallback = (payload: SwapVCowStatus) => void
 
+interface SwapVCowCallbackParams {
+  openModal: (message: string) => void
+  closeModal: Command
+}
+
 type VCowData = {
   isLoading: boolean
   total: CurrencyAmount<Currency> | undefined | null
@@ -27,26 +31,76 @@ type VCowData = {
   vested: CurrencyAmount<Currency> | undefined | null
 }
 
-interface SwapVCowCallbackParams {
-  openModal: (message: string) => void
-  closeModal: Command
+/**
+ * Hook that sets the swap vCow->Cow status
+ */
+export function useSetSwapVCowStatus(): SetSwapVCowStatusCallback {
+  const dispatch = useAppDispatch()
+  return useCallback((payload: SwapVCowStatus) => dispatch(setSwapVCowStatus(payload)), [dispatch])
 }
 
 /**
- * Hook that parses the result input with BigNumber value to CurrencyAmount
+ * Hook used to swap vCow to Cow token
  */
-function useParseVCowResult(result: BigNumber | undefined) {
-  const { chainId } = useWalletInfo()
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export function useSwapVCowCallback({ openModal, closeModal }: SwapVCowCallbackParams) {
+  const { account } = useWalletInfo()
+  const { contract: vCowContract, chainId } = useVCowContract()
+  const { t } = useLingui()
 
-  const vCowToken = V_COW[chainId]
+  const addTransaction = useTransactionAdder()
+  const vCowToken = chainId ? V_COW[chainId] : undefined
 
-  return useMemo(() => {
-    if (!vCowToken || !result) {
-      return
+  return useCallback(async () => {
+    if (!account) {
+      throw new Error(t`Not connected`)
+    }
+    if (!chainId) {
+      throw new Error(t`No chainId`)
+    }
+    if (!vCowContract) {
+      throw new Error(t`vCOW contract not present`)
+    }
+    if (!vCowToken) {
+      throw new Error(t`vCOW token not present`)
     }
 
-    return CurrencyAmount.fromRawAmount(vCowToken, result.toString())
-  }, [result, vCowToken])
+    const estimatedGas = await vCowContract.estimateGas.swapAll({ from: account }).catch(() => {
+      // general fallback for tokens who restrict approval amounts
+      return vCowContract.estimateGas.swapAll().catch((error) => {
+        console.log(
+          '[useSwapVCowCallback] Error estimating gas for swapAll. Using default gas limit ' +
+            GAS_LIMIT_DEFAULT.toString(),
+          error,
+        )
+        return GAS_LIMIT_DEFAULT
+      })
+    })
+
+    const summary = `Convert vCOW to COW`
+    openModal(summary)
+
+    return vCowContract
+      .swapAll({ from: account, gasLimit: estimatedGas })
+      .then(({ hash }) => {
+        addTransaction({
+          swapVCow: true,
+          hash,
+          summary,
+        })
+      })
+      .finally(closeModal)
+  }, [account, addTransaction, chainId, closeModal, openModal, t, vCowContract, vCowToken])
+}
+
+/**
+ * Hook that gets swap vCow->Cow status
+ */
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export function useSwapVCowStatus() {
+  return useAppSelector((state: AppState) => state.cowToken.swapVCowStatus)
 }
 
 /**
@@ -88,68 +142,20 @@ export function useVCowData(): VCowData {
 }
 
 /**
- * Hook used to swap vCow to Cow token
+ * Hook that parses the result input with bigint value to CurrencyAmount
  */
-export function useSwapVCowCallback({ openModal, closeModal }: SwapVCowCallbackParams) {
-  const { account } = useWalletInfo()
-  const { contract: vCowContract, chainId } = useVCowContract()
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+function useParseVCowResult(result: bigint | undefined) {
+  const { chainId } = useWalletInfo()
 
-  const addTransaction = useTransactionAdder()
-  const vCowToken = chainId ? V_COW[chainId] : undefined
+  const vCowToken = V_COW[chainId]
 
-  return useCallback(async () => {
-    if (!account) {
-      throw new Error('Not connected')
-    }
-    if (!chainId) {
-      throw new Error('No chainId')
-    }
-    if (!vCowContract) {
-      throw new Error('vCOW contract not present')
-    }
-    if (!vCowToken) {
-      throw new Error('vCOW token not present')
+  return useMemo(() => {
+    if (!vCowToken || result === undefined) {
+      return
     }
 
-    const estimatedGas = await vCowContract.estimateGas.swapAll({ from: account }).catch(() => {
-      // general fallback for tokens who restrict approval amounts
-      return vCowContract.estimateGas.swapAll().catch((error) => {
-        console.log(
-          '[useSwapVCowCallback] Error estimating gas for swapAll. Using default gas limit ' +
-            GAS_LIMIT_DEFAULT.toString(),
-          error,
-        )
-        return GAS_LIMIT_DEFAULT
-      })
-    })
-
-    const summary = `Convert vCOW to COW`
-    openModal(summary)
-
-    return vCowContract
-      .swapAll({ from: account, gasLimit: estimatedGas })
-      .then((tx: TransactionResponse) => {
-        addTransaction({
-          swapVCow: true,
-          hash: tx.hash,
-          summary,
-        })
-      })
-      .finally(closeModal)
-  }, [account, addTransaction, chainId, closeModal, openModal, vCowContract, vCowToken])
-}
-
-/**
- * Hook that sets the swap vCow->Cow status
- */
-export function useSetSwapVCowStatus(): SetSwapVCowStatusCallback {
-  const dispatch = useAppDispatch()
-  return useCallback((payload: SwapVCowStatus) => dispatch(setSwapVCowStatus(payload)), [dispatch])
-}
-
-/**
- * Hook that gets swap vCow->Cow status
- */
-export function useSwapVCowStatus() {
-  return useAppSelector((state: AppState) => state.cowToken.swapVCowStatus)
+    return CurrencyAmount.fromRawAmount(vCowToken, result.toString())
+  }, [result, vCowToken])
 }

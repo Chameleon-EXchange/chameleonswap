@@ -1,31 +1,26 @@
 import { atom, useSetAtom } from 'jotai'
 import { atomWithReset, useResetAtom } from 'jotai/utils'
-import { useCallback } from 'react'
+import { ReactNode, useCallback } from 'react'
 
 import { Command } from '@cowprotocol/types'
-
-import { t } from '@lingui/macro'
 
 import { useCloseModal, useOpenModal } from 'legacy/state/application/hooks'
 import { ApplicationModal } from 'legacy/state/application/reducer'
 
-import { ConfirmationModalProps } from '../pure/ConfirmationModal/ConfirmationModal'
+import { ConfirmationModalProps } from '../pure/ConfirmationModal'
 
-type TriggerConfirmationParams = Pick<
-  ConfirmationModalProps,
-  'title' | 'description' | 'callToAction' | 'warning' | 'confirmWord' | 'action' | 'skipInput'
->
 interface ConfirmationModalContext {
   onDismiss: Command
   activePromise?: Promise<boolean>
   title: string
   callToAction: string
-  description?: string
+  description?: ReactNode
   warning?: string
   confirmWord: string
   action: string
   onEnable: Command
   skipInput?: boolean
+  bottomContent?: ReactNode
   triggerConfirmation: ({
     title,
     description,
@@ -34,19 +29,24 @@ interface ConfirmationModalContext {
     skipInput,
   }: TriggerConfirmationParams) => Promise<void>
 }
+type TriggerConfirmationParams = Pick<
+  ConfirmationModalProps,
+  'title' | 'description' | 'callToAction' | 'warning' | 'confirmWord' | 'action' | 'skipInput' | 'bottomContent'
+>
 
-const DEFAULT_CONFIRMATION_MODAL_CONTEXT: ConfirmationModalContext = {
+export const DEFAULT_CONFIRMATION_MODAL_CONTEXT: ConfirmationModalContext = {
   onDismiss: () => {},
   onEnable: () => {},
   title: 'Confirm Action',
   callToAction: 'Confirm',
-  confirmWord: t`confirm`,
+  confirmWord: 'confirm',
   action: 'confirm',
   skipInput: false,
   triggerConfirmation: async () => {},
 }
 
 export const confirmationModalContextAtom = atomWithReset<ConfirmationModalContext>(DEFAULT_CONFIRMATION_MODAL_CONTEXT)
+
 export const updateConfirmationModalContextAtom = atom(
   null,
   (get, set, nextState: Partial<ConfirmationModalContext>) => {
@@ -55,9 +55,11 @@ export const updateConfirmationModalContextAtom = atom(
 
       return { ...prevState, ...nextState }
     })
-  }
+  },
 )
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function useConfirmationRequest({
   onEnable: onEnableParam,
   onDismiss: onDismissParam,
@@ -70,6 +72,8 @@ export function useConfirmationRequest({
   return useCallback(
     (params: TriggerConfirmationParams): Promise<boolean> => {
       return new Promise((resolve) => {
+        // TODO: Add proper return type annotation
+        // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
         const onDismiss = () => {
           closeModal()
           onDismissParam?.()
@@ -77,6 +81,8 @@ export function useConfirmationRequest({
           resolve(false)
         }
 
+        // TODO: Add proper return type annotation
+        // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
         const onEnable = () => {
           closeModal()
           onEnableParam?.()
@@ -92,6 +98,6 @@ export function useConfirmationRequest({
         openModal()
       })
     },
-    [setContext, openModal, closeModal, onDismissParam, resetContext, onEnableParam]
+    [closeModal, onDismissParam, onEnableParam, openModal, resetContext, setContext],
   )
 }

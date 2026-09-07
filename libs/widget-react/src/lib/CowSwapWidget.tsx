@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { JSX, useCallback, useEffect, useRef, useState } from 'react'
 
 import type { CowWidgetEventListeners } from '@cowprotocol/events'
 import type { Command } from '@cowprotocol/types'
@@ -8,101 +8,143 @@ import {
   CowSwapWidgetProps,
   EthereumProvider,
   createCowSwapWidget,
+  WIDGET_CONTAINER_ID,
 } from '@cowprotocol/widget-lib'
 
-export function CowSwapWidget(props: CowSwapWidgetProps) {
-  const { params, provider, listeners } = props
-  const [error, setError] = useState<{ error: Error; message: string } | null>(null)
+interface CreateWidgetParams {
+  container: HTMLDivElement
+  params: CowSwapWidgetParams
+  provider?: EthereumProvider
+  listeners?: CowWidgetEventListeners
+  onReady?: () => void
+  onLoadingError?: () => void
+  enableSafeSdkBridge: boolean
+}
+type MutableRef<T> = { current: T }
+type TryOrHandleError = (action: string, actionThatMightFail: Command) => void
+
+type WidgetErrorState = { error: Error; message: string } | null
+
+interface WidgetRefs {
+  paramsRef: MutableRef<CowSwapWidgetParams | null>
+  providerRef: MutableRef<EthereumProvider | undefined>
+  listenersRef: MutableRef<CowWidgetEventListeners | undefined>
+  enableSafeSdkBridgeRef: MutableRef<boolean>
+  widgetHandlerRef: MutableRef<CowSwapWidgetHandler | null>
+}
+
+// eslint-disable-next-line max-lines-per-function
+export function CowSwapWidget({
+  params,
+  provider,
+  listeners,
+  onReady,
+  onLoadingError,
+  enableSafeSdkBridge = true,
+}: CowSwapWidgetProps): JSX.Element {
+  const [error, setError] = useState<WidgetErrorState>(null)
   const paramsRef = useRef<CowSwapWidgetParams | null>(null)
   const providerRef = useRef<EthereumProvider | undefined>(provider)
   const listenersRef = useRef<CowWidgetEventListeners | undefined>(listeners)
+  const enableSafeSdkBridgeRef = useRef(enableSafeSdkBridge)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const widgetHandlerRef = useRef<CowSwapWidgetHandler | null>(null)
 
-  // Error handling
   const tryOrHandleError = useCallback((action: string, actionThatMightFail: Command) => {
     try {
       console.log(`[WIDGET] ${action}`)
       actionThatMightFail()
-    } catch (error) {
+    } catch (_error) {
       const errorMessage = `Error ${action.toLowerCase()}`
+      const error = _error instanceof Error ? _error : new Error('Unknown CowSwapWidget error', { cause: _error })
+
       console.error(`[WIDGET] ${errorMessage}`, error)
       setError({ message: errorMessage, error })
     }
   }, [])
 
-  // Cleanup widget on mount
-  useEffect(() => {
-    return () => {
-      // Cleanup references
-      paramsRef.current = null
-      providerRef.current = undefined
-      listenersRef.current = undefined
+  useDestroyWidgetOnUnmount({
+    refs: { paramsRef, providerRef, listenersRef, enableSafeSdkBridgeRef, widgetHandlerRef },
+    tryOrHandleError,
+  })
 
-      // Destroy widget
-      const handler = widgetHandlerRef.current
-      if (handler) {
-        tryOrHandleError('💥 Destroy widget', () => handler.destroy())
-        widgetHandlerRef.current = null
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // Create/Update the widget if the parameters change
   useEffect(() => {
-    if (!containerRef.current || JSON.stringify(paramsRef.current) === JSON.stringify(params)) {
+    const paramsHooksDifferent = !!paramsRef.current && areParamsHooksDifferent(paramsRef.current, params)
+    const enableSafeSdkBridgeDifferent = enableSafeSdkBridgeRef.current !== enableSafeSdkBridge
+
+    if (
+      !containerRef.current ||
+      (!paramsHooksDifferent &&
+        !enableSafeSdkBridgeDifferent &&
+        JSON.stringify(paramsRef.current) === JSON.stringify(params))
+    ) {
       return
     }
 
     const container = containerRef.current
     const handler = widgetHandlerRef.current
     paramsRef.current = params
+    enableSafeSdkBridgeRef.current = enableSafeSdkBridge
 
     if (handler === null) {
       tryOrHandleError('Creating a new widget', () => {
-        widgetHandlerRef.current = createCowSwapWidget(container, { params, provider: providerRef.current, listeners })
+        widgetHandlerRef.current = createWidget({
+          container,
+          params,
+          provider: providerRef.current,
+          listeners,
+          onReady,
+          onLoadingError,
+          enableSafeSdkBridge,
+        })
+        listenersRef.current = listeners
+      })
+    } else if (enableSafeSdkBridgeDifferent) {
+      tryOrHandleError('Recreating the widget', () => {
+        handler.destroy()
+        widgetHandlerRef.current = createWidget({
+          container,
+          params,
+          provider: providerRef.current,
+          listeners,
+          onReady,
+          onLoadingError,
+          enableSafeSdkBridge,
+        })
         listenersRef.current = listeners
       })
     } else {
       tryOrHandleError('Updating the widget', () => handler.updateParams(params))
     }
-    // Trigger only on params changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params, tryOrHandleError])
+  }, [params, enableSafeSdkBridge, tryOrHandleError])
 
-  // Update widget provider (if it changes)
   useEffect(() => {
     if (!widgetHandlerRef.current || providerRef.current === provider) {
       return
     }
 
-    // Update provider
     providerRef.current = provider
 
-    // TODO: Fix this https://github.com/cowprotocol/cowswap/issues/3810#issue-2127257473 (in meantime forcing full refresh as before)
-    // const handler = widgetHandlerRef.current
-    // tryOrHandleError('Updating the provider', () => {
-    //   handler.updateProvider(provider)
-    //   if (paramsRef.current) {
-    //     handler.updateWidget(paramsRef.current)
-    //   }
-    // })
     const container = containerRef.current
     if (container) {
       tryOrHandleError('Updating the provider', () => {
-        // Destroy the old widget (if it exists)
         widgetHandlerRef.current?.destroy()
 
-        // Re-create the widget
-        widgetHandlerRef.current = createCowSwapWidget(container, { params, provider: providerRef.current, listeners })
+        widgetHandlerRef.current = createWidget({
+          container,
+          params,
+          provider: providerRef.current,
+          listeners,
+          onReady,
+          enableSafeSdkBridge,
+        })
+        enableSafeSdkBridgeRef.current = enableSafeSdkBridge
       })
     }
-    // Trigger only on provider changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [provider, tryOrHandleError])
+  }, [onReady, provider, tryOrHandleError])
 
-  // Update widget listeners (if they change)
   useEffect(() => {
     if (!widgetHandlerRef.current || listenersRef.current === listeners) return
 
@@ -110,16 +152,89 @@ export function CowSwapWidget(props: CowSwapWidgetProps) {
     tryOrHandleError('Updating the listeners', () => handler.updateListeners(listeners))
   }, [listeners, tryOrHandleError])
 
-  // Handle errors
   if (error) {
-    return (
-      <div style={{ color: '#ff3a3a' }}>
-        {error.message}
-        {error.error.message && <pre style={{ whiteSpace: 'pre-wrap', fontSize: '0.75em' }}>{error.error.message}</pre>}
-      </div>
-    )
+    return <WidgetError error={error} />
   }
 
-  // Render widget container
-  return <div ref={containerRef} style={{ width: '100%' }}></div>
+  return (
+    <div
+      ref={containerRef}
+      id={WIDGET_CONTAINER_ID}
+      style={{
+        width: '100%',
+        flex: '1 0 auto',
+      }}
+    />
+  )
+}
+
+function areParamsHooksDifferent(prev: CowSwapWidgetParams, next: CowSwapWidgetParams): boolean {
+  const nextHooks = next.hooks ?? {}
+  const nextKeys = Object.keys(nextHooks)
+
+  const prevHooks = prev.hooks ?? {}
+  const prevKeys = Object.keys(prevHooks)
+
+  return (
+    nextKeys.some((_key) => {
+      const key = _key as keyof CowSwapWidgetParams['hooks']
+      return nextHooks[key] !== prevHooks[key]
+    }) ||
+    prevKeys.some((_key) => {
+      const key = _key as keyof CowSwapWidgetParams['hooks']
+      return nextHooks[key] !== prevHooks[key]
+    })
+  )
+}
+
+function createWidget({
+  container,
+  params,
+  provider,
+  listeners,
+  onReady,
+  onLoadingError,
+  enableSafeSdkBridge,
+}: CreateWidgetParams): CowSwapWidgetHandler {
+  return createCowSwapWidget(container, {
+    params,
+    provider,
+    listeners,
+    onReady,
+    enableSafeSdkBridge,
+    onLoadingError,
+  })
+}
+
+function useDestroyWidgetOnUnmount({
+  refs,
+  tryOrHandleError,
+}: {
+  refs: WidgetRefs
+  tryOrHandleError: TryOrHandleError
+}): void {
+  useEffect(() => {
+    return () => {
+      refs.paramsRef.current = null
+      refs.providerRef.current = undefined
+      refs.listenersRef.current = undefined
+      refs.enableSafeSdkBridgeRef.current = true
+
+      const handler = refs.widgetHandlerRef.current
+      if (handler) {
+        tryOrHandleError('Destroy widget', () => handler.destroy())
+        refs.widgetHandlerRef.current = null
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+}
+
+function WidgetError({ error }: { error: NonNullable<WidgetErrorState> }): JSX.Element {
+  return (
+    <div style={{ color: '#ff3a3a' }}>
+      {error.message}
+      {error.error.message && <pre style={{ whiteSpace: 'pre-wrap', fontSize: '0.75em' }}>{error.error.message}</pre>}
+    </div>
+  )
 }

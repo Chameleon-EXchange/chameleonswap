@@ -4,13 +4,15 @@ import { useIsUnsupportedToken } from './useIsUnsupportedToken'
 
 type NullishAddress = string | null | undefined
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function useAreUnsupportedTokens() {
   const isUnsupportedToken = useIsUnsupportedToken()
 
   return useCallback(
-    ({ sellToken, buyToken }: { sellToken: NullishAddress; buyToken: NullishAddress }) => {
-      return isUnsupportedToken(sellToken) || isUnsupportedToken(buyToken)
+    ({ sellTokenAddress, buyTokenAddress }: { sellTokenAddress: NullishAddress; buyTokenAddress: NullishAddress }) => {
+      return isUnsupportedToken(sellTokenAddress) || isUnsupportedToken(buyTokenAddress)
     },
-    [isUnsupportedToken]
+    [isUnsupportedToken],
   )
 }

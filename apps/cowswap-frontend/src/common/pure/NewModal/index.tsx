@@ -1,9 +1,9 @@
-import React, { useCallback } from 'react'
+import React, { ReactNode, useCallback } from 'react'
 
 import { Command } from '@cowprotocol/types'
 import { BackButton, Media, UI } from '@cowprotocol/ui'
 
-import CLOSE_ICON from 'assets/icon/x.svg'
+import iconXSrc from 'assets/icon/x.svg'
 import SVG from 'react-inlinesvg'
 import styled from 'styled-components/macro'
 
@@ -49,14 +49,14 @@ const Wrapper = styled.div<{
   }
 `
 
-const Heading = styled.h2<{ modalMode: boolean }>`
+const Heading = styled.h2<{ skipLeftPadding: boolean }>`
   display: flex;
   flex-flow: row wrap;
   justify-content: space-between;
   width: 100%;
   height: auto;
   margin: 0;
-  padding: ${({ modalMode }) => (modalMode ? '16px 20px 3px' : '16px 20px 3px 40px')};
+  padding: ${({ skipLeftPadding }) => (skipLeftPadding ? '16px 20px 3px' : '16px 20px 3px 40px')};
   font-size: var(${UI.FONT_SIZE_MEDIUM});
 
   ${Media.upToSmall()} {
@@ -106,7 +106,7 @@ const NewModalContent = styled.div<{ padding?: string; justifyContent?: string }
   h3 {
     width: 100%;
     font-size: var(${UI.FONT_SIZE_MEDIUM});
-    font-weight: var(${UI.FONT_WEIGHT_BOLD});
+    font-weight: var(${UI.FONT_WEIGHT_SEMIBOLD});
     text-align: left;
     line-height: 1.4;
     margin: 0 auto;
@@ -153,11 +153,12 @@ export interface NewModalProps {
   maxWidth?: number
   minHeight?: number
   contentPadding?: string
-  title?: string
+  title?: ReactNode
   onDismiss?: Command
   children?: React.ReactNode
   modalMode?: boolean
   justifyContent?: string
+  showBackButton?: boolean
 }
 
 export function NewModal({
@@ -169,19 +170,20 @@ export function NewModal({
   title,
   children,
   onDismiss,
-}: NewModalProps) {
+  showBackButton = true,
+}: NewModalProps): ReactNode {
   const onDismissCallback = useCallback(() => onDismiss?.(), [onDismiss])
 
   return (
     <Wrapper maxWidth={maxWidth} minHeight={minHeight} modalMode={modalMode}>
       <ModalInner>
-        {!modalMode && <BackButtonStyled onClick={onDismissCallback} />}
+        {!modalMode && showBackButton && <BackButtonStyled onClick={onDismissCallback} />}
         {title && (
-          <Heading modalMode={!!modalMode}>
+          <Heading skipLeftPadding={!!modalMode || !showBackButton}>
             {title}{' '}
             {modalMode && (
               <IconX onClick={onDismissCallback}>
-                <SVG src={CLOSE_ICON} />
+                <SVG src={iconXSrc} />
               </IconX>
             )}
           </Heading>

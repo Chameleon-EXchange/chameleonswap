@@ -1,14 +1,14 @@
 import { useEffect } from 'react'
 
-import { useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router'
 
 import { useNavigate } from 'common/hooks/useNavigate'
 
-import useIsAnySwapAffectedUser from './useIsAnySwapAffectedUser'
+import { useIsAnySwapAffectedUser } from './useIsAnySwapAffectedUser'
 
 const WARNING_PAGE = '/anyswap-affected-users'
 
-export default function RedirectAnySwapAffectedUsers() {
+export default function RedirectAnySwapAffectedUsers(): null {
   const navigate = useNavigate()
   const { pathname } = useLocation()
 
@@ -16,7 +16,6 @@ export default function RedirectAnySwapAffectedUsers() {
   const isAnySwapAffectedUser = useIsAnySwapAffectedUser()
 
   useEffect(() => {
-    // eslint-disable-next-line no-restricted-globals
     if (isAnySwapAffectedUser && location.pathname !== WARNING_PAGE) {
       // Redirect to warning page
       navigate(WARNING_PAGE)

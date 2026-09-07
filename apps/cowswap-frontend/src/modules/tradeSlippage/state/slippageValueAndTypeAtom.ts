@@ -1,17 +1,21 @@
 import { atom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
 
-import { DEFAULT_SLIPPAGE_BPS, MINIMUM_ETH_FLOW_SLIPPAGE_BPS } from '@cowprotocol/common-const'
-import { bpsToPercent } from '@cowprotocol/common-utils'
 import { mapSupportedNetworks } from '@cowprotocol/cow-sdk'
 import { PersistentStateByChain } from '@cowprotocol/types'
 import { walletInfoAtom } from '@cowprotocol/wallet'
 
-import { isEoaEthFlowAtom } from 'modules/trade'
+import { injectedWidgetParamsAtom } from 'entities/injectedWidget'
+
+import { isEoaEthFlowAtom, tradeTypeAtom } from 'modules/trade'
+
+import { TradeTypeToWidgetTradeTypeMap } from 'common/modules/tradeNavigation'
+
+import { resolveSlippageConfig } from '../utils/slippage'
+
+export type SlippageType = 'smart' | 'default' | 'user'
 
 type SlippageBpsPerNetwork = PersistentStateByChain<number>
-
-type SlippageType = 'smart' | 'default' | 'user'
 
 const normalTradeSlippageAtom = atomWithStorage<SlippageBpsPerNetwork>(
   'swapSlippageAtom:v0',
@@ -23,16 +27,24 @@ const ethFlowSlippageAtom = atomWithStorage<SlippageBpsPerNetwork>(
   mapSupportedNetworks(undefined),
 )
 
-export const smartTradeSlippageAtom = atom<number | null>(null)
+export const shouldUseAutoSlippageAtom = atom<boolean>(false)
 
-export const defaultSlippageAtom = atom((get) => {
-  const { chainId } = get(walletInfoAtom)
-  const isEoaEthFlow = get(isEoaEthFlowAtom)
-
-  return isEoaEthFlow ? (MINIMUM_ETH_FLOW_SLIPPAGE_BPS[chainId] ?? DEFAULT_SLIPPAGE_BPS) : DEFAULT_SLIPPAGE_BPS
+export const setShouldUseAutoSlippageAtom = atom(null, (_, set, isEnabled: boolean) => {
+  set(shouldUseAutoSlippageAtom, isEnabled)
 })
 
-const currentSlippageAtom = atom<number | null>((get) => {
+export const slippageConfigAtom = atom((get) => {
+  const injectedParams = get(injectedWidgetParamsAtom)
+  const isEoaEthFlow = get(isEoaEthFlowAtom)
+  const { chainId } = get(walletInfoAtom)
+  const trade = get(tradeTypeAtom)?.tradeType
+  const tradeType = trade ? TradeTypeToWidgetTradeTypeMap[trade] : undefined
+
+  const { slippage } = injectedParams.params
+  return resolveSlippageConfig(slippage, chainId, tradeType, isEoaEthFlow)
+})
+
+export const currentUserSlippageAtom = atom<number | null>((get) => {
   const { chainId } = get(walletInfoAtom)
   const isEoaEthFlow = get(isEoaEthFlowAtom)
   const normalSlippage = get(normalTradeSlippageAtom)
@@ -41,28 +53,7 @@ const currentSlippageAtom = atom<number | null>((get) => {
   return (isEoaEthFlow ? ethFlowSlippage : normalSlippage)?.[chainId] ?? null
 })
 
-export const slippageValueAndTypeAtom = atom<{ type: SlippageType; value: number }>((get) => {
-  const currentSlippage = get(currentSlippageAtom)
-  const defaultSlippage = get(defaultSlippageAtom)
-  const smartSlippage = get(smartTradeSlippageAtom)
-  const isEoaEthFlow = get(isEoaEthFlowAtom)
-
-  if (typeof currentSlippage === 'number') {
-    return { type: 'user', value: currentSlippage }
-  }
-
-  if (!isEoaEthFlow && smartSlippage && smartSlippage !== defaultSlippage) {
-    return { type: 'smart', value: smartSlippage }
-  }
-
-  return { type: 'default', value: defaultSlippage }
-})
-
-export const tradeSlippagePercentAtom = atom((get) => {
-  return bpsToPercent(get(slippageValueAndTypeAtom).value)
-})
-
-export const setTradeSlippageAtom = atom(null, (get, set, slippageBps: number | null) => {
+export const setUserSlippageAtom = atom(null, (get, set, slippageBps: number | null) => {
   const { chainId } = get(walletInfoAtom)
   const isEoaEthFlow = get(isEoaEthFlowAtom)
 

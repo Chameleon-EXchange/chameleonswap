@@ -1,17 +1,18 @@
-import React, { useCallback } from 'react'
+import { ReactNode, useCallback } from 'react'
 
-import cowNoConnectionIMG from '@cowprotocol/assets/cow-swap/cow-no-connection.png'
+import imgCowNoConnectionSrc from '@cowprotocol/assets/cow-swap/cow-no-connection.png'
 import { DISCORD_LINK } from '@cowprotocol/common-const'
-import { ButtonPrimary, MEDIA_WIDTHS } from '@cowprotocol/ui'
-import { AutoRow } from '@cowprotocol/ui'
-import { ExternalLink } from '@cowprotocol/ui'
+import { AutoRow, ButtonPrimary, ExternalLink, MEDIA_WIDTHS } from '@cowprotocol/ui'
 
-import { Trans } from '@lingui/macro'
+import { t } from '@lingui/core/macro'
+import { Trans } from '@lingui/react/macro'
 import styled from 'styled-components/macro'
 import { ThemedText } from 'theme'
 
 import { AutoColumn } from 'legacy/components/Column'
+import CopyHelper from 'legacy/components/Copy'
 
+// eslint-disable-next-line import/no-internal-modules -- Direct import to avoid circular dependency (barrel re-exports App which imports ErrorBoundary)
 import { Title } from 'modules/application/pure/Page'
 
 /**
@@ -20,8 +21,8 @@ import { Title } from 'modules/application/pure/Page'
  */
 let cowNoConnectionIMGCache: string | null = null
 
-function preloadNoConnectionImg() {
-  fetch(cowNoConnectionIMG)
+function preloadNoConnectionImg(): void {
+  fetch(imgCowNoConnectionSrc)
     .then((res) => res.blob())
     .then((blob) => {
       const reader = new FileReader()
@@ -36,6 +37,7 @@ function preloadNoConnectionImg() {
     .then((img) => {
       cowNoConnectionIMGCache = img
     })
+    .catch(() => {})
 }
 
 preloadNoConnectionImg()
@@ -85,7 +87,22 @@ const AutoRowWithGap = styled(AutoRow)`
   gap: 16px;
 `
 
-export const ChunkLoadError = () => {
+const IdText = styled(ThemedText.Main)`
+  opacity: 0.7;
+`
+
+const IdRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+`
+
+interface ChunkLoadErrorProps {
+  eventId: string
+}
+
+export const ChunkLoadError = ({ eventId }: ChunkLoadErrorProps): ReactNode => {
   const reloadPage = useCallback(() => {
     window.location.reload()
   }, [])
@@ -100,12 +117,22 @@ export const ChunkLoadError = () => {
       <AutoColumn gap={'md'}>
         <NoConnectionContainer>
           <NoConnectionDesc>
-            <p>Sorry, we were unable to load the requested page.</p>
             <p>
-              This could have happened due to the lack of internet or the release of a new version of the application.
+              <Trans>Sorry, we were unable to load the requested page.</Trans>
             </p>
+            <p>
+              <Trans>
+                This could have happened due to the lack of internet or the release of a new version of the application.
+              </Trans>
+            </p>
+            {eventId && (
+              <IdRow>
+                <IdText fontSize={14}>Event ID:</IdText>
+                <CopyHelper toCopy={eventId}>{eventId}</CopyHelper>
+              </IdRow>
+            )}
           </NoConnectionDesc>
-          {cowNoConnectionIMGCache && <NoConnectionImg src={cowNoConnectionIMGCache} alt="CowSwap no connection" />}
+          {cowNoConnectionIMGCache && <NoConnectionImg src={cowNoConnectionIMGCache} alt={t`CowSwap no connection`} />}
         </NoConnectionContainer>
         <AutoRowWithGap justify="center">
           <ButtonPrimary width="fit-content" onClick={reloadPage}>

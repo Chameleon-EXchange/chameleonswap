@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 
-import { Media } from '@cowprotocol/ui'
+import { Color, Media } from '@cowprotocol/ui'
 
 import { formatPrice, TokenErc20 } from '@gnosis.pm/dex-js'
 import BigNumber from 'bignumber.js'
@@ -10,7 +10,7 @@ import { format, fromUnixTime, startOfToday } from 'date-fns'
 import { Token } from 'hooks/useGetTokens'
 import { createChart, IChartApi } from 'lightweight-charts'
 import { useNetworkId } from 'state/network'
-import styled, { DefaultTheme, useTheme } from 'styled-components/macro'
+import styled, { useTheme } from 'styled-components/macro'
 
 import ShimmerBar from '../../../explorer/components/common/ShimmerBar'
 import { TextWithTooltip } from '../../../explorer/components/common/TextWithTooltip'
@@ -46,7 +46,7 @@ const TokenWrapper = styled.div`
 `
 
 const HeaderValue = styled.span<{ captionColor?: 'green' | 'red1' | 'grey' }>`
-  color: ${({ theme, captionColor }): string => (captionColor ? theme[captionColor] : theme.textPrimary1)};
+  color: ${({ theme, captionColor }): string => (captionColor ? theme[captionColor] : Color.neutral100)};
   ${Media.upToSmall()} {
     flex-wrap: wrap;
     text-align: end;
@@ -78,12 +78,7 @@ interface RowProps {
   token: Token
 }
 
-function _buildChart(
-  chartContainer: HTMLDivElement,
-  width: number | undefined,
-  height: number,
-  theme: DefaultTheme
-): IChartApi {
+function _buildChart(chartContainer: HTMLDivElement, width: number | undefined, height: number): IChartApi {
   return createChart(chartContainer, {
     width,
     height,
@@ -91,7 +86,7 @@ function _buildChart(
     handleScale: false,
     layout: {
       backgroundColor: 'transparent',
-      textColor: theme.textPrimary1,
+      textColor: Color.neutral100,
     },
     rightPriceScale: {
       scaleMargins: {
@@ -126,6 +121,9 @@ function _buildChart(
   })
 }
 
+// TODO: Break down this large function into smaller functions
+// TODO: Reduce function complexity by extracting logic
+// eslint-disable-next-line max-lines-per-function
 const RowToken: React.FC<RowProps> = ({ token, index }) => {
   const {
     id,
@@ -149,7 +147,7 @@ const RowToken: React.FC<RowProps> = ({ token, index }) => {
 
   useEffect(() => {
     if (!lastWeekUsdPrices || chartCreated || !chartContainerRef.current || !token) return
-    const chart = _buildChart(chartContainerRef.current, 100, 45, theme)
+    const chart = _buildChart(chartContainerRef.current, 100, 45)
 
     const color =
       lastWeekUsdPrices.length > 2
@@ -209,7 +207,7 @@ const RowToken: React.FC<RowProps> = ({ token, index }) => {
             captionColor={lastDayPricePercentageDifference ? getColorBySign(lastDayPricePercentageDifference) : 'grey'}
           >
             {lastDayPricePercentageDifference && lastDayPricePercentageDifference.toFixed(2)}%
-          </HeaderValue>
+          </HeaderValue>,
         )}
       </td>
       <td>
@@ -221,7 +219,7 @@ const RowToken: React.FC<RowProps> = ({ token, index }) => {
             }
           >
             {lastWeekPricePercentageDifference && lastWeekPricePercentageDifference.toFixed(2)}%
-          </HeaderValue>
+          </HeaderValue>,
         )}
       </td>
       <td>
@@ -249,7 +247,7 @@ const RowToken: React.FC<RowProps> = ({ token, index }) => {
             >
               ${lastDayUsdVolume && numberFormatter(lastDayUsdVolume)}
             </TextWithTooltip>
-          </HeaderValue>
+          </HeaderValue>,
         )}
       </td>
       <td>

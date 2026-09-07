@@ -1,28 +1,46 @@
-import { useEffect, useState } from 'react'
+import { ReactNode, useEffect, useState } from 'react'
 
-import { QuoteCountdownWrapper } from './styled'
+import { Trans } from '@lingui/react/macro'
+import ms from 'ms.macro'
 
-interface CountdownComponentProps {
-  nextUpdateAt: number
-}
+import { useTradeQuoteCounter } from 'modules/tradeQuote'
 
-export const QuoteCountdown = ({ nextUpdateAt }: CountdownComponentProps) => {
+import { QuoteCountdownWrapper, QuoteCountdownWrapperText, QuoteCountdownWrapperValue } from './styled'
+
+const ONE_SEC = ms`1s`
+
+export const QuoteCountdown = (): ReactNode => {
   const [blink, setBlink] = useState<boolean>(false)
+  const counter = useTradeQuoteCounter()
 
   useEffect(() => {
-    if (Math.ceil(nextUpdateAt / 1000) <= 1) {
+    if (counter === 0) {
       setBlink(true)
-      const timer = setTimeout(() => setBlink(false), 1000)
 
-      return () => clearTimeout(timer)
+      setTimeout(() => setBlink(false), ONE_SEC)
     }
 
     return
-  }, [nextUpdateAt])
+  }, [counter])
+
+  const value = counter / ONE_SEC
 
   return (
     <QuoteCountdownWrapper blink={blink}>
-      Quote refresh in <b>{Math.ceil(nextUpdateAt / 1000)} sec</b>
+      {value === 0 ? (
+        <QuoteCountdownWrapperText>
+          <Trans>Refreshing quote...</Trans>
+        </QuoteCountdownWrapperText>
+      ) : (
+        <>
+          <QuoteCountdownWrapperText>
+            <Trans>Quote refresh in</Trans>
+          </QuoteCountdownWrapperText>
+          <QuoteCountdownWrapperValue>
+            <Trans>{value} sec</Trans>
+          </QuoteCountdownWrapperValue>
+        </>
+      )}
     </QuoteCountdownWrapper>
   )
 }

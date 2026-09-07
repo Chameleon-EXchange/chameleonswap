@@ -1,12 +1,17 @@
-import { InlineBanner, InlineBannerProps } from '../../containers/InlineBanner'
+import { ReactNode } from 'react'
+
 import { ClosableBanner } from '../ClosableBanner'
+import { InlineBanner, InlineBannerProps } from '../InlineBanner'
 
 interface DismissableInlineBannerProps extends Omit<InlineBannerProps, 'onClose'> {
   bannerId: string
 }
 
-export function DismissableInlineBanner(props: DismissableInlineBannerProps) {
-  return ClosableBanner(props.bannerId, (onClose) => {
-    return <InlineBanner {...props} onClose={onClose} />
-  })
+export function DismissableInlineBanner(props: DismissableInlineBannerProps): ReactNode {
+  return (
+    <ClosableBanner
+      storageKey={props.bannerId}
+      // eslint-disable-next-line
+      callback={(close: () => void) => <InlineBanner {...props} onClose={close} />} />
+  )
 }

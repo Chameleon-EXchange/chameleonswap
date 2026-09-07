@@ -1,0 +1,30 @@
+import { useEffect, useRef } from 'react'
+
+import { useConnection } from 'wagmi'
+
+import { isSupportedChainId } from '@cowprotocol/common-utils'
+import { isEvmChain } from '@cowprotocol/cow-sdk'
+
+import { useLegacySetChainIdToUrl } from 'common/hooks/useLegacySetChainIdToUrl'
+
+/**
+ * Syncs the URL when the connected wallet changes chain externally (e.g. via MetaMask).
+ * Uses the raw provider chain from useConnection() to avoid the fallback logic in useWalletInfo()
+ * that masks unsupported chains with the URL chain.
+ */
+export function WalletChainUrlSyncUpdater(): null {
+  const { chainId, isConnected } = useConnection()
+  const setChainIdToUrl = useLegacySetChainIdToUrl()
+  const prevChainIdRef = useRef(chainId)
+
+  useEffect(() => {
+    // Only sync supported chains from a connected wallet
+    // Currently we only support network switching without reconnecting between EVM chains
+    if (isConnected && isSupportedChainId(chainId) && isEvmChain(chainId) && chainId !== prevChainIdRef.current) {
+      setChainIdToUrl(chainId)
+    }
+    prevChainIdRef.current = chainId
+  }, [isConnected, chainId, setChainIdToUrl])
+
+  return null
+}

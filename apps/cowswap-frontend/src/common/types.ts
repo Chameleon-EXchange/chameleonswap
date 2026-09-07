@@ -1,4 +1,8 @@
-import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
+import type { Currency, CurrencyAmount } from '@cowprotocol/currency'
+
+import type { Order } from 'legacy/state/orders/actions'
+
+import type { ParsedOrder } from 'utils/orderUtils/parseOrder'
 
 /**
  * https://github.com/rndlabs/composable-cow/blob/main/src/ComposableCoW.sol
@@ -6,19 +10,23 @@ import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
  *
  * id - this parameter is specified when it's a conditional (parent) order
  * parentId - this parameter is specified when it's a discrete (child) order
+ * twapOrderHash - on-chain hash used to remove an indexed EOA TWAP order
  */
 export type ComposableCowInfo = {
   id?: string
   parentId?: string
+  twapOrderHash?: string
   isVirtualPart?: boolean
   isTheLastPart?: boolean
 }
+
+export type GenericOrder = Order | ParsedOrder
 
 export type SafeTransactionParams = {
   submissionDate: string
   executionDate: string | null
   isExecuted: boolean
-  nonce: number
+  nonce: string
   confirmationsRequired: number
   confirmations: number
   safeTxHash: string

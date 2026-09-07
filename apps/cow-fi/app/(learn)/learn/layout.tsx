@@ -1,6 +1,10 @@
+import type { ReactNode } from 'react'
+
 import { Metadata } from 'next'
-import { getPageMetadata } from '@/util/getPageMetadata'
+
+import { ContentDisclaimer } from '@/components/ContentDisclaimer'
 import { CONFIG } from '@/const/meta'
+import { getPageMetadata } from '@/util/getPageMetadata'
 
 const title = 'Knowledge Base - CoW DAO'
 
@@ -15,6 +19,11 @@ export const metadata: Metadata = {
   },
 }
 
-export default function LayoutPage({ children }: { children: React.ReactNode }) {
-  return children
+export default function LayoutPage({ children }: { children: ReactNode }): ReactNode {
+  return (
+    <>
+      {children}
+      <ContentDisclaimer />
+    </>
+  )
 }

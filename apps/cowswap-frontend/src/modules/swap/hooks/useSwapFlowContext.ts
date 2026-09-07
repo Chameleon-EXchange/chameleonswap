@@ -1,10 +1,9 @@
-import { useUserTransactionTTL } from 'legacy/state/user/hooks'
+import { TradeFlowContext, useTradeFlowContext } from 'modules/tradeFlow'
 
-import { useTradeFlowContext } from 'modules/tradeFlow'
+import { useSwapDeadlineState } from './useSwapSettings'
 
-import { useSafeMemoObject } from 'common/hooks/useSafeMemo'
+export function useSwapFlowContext(): TradeFlowContext | null {
+  const [deadline] = useSwapDeadlineState()
 
-export function useSwapFlowContext() {
-  const [deadline] = useUserTransactionTTL()
-  return useTradeFlowContext(useSafeMemoObject({ deadline }))
+  return useTradeFlowContext({ deadline })
 }

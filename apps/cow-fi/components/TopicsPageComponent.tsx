@@ -1,5 +1,15 @@
 'use client'
 
+import { useCowAnalytics } from '@cowprotocol/analytics'
+import { UI, Media } from '@cowprotocol/ui'
+
+import { CowFiCategory } from 'src/common/analytics/types'
+import styled from 'styled-components/macro'
+
+import { ArticleListResponse } from '../services/cms'
+
+import { ArrowButton } from '@/components/ArrowButton'
+import { CmsImage } from '@/components/CmsImage'
 import { SearchBar } from '@/components/SearchBar'
 import {
   ContainerCard,
@@ -12,11 +22,6 @@ import {
   TopicList,
   TopicTitle,
 } from '@/styles/styled'
-import { ArrowButton } from '@/components/ArrowButton'
-import { clickOnKnowledgeBase } from '../modules/analytics'
-import { CmsImage, Color, Font, Media } from '@cowprotocol/ui'
-import { ArticleListResponse } from '../services/cms'
-import styled from 'styled-components/macro'
 
 interface PageProps {
   categories: {
@@ -44,8 +49,8 @@ const Wrapper = styled.div`
 
   h1 {
     font-size: 28px;
-    font-weight: ${Font.weight.medium};
-    color: ${Color.neutral50};
+    font-weight: var(${UI.FONT_WEIGHT_MEDIUM});
+    color: var(${UI.COLOR_NEUTRAL_50});
     text-align: center;
 
     ${Media.upToMedium()} {
@@ -63,13 +68,15 @@ const Wrapper = styled.div`
   }
 `
 
-export function TopicsPageComponent({ articles, categories }: PageProps) {
+export function TopicsPageComponent({ categories }: PageProps) {
+  const analytics = useCowAnalytics()
+
   return (
     <Wrapper>
       <h1>Knowledge Base</h1>
       <h2>All Topics</h2>
 
-      <SearchBar articles={articles || []} />
+      <SearchBar />
 
       <ContainerCard touchFooter>
         <ContainerCardInner maxWidth={970} gap={24} gapMobile={24}>
@@ -85,7 +92,13 @@ export function TopicsPageComponent({ articles, categories }: PageProps) {
                   bgColor={bgColor}
                   textColor={textColor}
                   href={link}
-                  onClick={() => clickOnKnowledgeBase(`click-topic-${name}`)}
+                  onClick={() =>
+                    analytics.sendEvent({
+                      category: CowFiCategory.KNOWLEDGEBASE,
+                      action: 'Click topic',
+                      label: name,
+                    })
+                  }
                 >
                   <TopicImage iconColor={iconColor}>
                     {imageUrl ? (

@@ -1,6 +1,6 @@
-import { COW } from '@cowprotocol/common-const'
+import { COW_TOKEN_TO_CHAIN } from '@cowprotocol/common-const'
 import { SupportedChainId } from '@cowprotocol/cow-sdk'
-import { CurrencyAmount, Percent } from '@uniswap/sdk-core'
+import { CurrencyAmount, Percent } from '@cowprotocol/currency'
 
 import { inputCurrencyInfoMock } from 'mocks/tradeStateMock'
 
@@ -9,15 +9,17 @@ import { Field } from 'legacy/state/types'
 
 import { CurrencyInputPanelProps } from 'common/pure/CurrencyInputPanel/index'
 
-const currency = COW[SupportedChainId.MAINNET]
-const balance = CurrencyAmount.fromRawAmount(currency, 250 * 10 ** 18)
+const currency = COW_TOKEN_TO_CHAIN[SupportedChainId.MAINNET]
+const balance = currency ? CurrencyAmount.fromRawAmount(currency, 250 * 10 ** 18) : null
 
 export const defaultCurrencyInputPanelProps: CurrencyInputPanelProps & { priceImpactParams: PriceImpact } = {
   chainId: 100,
   id: 'currency-panel',
   areCurrenciesLoading: false,
   bothCurrenciesSet: true,
-  isChainIdUnsupported: false,
+  isProviderNetworkUnsupported: false,
+  isProviderNetworkDeprecated: false,
+  isBridging: false,
   showSetMax: true,
   allowsOffchainSigning: true,
   currencyInfo: {
@@ -26,8 +28,8 @@ export const defaultCurrencyInputPanelProps: CurrencyInputPanelProps & { priceIm
     receiveAmountInfo: inputCurrencyInfoMock.receiveAmountInfo,
     currency,
     balance,
-    amount: CurrencyAmount.fromRawAmount(currency, 20 * 10 ** 18),
-    fiatAmount: CurrencyAmount.fromRawAmount(currency, 12 * 10 ** 18),
+    amount: currency ? CurrencyAmount.fromRawAmount(currency, 20 * 10 ** 18) : null,
+    fiatAmount: currency ? CurrencyAmount.fromRawAmount(currency, 12 * 10 ** 18) : null,
   },
   openTokenSelectWidget() {
     /**/
@@ -47,6 +49,6 @@ export const defaultCurrencyInputPanelProps: CurrencyInputPanelProps & { priceIm
       tier: 2,
       discount: 10,
     },
-    balance,
+    balance: balance ?? undefined,
   },
 }

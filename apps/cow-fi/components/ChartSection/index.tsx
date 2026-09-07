@@ -1,42 +1,56 @@
-import { ChartContainer, LoadingChart } from '../Chart/LoadingChart'
-import { Chart, TimePeriod } from '../Chart'
-import { ParentSize } from '@visx/responsive'
+import type { JSX } from 'react'
 import { useMemo } from 'react'
+
 import { useQuery } from '@apollo/client'
+import { ParentSize } from '@visx/responsive'
 import { tokenPriceQuery, HistoryDuration, Chain } from 'services/uniswap-price/queries'
-import { usePriceHistory } from 'lib/hooks/usePriceHistory'
-import { fixChart } from 'util/fixChart'
 import { Platforms } from 'types'
+
+import { fixChart } from 'util/fixChart'
+
+import { usePriceHistory } from 'lib/hooks/usePriceHistory'
+
+import { Chart, TimePeriod } from '../Chart'
+import { ChartContainer, LoadingChart } from '../Chart/LoadingChart'
 
 type ChartSectionProps = {
   platforms: Platforms
 }
 
-export function ChartSection({ platforms }: ChartSectionProps) {
-  const queryVariables = useMemo(() => {
-    const output: any = { duration: HistoryDuration.Day }
+type QueryVars = {
+  duration: HistoryDuration
+  chain: Chain
+  address: string
+}
 
-    if (platforms.ethereum.contractAddress) {
-      output.chain = Chain.Ethereum
-      output.address = platforms.ethereum.contractAddress
-      return output
+export function ChartSection({ platforms }: ChartSectionProps): JSX.Element {
+  const ethereumAddress = platforms.ethereum?.contractAddress
+
+  const queryVariables = useMemo<QueryVars | undefined>(() => {
+    if (!ethereumAddress) {
+      return undefined
     }
 
-    return null
-  }, [platforms.ethereum.contractAddress])
+    return {
+      duration: HistoryDuration.Day,
+      chain: Chain.Ethereum,
+      address: ethereumAddress,
+    }
+  }, [ethereumAddress])
 
   const { data, loading } = useQuery(tokenPriceQuery, {
-    variables: { ...queryVariables },
+    variables: queryVariables,
+    skip: !queryVariables,
   })
 
   const originalPrices = usePriceHistory(data)
 
   const { prices } = useMemo(
     () => (originalPrices && originalPrices.length > 0 ? fixChart(originalPrices) : { prices: null, blanks: [] }),
-    [originalPrices]
+    [originalPrices],
   )
 
-  if (loading) {
+  if (loading || !prices) {
     return <LoadingChart />
   }
 

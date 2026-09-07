@@ -1,29 +1,51 @@
-import { BalancesAndAllowancesUpdater } from '@cowprotocol/balances-and-allowances'
+import { useAtomValue } from 'jotai'
+import { ReactNode } from 'react'
+
 import { useFeatureFlags } from '@cowprotocol/common-hooks'
-import { TokensListsUpdater, UnsupportedTokensUpdater, WidgetTokensListsUpdater } from '@cowprotocol/tokens'
-import { HwAccountIndexUpdater, useWalletInfo, WalletUpdater } from '@cowprotocol/wallet'
+import {
+  RestrictedTokensListUpdater,
+  TokensListsTagsUpdater,
+  TokensListsUpdater,
+  UnsupportedTokensUpdater,
+} from '@cowprotocol/tokens'
+import { useWalletInfo, WalletUpdater, WidgetSafeApp, WidgetStandaloneModeUpdater } from '@cowprotocol/wallet'
 
-import { GasPriceStrategyUpdater } from 'legacy/state/gas/gas-price-strategy-updater'
+import { CowSdkUpdater } from 'cowSdk'
+import { useBalancesContext } from 'entities/balancesContext/useBalancesContext'
+import { BlockNumberUpdater } from 'entities/blockchain'
+import { BridgeOrdersCleanUpdater } from 'entities/bridgeOrders'
+import { BridgeProvidersUpdater, useBridgeSupportedNetworks } from 'entities/bridgeProvider'
+import { CorrelatedTokensUpdater } from 'entities/correlatedTokens'
+import { useInjectedWidgetParams } from 'entities/injectedWidget'
+import { ThemeConfigUpdater } from 'theme/ThemeConfigUpdater'
+import { TradingSdkUpdater } from 'tradingSdk/TradingSdkUpdater'
 
-import { addListAnalytics, removeListAnalytics } from 'modules/analytics'
-import { UploadToIpfsUpdater } from 'modules/appData/updater/UploadToIpfsUpdater'
-import { BalancesCombinedUpdater } from 'modules/combinedBalances/updater/BalancesCombinedUpdater'
-import { CowEventsUpdater, InjectedWidgetUpdater, useInjectedWidgetParams } from 'modules/injectedWidget'
+import { BalancesDevtools, CommonPriorityBalancesAndAllowancesUpdater } from 'modules/balancesAndAllowances'
+import { PendingBridgeOrdersUpdater, BridgingEnabledUpdater } from 'modules/bridge'
+import { BalancesCombinedUpdater } from 'modules/combinedBalances'
+import { InFlightOrderFinalizeUpdater } from 'modules/ethFlow'
+import { CowEventsUpdater, InjectedWidgetUpdater } from 'modules/injectedWidget'
 import { FinalizeTxUpdater } from 'modules/onchainTransactions'
+import {
+  OrderProgressEventsUpdater,
+  OrderProgressStateUpdater,
+  ProgressBarExecutingOrdersUpdater,
+} from 'modules/orderProgressBar'
 import { OrdersNotificationsUpdater } from 'modules/orders'
+import { TradeOrdersPermitUpdater } from 'modules/ordersTable'
 import { ReferralUpdater } from 'modules/referral/updaters/ReferralUpdater'
-import { EthFlowDeadlineUpdater } from 'modules/swap/state/EthFlow/updaters'
-import { useOnTokenListAddingError } from 'modules/tokensList'
-import { TradeType, useTradeTypeInfo } from 'modules/trade'
+import { GeoDataUpdater } from 'modules/rwa'
+import { BlockedListSourcesUpdater, RecentTokensStorageUpdater, useSourceChainId } from 'modules/tokensList'
+import { useTradeTypeInfo } from 'modules/trade'
+import { eoaTwapOrdersEffectAtom } from 'modules/twap'
 import { UsdPricesUpdater } from 'modules/usdAmount'
-import { CorrelatedTokensUpdater } from 'modules/volumeFee'
-import { LpTokensWithBalancesUpdater, PoolsInfoUpdater, VampireAttackUpdater } from 'modules/yield/shared'
+import { LpTokensWithBalancesUpdater, PoolsInfoUpdater, VampireAttackUpdater } from 'modules/yield'
 
-import { ProgressBarV2ExecutingOrdersUpdater } from 'common/hooks/orderProgressBarV2'
-import { TotalSurplusUpdater } from 'common/state/totalSurplusState'
+import { TradeType } from 'common/modules/tradeNavigation'
+import { SurplusInvalidationListenerUpdater } from 'common/state/totalSurplusState'
 import { AnnouncementsUpdater } from 'common/updaters/AnnouncementsUpdater'
+import { ConnectionStatusUpdater } from 'common/updaters/ConnectionStatusUpdater'
 import { FeatureFlagsUpdater } from 'common/updaters/FeatureFlagsUpdater'
-import { FeesUpdater } from 'common/updaters/FeesUpdater'
 import { GasUpdater } from 'common/updaters/GasUpdater'
 import { LpBalancesAndAllowancesUpdater } from 'common/updaters/LpBalancesAndAllowancesUpdater'
 import {
@@ -31,73 +53,101 @@ import {
   ExpiredOrdersUpdater,
   OrdersFromApiUpdater,
   PendingOrdersUpdater,
-  UnfillableOrdersUpdater,
 } from 'common/updaters/orders'
 import { SpotPricesUpdater } from 'common/updaters/orders/SpotPricesUpdater'
+import { LastTimePriceUpdateResetUpdater } from 'common/updaters/orders/UnfillableOrdersUpdater'
+import { ProviderNetworkSupportedUpdater } from 'common/updaters/ProviderNetworkSupportedUpdater'
 import { SentryUpdater } from 'common/updaters/SentryUpdater'
 import { SolversInfoUpdater } from 'common/updaters/SolversInfoUpdater'
+import { ThemeFromUrlUpdater } from 'common/updaters/ThemeFromUrlUpdater'
 import { UserUpdater } from 'common/updaters/UserUpdater'
+import { WalletChainUrlSyncUpdater } from 'common/updaters/WalletChainUrlSyncUpdater'
+import { WalletSessionDurationUpdater } from 'common/updaters/WalletSessionDurationUpdater'
+import { WidgetTokensUpdater } from 'common/updaters/WidgetTokensUpdater'
 
-export function Updaters() {
-  const { chainId, account } = useWalletInfo()
-  const { tokenLists, appCode, customTokens, standaloneMode } = useInjectedWidgetParams()
-  const onTokenListAddingError = useOnTokenListAddingError()
-  const { isGeoBlockEnabled, isYieldEnabled } = useFeatureFlags()
+import { FaviconAnimationUpdater } from './FaviconAnimationUpdater'
+
+export function Updaters(): ReactNode {
+  useAtomValue(eoaTwapOrdersEffectAtom)
+
+  const { account } = useWalletInfo()
+  const { isGeoBlockEnabled, isYieldEnabled, isRwaGeoblockEnabled } = useFeatureFlags()
   const tradeTypeInfo = useTradeTypeInfo()
   const isYieldWidget = tradeTypeInfo?.tradeType === TradeType.YIELD
+  const { chainId: sourceChainId } = useSourceChainId()
+  const bridgeNetworkInfo = useBridgeSupportedNetworks()
+  const balancesContext = useBalancesContext()
+  const { standaloneMode } = useInjectedWidgetParams()
+  const balancesAccount = balancesContext.account || account
 
   return (
     <>
+      <CowSdkUpdater />
+      <BlockNumberUpdater />
       <FeatureFlagsUpdater />
-      <WalletUpdater standaloneMode={standaloneMode} />
-      <HwAccountIndexUpdater />
+      <BridgeProvidersUpdater />
+      <ThemeConfigUpdater />
+      <ThemeFromUrlUpdater />
+      <ConnectionStatusUpdater />
+      <TradingSdkUpdater />
+      <WalletUpdater />
+      <WalletChainUrlSyncUpdater />
       <UserUpdater />
       <FinalizeTxUpdater />
-      {/*<CancelReplaceTxUpdater />*/}
       <PendingOrdersUpdater />
       <CancelledOrdersUpdater />
       <ExpiredOrdersUpdater />
-      <FeesUpdater />
-      <UnfillableOrdersUpdater />
       <OrdersFromApiUpdater />
       <GasUpdater />
-      <GasPriceStrategyUpdater />
       <SentryUpdater />
-      <UploadToIpfsUpdater />
-      <EthFlowDeadlineUpdater />
+      <WalletSessionDurationUpdater />
+      <InFlightOrderFinalizeUpdater />
       <SpotPricesUpdater />
       <InjectedWidgetUpdater />
+      <WidgetStandaloneModeUpdater standaloneMode={standaloneMode} />
+      <WidgetSafeApp />
       <CowEventsUpdater />
-      <TotalSurplusUpdater />
       <UsdPricesUpdater />
       <OrdersNotificationsUpdater />
-      <ProgressBarV2ExecutingOrdersUpdater />
+      <OrderProgressStateUpdater />
+      <ProgressBarExecutingOrdersUpdater />
+      <OrderProgressEventsUpdater />
       <SolversInfoUpdater />
       <AnnouncementsUpdater />
+      <SurplusInvalidationListenerUpdater />
+      <BridgingEnabledUpdater />
+      <FaviconAnimationUpdater />
+      <ProviderNetworkSupportedUpdater />
+      <TradeOrdersPermitUpdater />
       <ReferralUpdater />
 
       <TokensListsUpdater
-        chainId={chainId}
+        chainId={sourceChainId}
         isGeoBlockEnabled={isGeoBlockEnabled}
         enableLpTokensByDefault={isYieldWidget}
         isYieldEnabled={isYieldEnabled}
+        bridgeNetworkInfo={bridgeNetworkInfo?.data}
       />
-      <WidgetTokensListsUpdater
-        tokenLists={tokenLists}
-        customTokens={customTokens}
-        appCode={appCode}
-        onTokenListAddingError={onTokenListAddingError}
-        onAddList={(source) => addListAnalytics('Success', source)}
-        onRemoveList={(source) => removeListAnalytics('Confirm', source)}
-      />
+      <RestrictedTokensListUpdater isRwaGeoblockEnabled={!!isRwaGeoblockEnabled} />
+      <BlockedListSourcesUpdater />
+      <RecentTokensStorageUpdater />
+      <GeoDataUpdater />
+      <TokensListsTagsUpdater />
+
+      <WidgetTokensUpdater />
+
       <UnsupportedTokensUpdater />
-      <BalancesAndAllowancesUpdater chainId={chainId} account={account} />
-      <LpBalancesAndAllowancesUpdater chainId={chainId} account={account} enablePolling={isYieldWidget} />
+      <CommonPriorityBalancesAndAllowancesUpdater />
+      <LpBalancesAndAllowancesUpdater chainId={sourceChainId} account={balancesAccount} enablePolling={isYieldWidget} />
       <PoolsInfoUpdater />
       <LpTokensWithBalancesUpdater />
       <VampireAttackUpdater />
       <BalancesCombinedUpdater />
+      <BalancesDevtools />
       <CorrelatedTokensUpdater />
+      <BridgeOrdersCleanUpdater />
+      <PendingBridgeOrdersUpdater />
+      <LastTimePriceUpdateResetUpdater />
     </>
   )
 }

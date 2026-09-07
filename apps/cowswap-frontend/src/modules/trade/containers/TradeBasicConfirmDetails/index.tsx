@@ -1,15 +1,14 @@
 import { ReactNode, useMemo, useState } from 'react'
 
-import { FractionUtils } from '@cowprotocol/common-utils'
+import { Percent } from '@cowprotocol/currency'
 import { PercentDisplay } from '@cowprotocol/ui'
-import { Percent, Price } from '@uniswap/sdk-core'
 
+import { t } from '@lingui/core/macro'
 import { Nullish } from 'types'
 
 import { useUsdAmount } from 'modules/usdAmount'
-import { useVolumeFeeTooltip } from 'modules/volumeFee'
 
-import { RateInfoParams } from 'common/pure/RateInfo'
+import { RateInfoParams, RateInfo } from 'common/pure/RateInfo'
 
 import { LimitPriceRow } from './LimitPriceRow'
 import * as styledEl from './styled'
@@ -18,21 +17,9 @@ import { RecipientRow } from '../../pure/RecipientRow'
 import { ReviewOrderModalAmountRow } from '../../pure/ReviewOrderModalAmountRow'
 import { DividerHorizontal } from '../../pure/Row/styled'
 import { ReceiveAmountInfo } from '../../types'
-import { getOrderTypeReceiveAmounts } from '../../utils/getReceiveAmountInfo'
+import { getLimitPriceFromReceiveAmount } from '../../utils/getLimitPriceFromReceiveAmount'
+import { getOrderTypeReceiveAmounts } from '../../utils/getOrderTypeReceiveAmounts'
 import { TradeFeesAndCosts } from '../TradeFeesAndCosts'
-
-type Props = {
-  receiveAmountInfo: ReceiveAmountInfo
-  rateInfoParams: RateInfoParams
-  slippage: Percent
-  labelsAndTooltips?: LabelsAndTooltips
-  children?: ReactNode
-  recipient?: Nullish<string>
-  account: Nullish<string>
-  hideLimitPrice?: boolean
-  hideUsdValues?: boolean
-  withTimelineDot?: boolean
-}
 
 type LabelsAndTooltips = {
   priceLabel?: ReactNode
@@ -47,7 +34,21 @@ type LabelsAndTooltips = {
   networkCostsTooltipSuffix?: ReactNode
 }
 
-export function TradeBasicConfirmDetails(props: Props) {
+type Props = {
+  receiveAmountInfo: ReceiveAmountInfo
+  rateInfoParams: RateInfoParams
+  slippage: Percent
+  labelsAndTooltips?: LabelsAndTooltips
+  children?: ReactNode
+  recipient: Nullish<string>
+  recipientAddress: Nullish<string>
+  account: Nullish<string>
+  hideLimitPrice?: boolean
+  hideUsdValues?: boolean
+  withTimelineDot?: boolean
+}
+
+export function TradeBasicConfirmDetails(props: Props): ReactNode {
   const {
     rateInfoParams,
     slippage,
@@ -57,73 +58,52 @@ export function TradeBasicConfirmDetails(props: Props) {
     hideUsdValues,
     withTimelineDot = true,
     children,
-    recipient,
-    account,
   } = props
   const isInvertedState = useState(false)
-  const volumeFeeTooltip = useVolumeFeeTooltip()
   const { amountAfterFees, amountAfterSlippage } = getOrderTypeReceiveAmounts(receiveAmountInfo)
   const { networkCostsSuffix, networkCostsTooltipSuffix } = labelsAndTooltips || {}
 
-  const priceLabel = labelsAndTooltips?.priceLabel || 'Price'
-  const minReceivedLabel = labelsAndTooltips?.minReceivedLabel || 'Min received (incl. costs)'
-  const expectReceiveLabel = labelsAndTooltips?.expectReceiveLabel || 'Expected to receive'
-  const minReceivedTooltip =
-    labelsAndTooltips?.minReceivedTooltip || 'This is the minimum amount that you will receive.'
-  const slippageTooltip = labelsAndTooltips?.slippageTooltip
-  const slippageLabel = labelsAndTooltips?.slippageLabel || 'Slippage tolerance'
+  const { priceLabel, minReceivedLabel, expectReceiveLabel, minReceivedTooltip, slippageTooltip, slippageLabel } =
+    getLabelsAndTooltipsWithDefaults(labelsAndTooltips)
 
   const amountAfterSlippageUsd = useUsdAmount(hideUsdValues ? null : amountAfterSlippage).value
   const amountAfterFeesUsd = useUsdAmount(hideUsdValues ? null : amountAfterFees).value
 
   // Limit price is the same for all parts
-  const limitPrice = useMemo(() => {
-    const { afterNetworkCosts, afterSlippage } = receiveAmountInfo
-
-    const quoteAmount = FractionUtils.amountToAtLeastOneWei(afterSlippage.buyAmount)
-
-    if (!quoteAmount) return null
-
-    return new Price({
-      quoteAmount,
-      baseAmount: afterNetworkCosts.sellAmount,
-    })
-  }, [receiveAmountInfo])
+  const limitPrice = useMemo(() => getLimitPriceFromReceiveAmount(receiveAmountInfo), [receiveAmountInfo])
 
   return (
     <styledEl.Wrapper>
       {/* Price */}
-      <styledEl.StyledRateInfo
-        label={priceLabel}
-        stylized={true}
-        rateInfoParams={rateInfoParams}
-        isInvertedState={isInvertedState}
-      />
-
+      <styledEl.RateInfoWrapper>
+        <RateInfo
+          stylized
+          label={priceLabel}
+          rateInfoParams={rateInfoParams}
+          isInvertedState={isInvertedState}
+          fontBold
+          fontSize={13}
+        />
+      </styledEl.RateInfoWrapper>
       <TradeFeesAndCosts
         receiveAmountInfo={receiveAmountInfo}
         withTimelineDot={withTimelineDot}
         networkCostsSuffix={networkCostsSuffix}
         networkCostsTooltipSuffix={networkCostsTooltipSuffix}
-        volumeFeeTooltip={volumeFeeTooltip}
       />
-
       <ReviewOrderModalAmountRow
-        highlighted={true}
+        highlighted
         amount={amountAfterFees}
         fiatAmount={amountAfterFeesUsd}
         label={expectReceiveLabel}
       />
-
       <DividerHorizontal />
-
       {/* Slippage */}
       {
         <ReviewOrderModalAmountRow withTimelineDot={withTimelineDot} tooltip={slippageTooltip} label={slippageLabel}>
           <PercentDisplay percent={slippage.toFixed(2)} />
         </ReviewOrderModalAmountRow>
       }
-
       {/* Min received */}
       <ReviewOrderModalAmountRow
         highlighted={true}
@@ -132,7 +112,6 @@ export function TradeBasicConfirmDetails(props: Props) {
         tooltip={minReceivedTooltip}
         label={minReceivedLabel}
       />
-
       {/* Limit Price */}
       {!hideLimitPrice && (
         <LimitPriceRow
@@ -142,10 +121,32 @@ export function TradeBasicConfirmDetails(props: Props) {
           limitPriceLabel={labelsAndTooltips?.limitPriceLabel}
         />
       )}
-
       {/*Recipient*/}
-      <RecipientRow chainId={rateInfoParams.chainId} recipient={recipient} account={account} />
+      <RecipientRow
+        chainId={rateInfoParams.chainId}
+        recipient={props.recipient}
+        recipientAddress={props.recipientAddress}
+        account={props.account}
+      />
       {children}
     </styledEl.Wrapper>
   )
+}
+
+function getLabelsAndTooltipsWithDefaults(labelsAndTooltips: LabelsAndTooltips | undefined): LabelsAndTooltips {
+  const priceLabel = labelsAndTooltips?.priceLabel || t`Price`
+  const minReceivedLabel = labelsAndTooltips?.minReceivedLabel || t`Min received (incl. costs)`
+  const expectReceiveLabel = labelsAndTooltips?.expectReceiveLabel || t`Expected to receive`
+  const minReceivedTooltip =
+    labelsAndTooltips?.minReceivedTooltip || t`This is the minimum amount that you will receive.`
+  const slippageLabel = labelsAndTooltips?.slippageLabel || t`Slippage tolerance`
+
+  return {
+    ...labelsAndTooltips,
+    priceLabel,
+    minReceivedLabel,
+    expectReceiveLabel,
+    minReceivedTooltip,
+    slippageLabel,
+  }
 }

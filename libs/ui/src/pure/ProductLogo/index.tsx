@@ -1,27 +1,41 @@
+import { ReactNode } from 'react'
+
 import LOGO_CHAMELEONSWAP from '@cowprotocol/assets/images/Chameleon Swap header.svg'
-import LOGO_COWAMM from '@cowprotocol/assets/images/logo-cowamm.svg'
-import LOGO_COWDAO from '@cowprotocol/assets/images/logo-cowdao.svg'
-import LOGO_COWEXPLORER from '@cowprotocol/assets/images/logo-cowexplorer.svg'
-import LOGO_COWPROTOCOL from '@cowprotocol/assets/images/logo-cowprotocol.svg'
-import LOGO_COWSWAP_CHRISTMAS_DARK from '@cowprotocol/assets/images/logo-cowswap-christmas-dark.svg'
-import LOGO_COWSWAP_CHRISTMAS from '@cowprotocol/assets/images/logo-cowswap-christmas-light.svg'
-import LOGO_COWSWAP_HALLOWEEN from '@cowprotocol/assets/images/logo-cowswap-halloween.svg'
-import LOGO_COWSWAP from '@cowprotocol/assets/images/logo-cowswap.svg'
-import LOGO_ICON_COW from '@cowprotocol/assets/images/logo-icon-cow.svg'
-import LOGO_ICON_MEVBLOCKER from '@cowprotocol/assets/images/logo-icon-mevblocker.svg'
-import LOGO_MEVBLOCKER from '@cowprotocol/assets/images/logo-mevblocker.svg'
 import LOGO_ICON_CHAMELEON from '@cowprotocol/assets/images/logo_icon_chameleonswap.svg'
+import svgCowammSrc from '@cowprotocol/assets/images/logo-cowamm.svg'
+import svgCowdaoSrc from '@cowprotocol/assets/images/logo-cowdao.svg'
+import svgCowexplorerSrc from '@cowprotocol/assets/images/logo-cowexplorer.svg'
+import svgCowprotocolSrc from '@cowprotocol/assets/images/logo-cowprotocol.svg'
+import svgCowswapChristmasDarkSrc from '@cowprotocol/assets/images/logo-cowswap-christmas-dark.svg'
+import svgCowswapChristmasLightSrc from '@cowprotocol/assets/images/logo-cowswap-christmas-light.svg'
+import svgCowswapHalloweenSrc from '@cowprotocol/assets/images/logo-cowswap-halloween.svg'
+import svgCowswapSrc from '@cowprotocol/assets/images/logo-cowswap.svg'
+import svgCowwidgetSrc from '@cowprotocol/assets/images/logo-cowwidget.svg'
+import iconCowSrc from '@cowprotocol/assets/images/logo-icon-cow.svg'
+import iconMevblockerSrc from '@cowprotocol/assets/images/logo-icon-mevblocker.svg'
+import svgMevblockerSrc from '@cowprotocol/assets/images/logo-mevblocker.svg'
 import { useTheme } from '@cowprotocol/common-hooks'
+import { toPixelValue } from '@cowprotocol/ui-utils'
 
 import SVG from 'react-inlinesvg'
 import styled from 'styled-components/macro'
 
+import { Color } from '../../colors'
 import { Media } from '../../consts'
-import { Color } from '../../consts'
 import { CowSwapTheme } from '../../types'
+
+export type ThemedLogo = Partial<Record<CowSwapTheme, { default: LogoInfo; logoIconOnly?: LogoInfo }>> & {
+  light: { default: LogoInfo; logoIconOnly?: LogoInfo }
+  dark: { default: LogoInfo; logoIconOnly?: LogoInfo }
+  darkHalloween?: { default: LogoInfo; logoIconOnly?: LogoInfo }
+  darkChristmas?: { default: LogoInfo }
+  lightChristmas?: { default: LogoInfo }
+}
 
 export enum ProductVariant {
   ChameleonSwap = 'chameleonSwap',
+  CowSwap = 'cowSwap',
+  CowWidget = 'cowWidget',
   CowExplorer = 'cowExplorer',
   CowProtocol = 'cowProtocol',
   MevBlocker = 'mevBlocker',
@@ -38,66 +52,88 @@ interface LogoInfo {
   preserveOriginalColors?: boolean // If true, original SVG colors will be preserved
 }
 
-export type ThemedLogo = Partial<Record<CowSwapTheme, { default: LogoInfo; logoIconOnly?: LogoInfo }>> & {
-  light: { default: LogoInfo; logoIconOnly?: LogoInfo }
-  dark: { default: LogoInfo; logoIconOnly?: LogoInfo }
-  darkHalloween?: { default: LogoInfo; logoIconOnly?: LogoInfo }
-  darkChristmas?: { default: LogoInfo }
-  lightChristmas?: { default: LogoInfo }
+const CHAMELEON_SWAP_LOGO: ThemedLogo = {
+  light: {
+    default: {
+      src: LOGO_CHAMELEONSWAP,
+      alt: 'Chameleon swap',
+      color: '#760093',
+    },
+    logoIconOnly: {
+      src: LOGO_ICON_CHAMELEON,
+      alt: 'Chameleon swap',
+      color: '#760093',
+    },
+  },
+  dark: {
+    default: {
+      src: LOGO_CHAMELEONSWAP,
+      alt: 'Chameleon swap',
+      color: '#c165ff',
+    },
+    logoIconOnly: {
+      src: LOGO_ICON_CHAMELEON,
+      alt: 'Chameleon swap',
+      color: '#c165ff',
+    },
+  },
+  darkHalloween: {
+    default: {
+      src: svgCowswapHalloweenSrc,
+      alt: 'Chameleon swap',
+      preserveOriginalColors: true,
+    },
+  },
+  darkChristmas: {
+    default: {
+      src: svgCowswapChristmasDarkSrc,
+      alt: 'Chameleon swap',
+      color: '#ff65ff',
+      height: '56px',
+      heightMobile: '50px',
+      preserveOriginalColors: true,
+    },
+  },
+  lightChristmas: {
+    default: {
+      src: svgCowswapChristmasLightSrc,
+      alt: 'Chameleon swap',
+      color: '#7a0093',
+      height: '56px',
+      heightMobile: '50px',
+      preserveOriginalColors: true,
+    },
+  },
 }
 
 const LOGOS: Record<ProductVariant, ThemedLogo> = {
-  // Chameleon swap
-  [ProductVariant.ChameleonSwap]: {
+  [ProductVariant.ChameleonSwap]: CHAMELEON_SWAP_LOGO,
+  [ProductVariant.CowSwap]: CHAMELEON_SWAP_LOGO,
+
+  // CoW Widget
+  [ProductVariant.CowWidget]: {
     light: {
       default: {
-        src: LOGO_CHAMELEONSWAP,
-        alt: 'Chameleon swap',
-        color: ' #760093',
+        src: svgCowwidgetSrc,
+        alt: 'CoW Widget',
+        color: '#004293',
       },
       logoIconOnly: {
-        src: LOGO_ICON_CHAMELEON,
-        alt: 'Chameleon swap',
-        color: ' #760093',
+        src: iconCowSrc,
+        alt: 'CoW Widget',
+        color: '#004293',
       },
     },
     dark: {
       default: {
-        src: LOGO_CHAMELEONSWAP,
-        alt: 'Chameleon swap',
-        color: ' #c165ff',
+        src: svgCowwidgetSrc,
+        alt: 'CoW Widget',
+        color: Color.blue300Primary,
       },
       logoIconOnly: {
-        src: LOGO_ICON_CHAMELEON,
-        alt: 'Chameleon swap',
-        color: ' #c165ff',
-      },
-    },
-    darkHalloween: {
-      default: {
-        src: LOGO_COWSWAP_HALLOWEEN,
-        alt: 'Chameleon swap',
-        color: ' #ff65ff',
-      },
-    },
-    darkChristmas: {
-      default: {
-        src: LOGO_COWSWAP_CHRISTMAS_DARK,
-        alt: 'Chameleon swap',
-        color: ' #ff65ff',
-        height: '56px',
-        heightMobile: '50px',
-        preserveOriginalColors: true,
-      },
-    },
-    lightChristmas: {
-      default: {
-        src: LOGO_COWSWAP_CHRISTMAS,
-        alt: 'Chameleon swap',
-        color: '#7a0093',
-        height: '56px',
-        heightMobile: '50px',
-        preserveOriginalColors: true,
+        src: iconCowSrc,
+        alt: 'CoW Widget',
+        color: Color.blue300Primary,
       },
     },
   },
@@ -106,24 +142,24 @@ const LOGOS: Record<ProductVariant, ThemedLogo> = {
   [ProductVariant.CowExplorer]: {
     light: {
       default: {
-        src: LOGO_COWEXPLORER,
+        src: svgCowexplorerSrc,
         alt: 'CoW Explorer',
         color: Color.neutral0,
       },
       logoIconOnly: {
-        src: LOGO_ICON_CHAMELEON,
+        src: iconCowSrc,
         alt: 'CoW Explorer',
         color: Color.neutral0,
       },
     },
     dark: {
       default: {
-        src: LOGO_COWEXPLORER,
+        src: svgCowexplorerSrc,
         alt: 'CoW Explorer',
         color: Color.neutral100,
       },
       logoIconOnly: {
-        src: LOGO_ICON_CHAMELEON,
+        src: iconCowSrc,
         alt: 'CoW Explorer',
         color: Color.neutral100,
       },
@@ -134,24 +170,24 @@ const LOGOS: Record<ProductVariant, ThemedLogo> = {
   [ProductVariant.CowDao]: {
     light: {
       default: {
-        src: LOGO_COWDAO,
+        src: svgCowdaoSrc,
         alt: 'CoW DAO',
         color: Color.neutral0,
       },
       logoIconOnly: {
-        src: LOGO_ICON_CHAMELEON,
+        src: iconCowSrc,
         alt: 'CoW DAO',
         color: Color.neutral0,
       },
     },
     dark: {
       default: {
-        src: LOGO_COWDAO,
+        src: svgCowdaoSrc,
         alt: 'CoW DAO',
         color: Color.neutral100,
       },
       logoIconOnly: {
-        src: LOGO_ICON_CHAMELEON,
+        src: iconCowSrc,
         alt: 'CoW DAO',
         color: Color.neutral100,
       },
@@ -162,24 +198,24 @@ const LOGOS: Record<ProductVariant, ThemedLogo> = {
   [ProductVariant.CowProtocol]: {
     light: {
       default: {
-        src: LOGO_COWPROTOCOL,
+        src: svgCowprotocolSrc,
         alt: 'CoW Protocol',
         color: Color.neutral0,
       },
       logoIconOnly: {
-        src: LOGO_ICON_CHAMELEON,
+        src: iconCowSrc,
         alt: 'CoW Protocol',
         color: Color.neutral0,
       },
     },
     dark: {
       default: {
-        src: LOGO_COWPROTOCOL,
+        src: svgCowprotocolSrc,
         alt: 'CoW Protocol',
         color: Color.neutral100,
       },
       logoIconOnly: {
-        src: LOGO_ICON_CHAMELEON,
+        src: iconCowSrc,
         alt: 'CoW Protocol',
         color: Color.neutral100,
       },
@@ -190,24 +226,24 @@ const LOGOS: Record<ProductVariant, ThemedLogo> = {
   [ProductVariant.MevBlocker]: {
     light: {
       default: {
-        src: LOGO_MEVBLOCKER,
+        src: svgMevblockerSrc,
         alt: 'MEV Blocker',
         color: '#EC4612',
       },
       logoIconOnly: {
-        src: LOGO_ICON_MEVBLOCKER,
+        src: iconMevblockerSrc,
         alt: 'MEV Blocker',
         color: '#EC4612',
       },
     },
     dark: {
       default: {
-        src: LOGO_MEVBLOCKER,
+        src: svgMevblockerSrc,
         alt: 'MEV Blocker',
         color: '#EC4612',
       },
       logoIconOnly: {
-        src: LOGO_ICON_MEVBLOCKER,
+        src: iconMevblockerSrc,
         alt: 'MEV Blocker',
         color: '#EC4612',
       },
@@ -218,24 +254,24 @@ const LOGOS: Record<ProductVariant, ThemedLogo> = {
   [ProductVariant.CowAmm]: {
     light: {
       default: {
-        src: LOGO_COWAMM,
+        src: svgCowammSrc,
         alt: 'CoW AMM',
-        color: '#012F7A',
+        color: Color.blue900Primary,
       },
       logoIconOnly: {
-        src: LOGO_ICON_CHAMELEON,
+        src: iconCowSrc,
         alt: 'CoW AMM',
-        color: '#012F7A',
+        color: Color.blue900Primary,
       },
     },
     dark: {
       default: {
-        src: LOGO_COWAMM,
+        src: svgCowammSrc,
         alt: 'CoW AMM',
         color: '#007CDB',
       },
       logoIconOnly: {
-        src: LOGO_ICON_CHAMELEON,
+        src: iconCowSrc,
         alt: 'CoW AMM',
         color: '#007CDB',
       },
@@ -263,9 +299,8 @@ export const ProductLogoWrapper = styled.span<{
   heightMobile?: number | string
   preserveOriginalColors?: boolean
 }>`
-  --height: ${({ height }) => (typeof height === 'number' ? `${height}px` : height || '28px')};
-  --heightMobile: ${({ heightMobile }) =>
-    typeof heightMobile === 'number' ? `${heightMobile}px` : heightMobile || 'var(--height)'};
+  --height: ${({ height }) => toPixelValue(height) || '28px'};
+  --heightMobile: ${({ heightMobile }) => toPixelValue(heightMobile) || 'var(--height)'};
   ${({ preserveOriginalColors, color, hoverColor }) =>
     !preserveOriginalColors &&
     `
@@ -309,6 +344,8 @@ export const ProductLogoWrapper = styled.span<{
   }
 `
 
+// TODO: Reduce function complexity by extracting logic
+
 export const ProductLogo = ({
   variant,
   theme: customThemeMode,
@@ -320,12 +357,16 @@ export const ProductLogo = ({
   href,
   external = false,
   className,
-}: LogoProps) => {
+}: LogoProps): ReactNode => {
   const themeMode = useTheme()
-  const selectedTheme = customThemeMode || (themeMode?.darkMode ? 'dark' : 'light') || 'light'
+  const selectedTheme = customThemeMode || (themeMode.darkMode ? 'dark' : 'light')
   const logoForTheme =
-    LOGOS[variant]?.[selectedTheme] || LOGOS[variant]?.['light'] || LOGOS[ProductVariant.ChameleonSwap]?.['light'] // Fallback to light theme if selected theme is not available
-  const logoInfo = logoIconOnly && logoForTheme.logoIconOnly ? logoForTheme.logoIconOnly : logoForTheme.default
+    LOGOS[variant]?.[selectedTheme] ||
+    LOGOS[variant]?.['light'] ||
+    LOGOS[ProductVariant.ChameleonSwap]?.['light'] ||
+    LOGOS[ProductVariant.CowSwap]?.['light']
+  const logoInfo = logoIconOnly && logoForTheme?.logoIconOnly ? logoForTheme.logoIconOnly : logoForTheme?.default
+
   const initialColor = logoInfo.preserveOriginalColors ? undefined : overrideColor || logoInfo.color
 
   // First use logoInfo height, then prop height, then default
@@ -333,7 +374,7 @@ export const ProductLogo = ({
   // First use logoInfo heightMobile, then prop heightMobile, then logoInfo height, then prop height, then default
   const logoHeightMobile = logoInfo.heightMobile || heightMobile || logoInfo.height || height || logoHeight
 
-  const getAccessibleAltText = () => {
+  const getAccessibleAltText = (): string => {
     const baseAlt = logoInfo.alt
     const linkText = href ? (external ? 'Visit external site: ' : 'Go to: ') : ''
     return `${linkText}${baseAlt}`

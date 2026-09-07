@@ -10,7 +10,7 @@
  *  ===========================================================================
  */
 
-import { EventEmitter } from 'eventemitter3'
+import EventEmitter from 'eventemitter3'
 
 import {
   IframeRpcProviderEvents,
@@ -20,6 +20,7 @@ import {
   ProviderRpcResponsePayload,
 } from './iframeRpcProviderEvents'
 
+import { getParentOrigin } from '../getParentOrigin'
 import {
   JsonRpcErrorResponseMessage,
   JsonRpcRequest,
@@ -31,23 +32,59 @@ interface ProviderConnectInfo {
   readonly chainId: string
 }
 
+interface ProviderMessage {
+  type: string
+  data: unknown
+}
+
 interface ProviderRpcError extends Error {
   message: string
   code: number
   data?: unknown
 }
 
-interface ProviderMessage {
-  type: string
-  data: unknown
-}
-
+// TODO: Replace any with proper type definitions
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type RpcCallback = (error: any, response: any) => void
 
 // By default timeout is 10 minutes
 const DEFAULT_TIMEOUT_MILLISECONDS = 600000
 
 const JSON_RPC_VERSION = '2.0'
+const DEFAULT_TARGET_ORIGIN = 'https://swap.cow.fi'
+
+/**
+ * Export the type information about the different events that are emitted.
+ */
+export interface IFrameEthereumProviderEvents {
+  on(event: 'message', handler: (message: ProviderMessage) => void): this
+
+  on(event: 'connect', handler: (connectInfo: ProviderConnectInfo) => void): this
+
+  on(event: 'disconnect', handler: (error: ProviderRpcError) => void): this
+
+  on(event: 'close', handler: (code: number, reason: string) => void): this
+
+  // TODO: Replace any with proper type definitions
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  on(event: 'notification', handler: (result: any) => void): this
+
+  on(event: 'chainChanged', handler: (chainId: string) => void): this
+
+  on(event: 'networkChanged', handler: (networkId: string) => void): this
+
+  on(event: 'accountsChanged', handler: (accounts: string[]) => void): this
+}
+
+export type IFrameEthereumProviderEventTypes =
+  | 'message'
+  | 'connect'
+  | 'disconnect'
+  | 'chainChanged'
+  | 'close' // Deprecated, use 'disconnect' instead
+  | 'notification'
+  | 'networkChanged' // Deprecated, use 'chainChanged' instead
+  | 'accountsChanged'
 
 /**
  * Options for constructing the iframe ethereum provider.
@@ -79,45 +116,6 @@ interface PromiseCompleter<T, D> {
 }
 
 /**
- * We return a random number between the 0 and the maximum safe integer so that we always generate a unique identifier,
- * across all communication channels.
- */
-function getUniqueId(): number {
-  return Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)
-}
-
-export type IFrameEthereumProviderEventTypes =
-  | 'message'
-  | 'connect'
-  | 'disconnect'
-  | 'chainChanged'
-  | 'close' // Deprecated, use 'disconnect' instead
-  | 'notification'
-  | 'networkChanged' // Deprecated, use 'chainChanged' instead
-  | 'accountsChanged'
-
-/**
- * Export the type information about the different events that are emitted.
- */
-export interface IFrameEthereumProviderEvents {
-  on(event: 'message', handler: (message: ProviderMessage) => void): this
-
-  on(event: 'connect', handler: (connectInfo: ProviderConnectInfo) => void): this
-
-  on(event: 'disconnect', handler: (error: ProviderRpcError) => void): this
-
-  on(event: 'close', handler: (code: number, reason: string) => void): this
-
-  on(event: 'notification', handler: (result: any) => void): this
-
-  on(event: 'chainChanged', handler: (chainId: string) => void): this
-
-  on(event: 'networkChanged', handler: (networkId: string) => void): this
-
-  on(event: 'accountsChanged', handler: (accounts: string[]) => void): this
-}
-
-/**
  * Represents an error in an RPC returned from the event source. Always contains a code and a reason. The message
  * is constructed from both.
  */
@@ -139,7 +137,16 @@ export class RpcError extends Error {
  * This is the primary artifact of this library.
  */
 export class WidgetEthereumProvider extends EventEmitter<IFrameEthereumProviderEventTypes> {
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   request({ method, params }: JsonRpcRequest) {
+    // Block wallet_revokePermissions — wagmi calls this on disconnect, but via the
+    // IframeRpcProviderBridge it would revoke permissions for the *parent dapp's* origin
+    // (e.g. the configurator), disconnecting the dapp's wallet entirely and making
+    // subsequent connections impossible. shimDisconnect handles local disconnect state.
+    if (method === 'wallet_revokePermissions') {
+      return Promise.resolve(null)
+    }
     return this.send(method, params)
   }
 
@@ -165,13 +172,17 @@ export class WidgetEthereumProvider extends EventEmitter<IFrameEthereumProviderE
   private readonly timeoutMilliseconds: number
   private readonly eventSource: Window
   private readonly eventTarget: Window
+  private readonly targetOrigin: string
   private readonly completers: {
+    // TODO: Replace any with proper type definitions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [id: string]: PromiseCompleter<any, any>
   } = {}
   private providerMetaInfo: ProviderMetaInfoPayload | null = null
   private providerMetaInfoCallback?: (data: ProviderMetaInfoPayload) => void
 
   public constructor({
+    targetOrigin,
     timeoutMilliseconds = DEFAULT_TIMEOUT_MILLISECONDS,
     eventSource = window,
     eventTarget = window.parent,
@@ -182,25 +193,31 @@ export class WidgetEthereumProvider extends EventEmitter<IFrameEthereumProviderE
     this.timeoutMilliseconds = timeoutMilliseconds
     this.eventSource = eventSource
     this.eventTarget = eventTarget
+    this.targetOrigin = targetOrigin || getParentOrigin() || DEFAULT_TARGET_ORIGIN
 
     iframeRpcProviderTransport.listenToMessageFromWindow(
       this.eventSource,
+      this.eventTarget,
       IframeRpcProviderEvents.PROVIDER_RPC_RESPONSE,
       (message) => {
         this.handleRpcRequests(message)
       },
+      this.targetOrigin,
     )
 
     iframeRpcProviderTransport.listenToMessageFromWindow(
       this.eventSource,
+      this.eventTarget,
       IframeRpcProviderEvents.PROVIDER_ON_EVENT,
       (message) => {
         this.handleOnEvent(message)
       },
+      this.targetOrigin,
     )
 
     iframeRpcProviderTransport.listenToMessageFromWindow(
       this.eventSource,
+      this.eventTarget,
       IframeRpcProviderEvents.SEND_PROVIDER_META_INFO,
       (message) => {
         this.providerMetaInfo = message
@@ -209,6 +226,7 @@ export class WidgetEthereumProvider extends EventEmitter<IFrameEthereumProviderE
           this.providerMetaInfoCallback(this.providerMetaInfo)
         }
       },
+      this.targetOrigin,
     )
   }
 
@@ -235,9 +253,14 @@ export class WidgetEthereumProvider extends EventEmitter<IFrameEthereumProviderE
     )
 
     // Send the JSON RPC to the event source.
-    iframeRpcProviderTransport.postMessageToWindow(this.eventTarget, IframeRpcProviderEvents.PROVIDER_RPC_REQUEST, {
-      rpcRequest,
-    })
+    iframeRpcProviderTransport.postMessageToWindow(
+      this.eventTarget,
+      IframeRpcProviderEvents.PROVIDER_RPC_REQUEST,
+      {
+        rpcRequest,
+      },
+      this.targetOrigin,
+    )
 
     // Delete the completer within the timeout and reject the promise.
     setTimeout(() => {
@@ -253,8 +276,14 @@ export class WidgetEthereumProvider extends EventEmitter<IFrameEthereumProviderE
   /**
    * Send the JSON RPC and return the result.
    */
+  // TODO: Replace any with proper type definitions
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public async send<TResult = any>(request: JsonRpcRequest, callback: RpcCallback): Promise<TResult>
+  // TODO: Replace any with proper type definitions
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public async send<TResult = any>(method: string, params: unknown[] | undefined): Promise<TResult>
+  // TODO: Replace any with proper type definitions
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public async send<TResult = any>(
     methodOrRequest: string | JsonRpcRequest,
     paramsOrCallback: unknown[] | undefined | RpcCallback,
@@ -264,6 +293,8 @@ export class WidgetEthereumProvider extends EventEmitter<IFrameEthereumProviderE
         ? { method: methodOrRequest, params: paramsOrCallback as unknown[] }
         : { method: methodOrRequest.method, params: methodOrRequest.params }
 
+    // TODO: Replace any with proper type definitions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const response = await this.execute<TResult, any>(method, params)
 
     if ('error' in response) {
@@ -275,10 +306,11 @@ export class WidgetEthereumProvider extends EventEmitter<IFrameEthereumProviderE
 
   /**
    * Request the parent window to enable access to the user's web3 provider. Return accounts list immediately if already enabled.
+   * Keep the legacy method for backward compatibility.
    */
   public async enable(): Promise<string[]> {
     if (this.enabled === null) {
-      const promise = (this.enabled = this.send('enable', []).catch((error) => {
+      const promise = (this.enabled = this.send('eth_requestAccounts', []).catch((error) => {
         // Clear this.enabled if it's this promise so we try again next call.
         // this.enabled might be set from elsewhere if, e.g. the accounts changed event is emitted
         if (this.enabled === promise) {
@@ -299,14 +331,14 @@ export class WidgetEthereumProvider extends EventEmitter<IFrameEthereumProviderE
    */
   public async sendAsync(
     payload: JsonRpcRequest,
-    callback: (error: string | null, result: { method: string; params?: any[]; result: any } | any) => void,
+    callback: (error: string | null, result: { method: string; params?: unknown[]; result: unknown } | unknown) => void,
   ): Promise<void> {
     try {
       const result = await this.execute(payload.method, payload.params)
 
       callback(null, result)
     } catch (error) {
-      callback(error, null)
+      callback(stringifyError(error), null)
     }
   }
 
@@ -314,6 +346,8 @@ export class WidgetEthereumProvider extends EventEmitter<IFrameEthereumProviderE
    * Subscribe to provider meta info
    * @param callback
    */
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   public onProviderMetaInfo(callback: (data: ProviderMetaInfoPayload) => void) {
     if (this.providerMetaInfo) {
       callback(this.providerMetaInfo)
@@ -324,13 +358,23 @@ export class WidgetEthereumProvider extends EventEmitter<IFrameEthereumProviderE
         this.eventTarget,
         IframeRpcProviderEvents.REQUEST_PROVIDER_META_INFO,
         null,
+        this.targetOrigin,
       )
     }
   }
 
   /**
+   * Clears the pending provider meta-info callback (e.g. when a consumer times out).
+   */
+  public clearProviderMetaInfoListener(): void {
+    this.providerMetaInfoCallback = undefined
+  }
+
+  /**
    * Handle a Rpc Request
    */
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   private handleRpcRequests = ({ rpcResponse }: ProviderRpcResponsePayload) => {
     if (rpcResponse.id === undefined || rpcResponse.id === null) {
       return
@@ -351,7 +395,11 @@ export class WidgetEthereumProvider extends EventEmitter<IFrameEthereumProviderE
     }
   }
 
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   private handleOnEvent(message: ProviderOnEventPayload) {
+    // TODO: Replace any with proper type definitions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const params = message.params as any
     switch (message.event) {
       case 'notification':
@@ -395,10 +443,15 @@ export class WidgetEthereumProvider extends EventEmitter<IFrameEthereumProviderE
     }
   }
 
+  // TODO: Add proper return type annotation
+  // TODO: Replace any with proper type definitions
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type, @typescript-eslint/no-explicit-any
   private emitNotification(result: any) {
     this.emit('notification', result)
   }
 
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   private emitConnect(connectInfo: ProviderConnectInfo) {
     // If the provider isn't enabled but it emits a connect event, assume that it's enabled and initialize
     // with an empty list of accounts.
@@ -411,6 +464,8 @@ export class WidgetEthereumProvider extends EventEmitter<IFrameEthereumProviderE
   /**
    * @deprecated See https://eips.ethereum.org/EIPS/eip-1193
    */
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   private emitClose(params: unknown) {
     if (Array.isArray(params) && params.length === 2) {
       this.emit('close', params[0], params[1])
@@ -419,10 +474,14 @@ export class WidgetEthereumProvider extends EventEmitter<IFrameEthereumProviderE
     }
   }
 
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   private emitDisconnect(error: ProviderRpcError) {
     this.emit('disconnect', error)
   }
 
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   private emitChainChanged(chainId: string) {
     this.emit('chainChanged', chainId)
   }
@@ -430,16 +489,45 @@ export class WidgetEthereumProvider extends EventEmitter<IFrameEthereumProviderE
   /**
    * @deprecated See https://eips.ethereum.org/EIPS/eip-1193
    */
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   private emitNetworkChanged(networkId: string) {
     this.emit('networkChanged', networkId)
   }
 
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   private emitAccountsChanged(accounts: string[]) {
     this.enabled = Promise.resolve(accounts)
     this.emit('accountsChanged', accounts)
   }
 
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   private emitMessage(message: ProviderMessage) {
     this.emit('message', message)
+  }
+}
+
+/**
+ * We return a random number between the 0 and the maximum safe integer so that we always generate a unique identifier,
+ * across all communication channels.
+ */
+function getUniqueId(): number {
+  return Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)
+}
+
+function stringifyError(error: unknown): string | null {
+  if (!error) return null
+  if (typeof error === 'string') return error
+  if (error instanceof Error) return error.message
+  if ((error as Error).message) return (error as Error).message
+
+  try {
+    return JSON.stringify(error)
+  } catch {
+    const errorMessage = 'Unknown WidgetEthereumProvider error'
+    console.error(errorMessage, error)
+    return errorMessage
   }
 }

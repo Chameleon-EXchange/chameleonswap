@@ -1,29 +1,42 @@
+import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 
-import { useWalletProvider } from '@cowprotocol/wallet-provider'
-import type { MetaTransactionData } from '@safe-global/safe-core-sdk-types'
+import type { Hex } from 'viem'
+import { useConfig } from 'wagmi'
+import { sendCalls } from 'wagmi/actions'
 
-import { useWalletCapabilities } from './useWalletCapabilities'
+import type { MetaTransactionData } from '@safe-global/types-kit'
 
-import { useSafeAppsSdk } from '../../web3-react/hooks/useSafeAppsSdk'
+import { useSafeAppsSdk } from '../../wagmi/hooks/useSafeAppsSdk'
 import { useWalletInfo } from '../hooks'
+import { isAtomicBatchSupportedAtom } from '../state/walletCapabilitiesAtom'
 
 export type SendBatchTxCallback = (txs: MetaTransactionData[]) => Promise<string>
 
 export function useSendBatchTransactions(): SendBatchTxCallback {
+  const config = useConfig()
   const safeAppsSdk = useSafeAppsSdk()
-  const provider = useWalletProvider()
   const { chainId, account } = useWalletInfo()
-  const { data: capabilities } = useWalletCapabilities()
-  const isAtomicBatchSupported = !!capabilities?.atomicBatch?.supported
+  const isAtomicBatchSupported = useAtomValue(isAtomicBatchSupportedAtom)
 
   return useCallback(
     async (txs: MetaTransactionData[]) => {
-      if (isAtomicBatchSupported && provider && account && chainId) {
-        const chainIdHex = '0x' + (+chainId).toString(16)
-        const calls = txs.map((tx) => ({ ...tx, chainId: chainIdHex }))
+      if (isAtomicBatchSupported === null) {
+        throw new Error('Batch transactions status not know yet')
+      }
 
-        return provider.send('wallet_sendCalls', [{ version: '1.0', from: account, calls }])
+      if (isAtomicBatchSupported && account && chainId) {
+        const calls = txs.map(({ to, value, data }) => ({
+          to: to as Hex,
+          value: BigInt(value),
+          data: (data ?? '0x') as Hex,
+        }))
+
+        return sendCalls(config, {
+          account,
+          calls: calls as Parameters<typeof sendCalls>[1]['calls'],
+          chainId,
+        }).then((res) => res.id)
       }
 
       if (safeAppsSdk) {
@@ -34,6 +47,6 @@ export function useSendBatchTransactions(): SendBatchTxCallback {
         throw new Error('Batch transactions sending is not supported')
       }
     },
-    [isAtomicBatchSupported, provider, account, chainId, safeAppsSdk],
+    [isAtomicBatchSupported, config, account, chainId, safeAppsSdk],
   )
 }

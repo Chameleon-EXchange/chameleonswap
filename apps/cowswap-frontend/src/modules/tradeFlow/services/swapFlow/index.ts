@@ -1,37 +1,62 @@
-import { getAddress, reportPermitWithDefaultSigner, getWrappedToken } from '@cowprotocol/common-utils'
-import { OrderKind } from '@cowprotocol/cow-sdk'
+import type { Hex } from 'viem'
+import { maxUint256 } from 'viem'
+import { sendTransaction } from 'wagmi/actions'
+
+import {
+  captureError,
+  delay,
+  ERROR_TYPES,
+  getCurrencyAddress,
+  normalizeError,
+  reportPermitWithDefaultSigner,
+} from '@cowprotocol/common-utils'
+import { SigningScheme, SigningStepManager } from '@cowprotocol/cow-sdk'
+import { Percent } from '@cowprotocol/currency'
 import { isSupportedPermitInfo } from '@cowprotocol/permit-utils'
+import { CoWShedEip1271SignatureInvalid } from '@cowprotocol/sdk-cow-shed'
 import { UiOrderType } from '@cowprotocol/types'
-import { Percent, Token } from '@uniswap/sdk-core'
+
+import { SigningSteps } from 'entities/trade'
+import ms from 'ms.macro'
+import { tradingSdk } from 'tradingSdk/tradingSdk'
 
 import { PriceImpact } from 'legacy/hooks/usePriceImpact'
 import { partialOrderUpdate } from 'legacy/state/orders/utils'
-import { signAndPostOrder } from 'legacy/utils/trade'
+import { mapUnsignedOrderToOrder, wrapErrorInOperatorError } from 'legacy/utils/trade'
 
+import { WidgetHookDeclineError } from 'modules/injectedWidget'
 import { emitPostedOrderEvent } from 'modules/orders'
 import { callDataContainsPermitSigner, handlePermit } from 'modules/permit'
-import { FeeVerificationService } from 'modules/swap/services/feeVerificationService'
 import { TransactionService } from 'modules/swap/services/transactionService'
-import { SystemSettingsService } from 'modules/system/services/systemSettingsService'
 import { addPendingOrderStep } from 'modules/trade/utils/addPendingOrderStep'
 import { logTradeFlow } from 'modules/trade/utils/logger'
-import { getSwapErrorMessage } from 'modules/trade/utils/swapErrorHelper'
-import { tradeFlowAnalytics } from 'modules/trade/utils/tradeFlowAnalytics'
-import { fetchCurrencyUsdPrice } from 'modules/usdAmount/services/fetchCurrencyUsdPrice'
-import { usdcPriceLoader } from 'modules/usdAmount/utils/usdcPriceLoader'
+import { TradeFlowAnalytics } from 'modules/trade/utils/tradeFlowAnalytics'
+import { assertValidBridgeRecipient } from 'modules/tradeQuote'
 
-import { presignOrderStep } from './steps/presignOrderStep'
+import { getSwapErrorMessage } from 'common/utils/getSwapErrorMessage'
 
 import { TradeFlowContext } from '../../types/TradeFlowContext'
 
+const DELAY_BETWEEN_SIGNATURES = ms`500ms`
+
+const BridgeInvalidEip1271SignatureError =
+  'Cross-chain swaps are not supported with your current account delegate (EIP-7702). Please ensure the delegate implements the default EIP-1271 standard.'
+
+// TODO: Break down this large function into smaller functions
+// TODO: Reduce function complexity by extracting logic
+// eslint-disable-next-line max-lines-per-function, complexity
 export async function swapFlow(
   input: TradeFlowContext,
   priceImpactParams: PriceImpact,
   confirmPriceImpactWithoutFee: (priceImpact: Percent) => Promise<boolean>,
+  analytics: TradeFlowAnalytics,
 ): Promise<void | boolean> {
   const {
     tradeConfirmActions,
-    callbacks: { getCachedPermit },
+    callbacks: { getCachedPermit, addBridgeOrder, setSigningStep },
+    tradeQuote,
+    tradeQuoteState,
+    bridgeQuoteAmounts,
   } = input
 
   const {
@@ -45,26 +70,45 @@ export async function swapFlow(
     return false
   }
 
-  const { orderParams, context, permitInfo, generatePermitHook, swapFlowAnalyticsContext, callbacks } = input
+  const {
+    orderParams,
+    context,
+    config,
+    permitInfo,
+    generatePermitHook,
+    permitAmountToSign,
+    swapFlowAnalyticsContext,
+    callbacks,
+  } = input
   const { chainId } = context
   const inputCurrency = inputAmount.currency
-  const cachedPermit = await getCachedPermit(getAddress(inputCurrency))
+  // Match the amount the permit is (or would be) cached under (`generatePermitHook` falls back to
+  // `maxUint256`) so a cached permit is reused and ON_BEFORE_APPROVAL is not fired needlessly.
+  const cachedPermit = await getCachedPermit(getCurrencyAddress(inputCurrency), permitAmountToSign ?? maxUint256)
+
+  const shouldSignPermit = isSupportedPermitInfo(permitInfo) && !cachedPermit
+  const isBridgingOrder = inputAmount.currency.chainId !== outputAmount.currency.chainId
 
   try {
     logTradeFlow('SWAP FLOW', 'STEP 2: handle permit')
-    if (isSupportedPermitInfo(permitInfo) && !cachedPermit) {
-      tradeConfirmActions.requestPermitSignature(tradeAmounts)
-    }
-
-    const { appData, account, isSafeWallet, recipientAddressOrName, inputAmount, outputAmount, kind } = orderParams
+    const { appData, account, isSafeWallet, recipientAddressOrName, kind } = orderParams
 
     orderParams.appData = await handlePermit({
       appData,
       typedHooks,
-      account,
+      account: account as `0x${string}`,
       inputToken: inputCurrency,
       permitInfo,
+      amount: permitAmountToSign,
       generatePermitHook,
+      // The ON_BEFORE_APPROVAL veto now fires inside `handlePermit` on a genuine cache miss (throwing
+      // WidgetHookDeclineError on decline); this advances the permit-signing UI right before signing.
+      preSignCallback: shouldSignPermit
+        ? () => {
+            setSigningStep(isBridgingOrder ? '1/3' : '1/2', SigningSteps.PermitSigning)
+            tradeConfirmActions.requestPermitSignature(tradeAmounts)
+          }
+        : undefined,
     })
 
     if (callDataContainsPermitSigner(orderParams.appData.fullAppData)) {
@@ -72,141 +116,125 @@ export async function swapFlow(
     }
 
     logTradeFlow('SWAP FLOW', 'STEP 3: send transaction')
-    tradeFlowAnalytics.trade(swapFlowAnalyticsContext)
+    analytics.trade({
+      ...swapFlowAnalyticsContext,
+      quoteId: orderParams.quoteId,
+      allowsOffchainSigning: orderParams.allowsOffchainSigning,
+    })
 
     tradeConfirmActions.onSign(tradeAmounts)
 
     logTradeFlow('SWAP FLOW', 'STEP 4: sign and post order')
-    const { id: orderUid, order } = await signAndPostOrder(orderParams).finally(() => {
-      callbacks.closeModals()
-    })
 
-    // Record the transaction
-    const transactionService = TransactionService.getInstance()
-    await transactionService.recordSwapTransaction(
-      orderUid,
-      account,
-      chainId,
-      inputAmount,
-      outputAmount,
-      kind,
-      orderUid, // Using orderUid as txHash since it's unique
+    let bridgingSignTimestamp = 0
+
+    const signingStepManager: SigningStepManager = {
+      beforeBridgingSign() {
+        const isReceiverAccountBridgeProvider =
+          tradeQuoteState.bridgeQuote?.providerInfo.type === 'ReceiverAccountBridgeProvider'
+
+        setSigningStep(
+          shouldSignPermit ? '2/3' : '1/2',
+          isReceiverAccountBridgeProvider ? SigningSteps.PreparingDepositAddress : SigningSteps.BridgingSigning,
+        )
+      },
+      afterBridgingSign() {
+        bridgingSignTimestamp = Date.now()
+      },
+      async beforeOrderSign() {
+        const signingDelta = Date.now() - bridgingSignTimestamp
+        const remainingTime = DELAY_BETWEEN_SIGNATURES - signingDelta
+
+        /**
+         * Some wallets (Metamask mobile) cannot work properly if we send another signature request just after previous one
+         * To fix that we wait 0.5 sec before second request
+         */
+        if (remainingTime > 0) {
+          await delay(remainingTime)
+        }
+
+        if (isBridgingOrder) {
+          setSigningStep(shouldSignPermit ? '3/3' : '2/2', SigningSteps.OrderSigning)
+        } else {
+          if (shouldSignPermit) {
+            setSigningStep('2/2', SigningSteps.OrderSigning)
+          }
+        }
+      },
+    }
+
+    assertValidBridgeRecipient(tradeQuoteState)
+
+    const {
+      orderId,
+      signature,
+      signingScheme,
+      orderToSign: unsignedOrder,
+    } = await wrapErrorInOperatorError(() =>
+      tradeQuote
+        .postSwapOrderFromQuote(
+          {
+            appData: orderParams.appData.doc,
+            additionalParams: {
+              signingScheme: orderParams.allowsOffchainSigning ? SigningScheme.EIP712 : SigningScheme.PRESIGN,
+            },
+            quoteRequest: {
+              validTo: orderParams.validTo,
+              receiver: orderParams.recipient,
+            },
+          },
+          signingStepManager,
+        )
+        .finally(() => {
+          callbacks.closeModals()
+        }),
     )
 
-    // Calculate and send platform fee
-    try {
-      // Get system settings
-      const systemSettingsService = SystemSettingsService.getInstance()
-      const systemSettings = await systemSettingsService.getSystemSettings()
+    let presignTxHash: string | null = null
 
-      if (systemSettings.feePercentage > 0 && systemSettings.revenueWalletAddress) {
-        // Calculate USD amount for fee
-        let amountInUSD = 0
-        try {
-          // Determine which amount to use for USD calculation based on order kind
-          const amountForUsdCalculation = kind === OrderKind.SELL ? inputAmount : outputAmount
+    if (!orderParams.allowsOffchainSigning) {
+      logTradeFlow('SWAP FLOW', 'STEP 5: presign order (optional)')
+      const presignTx = await tradingSdk.getPreSignTransaction({ orderUid: orderId })
 
-          // Get USD price
-          const getUsdcPrice = usdcPriceLoader(chainId)
-          const currency = amountForUsdCalculation.currency
-          const tokenPrice = await fetchCurrencyUsdPrice(
-            currency.isNative ? getWrappedToken(currency) : (currency as Token),
-            getUsdcPrice,
-          )
-
-          if (tokenPrice) {
-            const tokenAmount = Number(amountForUsdCalculation.toExact())
-            const priceValue = Number(tokenPrice.toFixed(6))
-            amountInUSD = tokenAmount * priceValue
-
-            // Calculate fee amount
-            const feeAmount = amountInUSD * (systemSettings.feePercentage / 100)
-
-            // Send platform fee
-            if (feeAmount > 0) {
-              logTradeFlow('SWAP FLOW', 'STEP 4.1: send platform fee', {
-                feeAmount,
-                revenueWallet: systemSettings.revenueWalletAddress,
-                amountInUSD,
-                feePercentage: systemSettings.feePercentage,
-              })
-
-              try {
-                const transactionService = TransactionService.getInstance()
-                const feeTxHash = await transactionService.sendPlatformFee(
-                  feeAmount,
-                  systemSettings.revenueWalletAddress,
-                  chainId,
-                  orderUid,
-                )
-
-                // Store the fee transaction hash for verification
-                if (feeTxHash) {
-                  // Store in localStorage for debugging/verification
-                  localStorage.setItem('lastFeeTxHash', feeTxHash)
-                  localStorage.setItem('lastFeeAmount', feeAmount.toString())
-                  localStorage.setItem('lastFeeTimestamp', Date.now().toString())
-
-                  // Verify the transaction
-                  const feeVerificationService = FeeVerificationService.getInstance()
-                  const isVerified = await feeVerificationService.verifyFeeTransaction(
-                    feeTxHash,
-                    systemSettings.revenueWalletAddress,
-                  )
-
-                  logTradeFlow('SWAP FLOW', 'STEP 4.2: fee transaction verification', {
-                    feeTxHash,
-                    isVerified,
-                  })
-                } else {
-                  logTradeFlow('SWAP FLOW', 'STEP 4.2: fee transaction not sent', {
-                    reason: 'Transaction hash is undefined',
-                  })
-                }
-              } catch (feeError) {
-                console.error('[swapFlow] Error sending platform fee:', feeError)
-                logTradeFlow('SWAP FLOW', 'STEP 4.2: fee transaction failed', {
-                  error: feeError.message || 'Unknown error',
-                })
-                // Continue with the flow even if fee sending fails
-              }
-            } else {
-              logTradeFlow('SWAP FLOW', 'STEP 4.1: no fee to send (amount too small)', {
-                feeAmount,
-                amountInUSD,
-                feePercentage: systemSettings.feePercentage,
-              })
-            }
-          } else {
-            logTradeFlow('SWAP FLOW', 'STEP 4.1: no fee to send (token price not available)', {
-              currency: currency.symbol,
-              chainId,
-            })
-          }
-        } catch (priceError) {
-          console.error('[swapFlow] Failed to calculate USD price for fee:', priceError)
-          logTradeFlow('SWAP FLOW', 'STEP 4.1: failed to calculate fee', {
-            error: priceError.message || 'Unknown error',
-          })
-          // Continue with the flow even if fee calculation fails
+      presignTxHash = await sendTransaction(config, {
+        to: presignTx.to as `0x${string}`,
+        value: BigInt(presignTx.value),
+        data: presignTx.data as Hex,
+      }).catch((error) => {
+        /**
+         * When using Rabby and Safe, the presign transaction is not a real transaction
+         * It's a safe signature
+         */
+        if (error.transactionHash) {
+          return error.transactionHash
+        } else {
+          throw error
         }
-      } else {
-        logTradeFlow('SWAP FLOW', 'STEP 4.1: fee not configured', {
-          feePercentage: systemSettings.feePercentage,
-          hasRevenueWallet: !!systemSettings.revenueWalletAddress,
-        })
-      }
-    } catch (settingsError) {
-      console.error('[swapFlow] Error getting system settings for fee:', settingsError)
-      logTradeFlow('SWAP FLOW', 'STEP 4.1: failed to get system settings', {
-        error: settingsError.message || 'Unknown error',
       })
-      // Continue with the flow even if system settings retrieval fails
+    }
+
+    const order = mapUnsignedOrderToOrder({
+      unsignedOrder,
+      additionalParams: {
+        ...orderParams,
+        orderId,
+        signingScheme,
+        signature,
+      },
+    })
+
+    if (bridgeQuoteAmounts) {
+      addBridgeOrder({
+        orderUid: orderId,
+        quoteAmounts: bridgeQuoteAmounts,
+        creationTimestamp: Date.now(),
+        recipient: orderParams.recipient,
+      })
     }
 
     addPendingOrderStep(
       {
-        id: orderUid,
+        id: orderId,
         chainId: chainId,
         order: {
           ...order,
@@ -217,30 +245,40 @@ export async function swapFlow(
       callbacks.dispatch,
     )
 
-    logTradeFlow('SWAP FLOW', 'STEP 5: presign order (optional)')
-    const presignTx = await (input.flags.allowsOffchainSigning
-      ? Promise.resolve(null)
-      : presignOrderStep(orderUid, input.contract))
-
     emitPostedOrderEvent({
       chainId,
-      id: orderUid,
+      id: orderId,
       kind,
+      quoteId: orderParams.quoteId,
+      isCrossChain: isBridgingOrder,
+      destinationChainId: outputAmount.currency.chainId,
       receiver: recipientAddressOrName,
       inputAmount,
-      outputAmount,
+      outputAmount: bridgeQuoteAmounts?.bridgeMinReceiveAmount || outputAmount,
       owner: account,
       uiOrderType: UiOrderType.SWAP,
     })
 
+    // Record the transaction for Chameleon tracking
+    try {
+      const transactionService = TransactionService.getInstance()
+      void transactionService
+        .recordSwapTransaction(orderId, account, chainId, inputAmount, outputAmount, kind, orderId)
+        .catch((err) => {
+          console.error('[swapFlow] Error recording swap transaction:', err)
+        })
+    } catch (err) {
+      console.error('[swapFlow] Failed to initiate transaction recording:', err)
+    }
+
     logTradeFlow('SWAP FLOW', 'STEP 6: unhide SC order (optional)')
-    if (presignTx) {
+    if (presignTxHash) {
       partialOrderUpdate(
         {
           chainId,
           order: {
             id: order.id,
-            presignGnosisSafeTxHash: isSafeWallet ? presignTx.hash : undefined,
+            presignGnosisSafeTxHash: isSafeWallet ? presignTxHash : undefined,
             isHidden: false,
           },
           isSafeWallet,
@@ -249,16 +287,28 @@ export async function swapFlow(
       )
     }
 
-    logTradeFlow('SWAP FLOW', 'STEP 7: show UI of the successfully sent transaction', orderUid)
-    tradeConfirmActions.onSuccess(orderUid)
-    tradeFlowAnalytics.sign(swapFlowAnalyticsContext)
+    logTradeFlow('SWAP FLOW', 'STEP 7: show UI of the successfully sent transaction', orderId)
+    tradeConfirmActions.onSuccess(orderId)
+    analytics.sign(swapFlowAnalyticsContext)
 
     return true
-  } catch (error: any) {
-    logTradeFlow('SWAP FLOW', 'STEP 8: ERROR: ', error)
-    const swapErrorMessage = getSwapErrorMessage(error)
+  } catch (err: unknown) {
+    // Expected abort path: the host widget vetoed the approval. Bail out quietly without swap-error
+    // telemetry, matching the previous inline `return false`.
+    if (err instanceof WidgetHookDeclineError) return false
 
-    tradeFlowAnalytics.error(error, swapErrorMessage, swapFlowAnalyticsContext)
+    const error = normalizeError(err)
+
+    logTradeFlow('SWAP FLOW', 'STEP 8: ERROR: ', error)
+    const isCoWShedEip1271SignatureError = error instanceof CoWShedEip1271SignatureInvalid
+
+    const swapErrorMessage =
+      isBridgingOrder && isCoWShedEip1271SignatureError
+        ? BridgeInvalidEip1271SignatureError
+        : getSwapErrorMessage(error, chainId)
+
+    captureError(error, ERROR_TYPES.ON_SWAP, { swapErrorMessage })
+    analytics.error(error, swapErrorMessage, swapFlowAnalyticsContext)
 
     tradeConfirmActions.onError(swapErrorMessage)
   }

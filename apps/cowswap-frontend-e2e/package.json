@@ -1,8 +1,0 @@
-{
-  "name": "@cowprotocol/cowswap-e2e",
-  "version": "0.0.1",
-  "description": "Chameleon swap e2e tests",
-  "main": "index.js",
-  "author": "",
-  "license": "ISC"
-}

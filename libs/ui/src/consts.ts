@@ -1,7 +1,7 @@
 'use client'
 
 export const SAFE_COW_APP_LINK = 'https://app.safe.global/share/safe-app?appUrl=https%3A%2F%2Fswap.cow.fi&chain=eth'
-export const LINK_GUIDE_ADD_CUSTOM_TOKEN = 'https://blog.cow.fi/how-to-add-custom-tokens-on-cow-swap-a72d677c78c0'
+export const LINK_GUIDE_ADD_CUSTOM_TOKEN = 'https://cow.fi/learn/how-to-add-custom-tokens-on-cow-swap'
 export const MY_ORDERS_ID = 'my-orders'
 
 export const MEDIA_WIDTHS = {
@@ -12,11 +12,22 @@ export const MEDIA_WIDTHS = {
   upToLarge: 1280,
   upToLargeAlt: 1390,
   upToExtraLarge: 2560,
-}
+} as const
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 const getMediaQuery = (query: string, useMediaPrefix = true) => {
   return useMediaPrefix ? `@media ${query}` : query
 }
+
+/**
+ * Shared overlay stacking context (above dropdowns at 1000). Dialogs and drawers
+ * use the same Layer z-index so a later portal — nested filters, receipts, etc. —
+ * paints over the previous overlay.
+ */
+export const OVERLAY_Z_INDEX = {
+  overlay: 1060,
+} as const
 
 export const Media = {
   upToTiny: (useMediaPrefix = true) => getMediaQuery(`(max-width: ${MEDIA_WIDTHS.upToTiny}px)`, useMediaPrefix),
@@ -41,9 +52,10 @@ export const Media = {
 }
 
 export const Font = {
-  family: `'studiofeixen', Arial, sans-serif`,
-  familySerif: `'studiofeixenserif', Arial, serif`,
-  familyMono: `'studiofeixenmono', monospace, sans-serif`,
+  familyInter: `'Inter var', 'Inter', Arial, sans-serif`,
+  familyStudioFeixen: `'studiofeixen', 'Inter var', 'Inter', Arial, sans-serif`,
+  familyStudioFeixenSerif: `'studiofeixenserif', Arial, serif`,
+  // Numeric source of truth for ThemeColorVars and @font-face only. Use UI.FONT_WEIGHT_* in styles.
   weight: {
     ultralight: 200,
     light: 300,
@@ -53,23 +65,25 @@ export const Font = {
     semibold: 600,
     bold: 700,
   },
-}
+} as const
 
-export const Color = {
-  neutral100: '#FFFFFF',
-  neutral98: '#FFF8F7',
-  neutral95: '#FFEDEC',
-  neutral90: '#F0DEDE',
-  neutral80: '#D4C3C2',
-  neutral70: '#B8A7A7',
-  neutral60: '#9C8D8D',
-  neutral50: '#827474',
-  neutral40: '#685B5B',
-  neutral30: '#504444',
-  neutral20: '#382E2E',
-  neutral10: '#23191A',
-  neutral0: '#000000',
-}
+/**
+ * Font size / line-height pairs in px.
+ * Theme CSS vars and the `font()` mixin are derived from this map.
+ */
+export const FONT_SIZING = {
+  FONT_SMALL_PLUS: [13, 18],
+  FONT_NORMAL: [14, 20],
+  FONT_NORMAL_PLUS: [15, 20],
+  FONT_MEDIUM: [16, 22],
+  FONT_LARGE: [18, 24],
+} as const satisfies Record<string, readonly [fontSize: number, lineHeight: number]>
+
+export type FontSizingName = keyof typeof FONT_SIZING
+export type FontSizingPair = (typeof FONT_SIZING)[FontSizingName]
+export type FontWeight = FontWeightValue | FontWeightKey
+export type FontWeightKey = keyof typeof Font.weight
+export type FontWeightValue = (typeof Font.weight)[FontWeightKey]
 
 // Header offset in pixels (used in swap.cow.fi)
 export const SWAP_HEADER_OFFSET = 76

@@ -1,22 +1,22 @@
-import { TokenSymbol } from '@cowprotocol/ui'
-import { UI } from '@cowprotocol/ui'
-import { Currency } from '@uniswap/sdk-core'
+import { Currency } from '@cowprotocol/currency'
+import { TokenSymbol, UI } from '@cowprotocol/ui'
 
+import { Trans } from '@lingui/react/macro'
 import { AlertTriangle } from 'react-feather'
 import styled from 'styled-components/macro'
 
 import { LOW_RATE_THRESHOLD_PERCENT } from 'modules/limitOrders/const/trade'
 
-interface RateImpactAcknowledge {
-  withAcknowledge: boolean
-  isAccepted: boolean
-  onAcknowledgeChange(checked: boolean): void
-}
-
 export interface RateImpactWarningProps extends Partial<RateImpactAcknowledge> {
   rateImpact: number
   inputCurrency: Currency
   className?: string
+}
+
+interface RateImpactAcknowledge {
+  withAcknowledge: boolean
+  isAccepted: boolean
+  onAcknowledgeChange(checked: boolean): void
 }
 
 const RateImpactWarningBox = styled.div<{ withAcknowledge: boolean }>`
@@ -59,6 +59,8 @@ const AcknowledgeBox = styled.div`
   }
 `
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function RateImpactWarning({
   withAcknowledge = false,
   onAcknowledgeChange,
@@ -71,6 +73,8 @@ export function RateImpactWarning({
 
   if (!isTooLowRate) return null
 
+  const absoluteRateImpact = Math.abs(rateImpact)
+
   return (
     <div className={className}>
       <RateImpactWarningBox withAcknowledge={withAcknowledge}>
@@ -78,11 +82,13 @@ export function RateImpactWarning({
           <AlertTriangle size={32} />
         </div>
         <div>
-          Your limit price is {Math.abs(rateImpact)}% lower than current market price. You could be selling your{' '}
-          <TokenSymbol token={inputCurrency} /> at a loss (although Chameleon swap will always try to give you the best
-          price regardless).
+          <Trans>
+            Your limit price is {absoluteRateImpact}% lower than current market price. You could be selling your{' '}
+            <TokenSymbol token={inputCurrency} /> at a loss (although CoW Swap will always try to give you the best
+            price regardless).
+          </Trans>
           <ReadMoreLink target="_blank" href="https://www.investopedia.com/terms/l/limitorder.asp">
-            Read more about limit orders
+            <Trans>Read more about limit orders</Trans>
           </ReadMoreLink>
         </div>
       </RateImpactWarningBox>
@@ -94,7 +100,9 @@ export function RateImpactWarning({
               checked={isAccepted}
               onChange={(event) => onAcknowledgeChange?.(event.target.checked)}
             />
-            <span>I acknowledge the high price impact</span>
+            <span>
+              <Trans>I acknowledge the high price impact</Trans>
+            </span>
           </label>
         </AcknowledgeBox>
       )}

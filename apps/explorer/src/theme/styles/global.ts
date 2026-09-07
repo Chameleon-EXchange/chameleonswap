@@ -1,20 +1,30 @@
+import { baseGlobalStyles, Color, ThemeColorVars, UI } from '@cowprotocol/ui'
+
 import variables from 'components/layout/GenericLayout/variablesCss'
-import { createGlobalStyle, css } from 'styled-components/macro'
-
-// TODO: remove for constants from colour palette later
-
-const selection = css`
-  *::selection {
-    background-color: var(--color-gradient-2);
-  }
-`
+import { createGlobalStyle } from 'styled-components/macro'
 
 export const StaticGlobalStyle = createGlobalStyle`
+  ${baseGlobalStyles}
+
+  /* Shared reset strips native dropdown chrome for CoW Swap; Explorer still uses <select>. */
+  select {
+    appearance: auto;
+  }
+
+  /* The shared reset's "font: inherit" resolves to body's 6.25px font-size and 10px line-height here
+     (62.5% applied to html and body both), so restore the ~13.3px/normal UA defaults controls used to
+     get. Without the line-height a text button is 6px shorter with its glyphs cramped into a 10px line
+     box, and a textarea clips. Real fix is body's own font-size and line-height, too wide for now. */
+  button,
+  textarea,
+  select,
+  input:where(:not([type='checkbox'], [type='radio'], [type='range'])) {
+    font-size: 1.3rem;
+    line-height: normal;
+  }
+
   /* TEMPORARY: import variables */
   ${variables}
-
-  /* Selection CSS */
-  ${selection}
 
   .noScroll {
     overflow: hidden;
@@ -26,16 +36,11 @@ export const StaticGlobalStyle = createGlobalStyle`
 
   html, body {
     width: 100%;
-    margin: 0;
     font-size: 62.5%;
     text-rendering: geometricPrecision;
     line-height: 10px;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
     box-sizing: border-box;
     overscroll-behavior-y: none;
-    scroll-behavior: smooth;
-    overflow-x: hidden;
   }
 
   *, *:before, *:after {
@@ -55,6 +60,9 @@ export const StaticGlobalStyle = createGlobalStyle`
 `
 
 export const ThemedGlobalStyle = createGlobalStyle`
+  // Global CoW DAO styles
+  ${ThemeColorVars}
+
   input,
   textarea,
   button,
@@ -70,8 +78,8 @@ export const ThemedGlobalStyle = createGlobalStyle`
     }
   }
   html, body {
-    background: ${({ theme }): string => theme.paper};
-    color: ${({ theme }): string => theme.textPrimary1};
+    background: ${Color.explorer_bg};
+    color: ${({ theme }): string => (theme.mode === 'dark' ? `var(${UI.COLOR_NEUTRAL_100})` : Color.neutral100)};
     /* StyleLint fights you for the sans-serif as it requires a fallback and can't detect it from the theme prop */
     font-family: ${({ theme }): string => theme.fontDefault}, sans-serif;
     font-feature-settings: 'ss01' on, 'ss02' on;
@@ -92,7 +100,7 @@ export const ThemedGlobalStyle = createGlobalStyle`
 
     &:link,
     &:visited {
-      color: ${({ theme }): string => theme.textActive1};
+      color: ${Color.explorer_textActive};
     }
   }
 `

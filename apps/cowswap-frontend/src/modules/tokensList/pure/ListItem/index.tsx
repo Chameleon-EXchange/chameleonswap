@@ -1,11 +1,19 @@
-import { useState } from 'react'
+import { ReactNode, useEffect, useState } from 'react'
 
+import { useCowAnalytics } from '@cowprotocol/analytics'
 import { getTokenListViewLink, ListState } from '@cowprotocol/tokens'
+import {
+  ContextMenuTooltip,
+  ContextMenuExternalLink,
+  ContextMenuItemButton,
+  ContextMenuItemText,
+  Toggle,
+} from '@cowprotocol/ui'
 
-import { Menu, MenuItem } from '@reach/menu-button'
-import { Settings } from 'react-feather'
+import { Trans, useLingui } from '@lingui/react/macro'
+import { Settings, Trash2 } from 'react-feather'
 
-import { Toggle } from 'legacy/components/Toggle'
+import { CowSwapAnalyticsCategory, toCowSwapGtmEvent } from 'common/analytics/types'
 
 import * as styledEl from './styled'
 
@@ -18,14 +26,30 @@ export interface TokenListItemProps {
   removeList(list: ListState): void
 }
 
-export function ListItem(props: TokenListItemProps) {
+export function ListItem(props: TokenListItemProps): ReactNode {
   const { list, removeList, toggleList, enabled } = props
-
   const [isActive, setIsActive] = useState(enabled)
+  const cowAnalytics = useCowAnalytics()
+  const { t } = useLingui()
 
-  const toggle = () => {
-    toggleList(list, enabled)
-    setIsActive((state) => !state)
+  // this is to keep isActive in sync with enabled, we use isActive for immediate UI feedback
+  useEffect(() => {
+    setIsActive(enabled)
+  }, [enabled])
+
+  const toggle = (): void => {
+    const newState = !enabled
+    toggleList(list, newState)
+    setIsActive(newState)
+    cowAnalytics.sendEvent({
+      category: CowSwapAnalyticsCategory.LIST,
+      action: `List ${newState ? 'Enabled' : 'Disabled'}`,
+      label: list.source,
+    })
+  }
+
+  const handleRemove = (): void => {
+    removeList(list)
   }
 
   const { major, minor, patch } = list.list.version
@@ -33,31 +57,53 @@ export function ListItem(props: TokenListItemProps) {
   return (
     <styledEl.Wrapper $enabled={isActive}>
       <TokenListDetails list={list.list}>
-        <Menu>
-          <styledEl.SettingsButton>
-            <Settings size={12} />
-          </styledEl.SettingsButton>
-          <styledEl.SettingsContainer>
-            <MenuItem onSelect={() => void 0}>
-              <styledEl.ListVersion>
+        <ContextMenuTooltip
+          content={
+            <>
+              <ContextMenuItemText>
                 v{major}.{minor}.{patch}
-              </styledEl.ListVersion>
-            </MenuItem>
-            <MenuItem onSelect={() => void 0}>
-              <styledEl.SettingsAction>
-                <a target="_blank" href={getTokenListViewLink(list.source)} rel="noreferrer">
-                  View List
-                </a>
-              </styledEl.SettingsAction>
-            </MenuItem>
-            <MenuItem onSelect={() => removeList(list)}>
-              <styledEl.SettingsAction>Remove list</styledEl.SettingsAction>
-            </MenuItem>
-          </styledEl.SettingsContainer>
-        </Menu>
+              </ContextMenuItemText>
+              <ContextMenuExternalLink
+                href={getTokenListViewLink(list.source)}
+                label={t`View List`}
+                data-click-event={toCowSwapGtmEvent({
+                  category: CowSwapAnalyticsCategory.LIST,
+                  action: 'View List',
+                  label: list.source,
+                })}
+              />
+              <ContextMenuItemButton
+                variant="danger"
+                onClick={handleRemove}
+                data-click-event={toCowSwapGtmEvent({
+                  category: CowSwapAnalyticsCategory.LIST,
+                  action: 'Remove List',
+                  label: list.source,
+                })}
+              >
+                <Trash2 size={16} />
+                <span>
+                  <Trans>Remove list</Trans>
+                </span>
+              </ContextMenuItemButton>
+            </>
+          }
+        >
+          <styledEl.SettingsButton>
+            <Settings size={14} />
+          </styledEl.SettingsButton>
+        </ContextMenuTooltip>
       </TokenListDetails>
       <div>
-        <Toggle isActive={isActive} toggle={toggle} />
+        <Toggle
+          checked={isActive}
+          toggle={toggle}
+          data-click-event={toCowSwapGtmEvent({
+            category: CowSwapAnalyticsCategory.LIST,
+            action: `${enabled ? 'Disable' : 'Enable'} List`,
+            label: list.source,
+          })}
+        />
       </div>
     </styledEl.Wrapper>
   )

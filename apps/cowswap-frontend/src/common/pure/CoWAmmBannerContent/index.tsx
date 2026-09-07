@@ -1,12 +1,14 @@
+/* eslint-disable @typescript-eslint/no-restricted-imports */ // TODO: Don't use 'modules' import
 import React, { useCallback, useMemo, useRef } from 'react'
 
+import { useMediaQuery } from '@cowprotocol/common-hooks'
 import { isTruthy } from '@cowprotocol/common-utils'
 import { TokensByAddress } from '@cowprotocol/tokens'
 import { LpTokenProvider } from '@cowprotocol/types'
+import { Media } from '@cowprotocol/ui'
 
+import { t } from '@lingui/core/macro'
 import styled from 'styled-components/macro'
-
-import { upToSmall, useMediaQuery } from 'legacy/hooks/useMediaQuery'
 
 import { VampireAttackContext } from 'modules/yield/types'
 
@@ -35,6 +37,10 @@ interface CoWAmmBannerContentProps {
   onClose: () => void
 }
 
+// TODO: Break down this large function into smaller functions
+// TODO: Add proper return type annotation
+// TODO: Reduce function complexity by extracting logic
+// eslint-disable-next-line max-lines-per-function, @typescript-eslint/explicit-function-return-type, complexity
 export function CoWAmmBannerContent({
   id,
   title,
@@ -46,7 +52,7 @@ export function CoWAmmBannerContent({
   vampireAttackContext,
   tokensByAddress,
 }: CoWAmmBannerContentProps) {
-  const isMobile = useMediaQuery(upToSmall)
+  const isMobile = useMediaQuery(Media.upToSmall(false))
   const arrowBackgroundRef = useRef<HTMLDivElement>(null)
   const { superiorAlternatives, cowAmmLpTokensCount, averageApyDiff, poolsAverageData } = vampireAttackContext
 
@@ -135,9 +141,11 @@ export function CoWAmmBannerContent({
               isTokenSelectorView={isTokenSelectorView}
             />
           ) : isCowAmmAverageBetter && averageProvidersNames ? (
-            `yield over average ${averageProvidersNames.join(', ')} pool${averageProvidersNames.length > 1 ? 's' : ''}`
+            t`yield over average` +
+            ` ${averageProvidersNames.join(', ')}` +
+            (averageProvidersNames.length > 1 ? t`pools` : t`pool`)
           ) : (
-            'pools available to get yield on your assets!'
+            t`pools available to get yield on your assets!`
           )}
         </TextFit>
       </span>

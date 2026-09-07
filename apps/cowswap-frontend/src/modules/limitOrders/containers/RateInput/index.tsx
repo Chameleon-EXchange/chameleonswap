@@ -1,14 +1,16 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import LockedIcon from '@cowprotocol/assets/images/icon-locked.svg'
-import UnlockedIcon from '@cowprotocol/assets/images/icon-unlocked.svg'
-import UsdIcon from '@cowprotocol/assets/images/icon-USD.svg'
+import iconLockedSrc from '@cowprotocol/assets/images/icon-locked.svg'
+import iconUnlockedSrc from '@cowprotocol/assets/images/icon-unlocked.svg'
+import iconUsdSrc from '@cowprotocol/assets/images/icon-USD.svg'
 import { formatInputAmount, getAddress, isFractionFalsy, tryParseCurrencyAmount } from '@cowprotocol/common-utils'
 import { TokenLogo } from '@cowprotocol/tokens'
 import { FiatAmount, HelpTooltip, HoverTooltip, TokenSymbol } from '@cowprotocol/ui'
 import { useWalletInfo } from '@cowprotocol/wallet'
 
+import { t } from '@lingui/core/macro'
+import { Trans } from '@lingui/react/macro'
 import SVG from 'react-inlinesvg'
 
 import { useLimitOrdersDerivedState } from 'modules/limitOrders/hooks/useLimitOrdersDerivedState'
@@ -25,6 +27,8 @@ import { toFraction } from 'modules/limitOrders/utils/toFraction'
 import { useUsdAmount } from 'modules/usdAmount'
 
 import { useConvertUsdToTokenValue } from 'common/hooks/useConvertUsdToTokenValue'
+import { useIsProviderNetworkDeprecated } from 'common/hooks/useIsProviderNetworkDeprecated'
+import { useIsProviderNetworkUnsupported } from 'common/hooks/useIsProviderNetworkUnsupported'
 import { ExecutionPrice } from 'common/pure/ExecutionPrice'
 import { getQuoteCurrency, getQuoteCurrencyByStableCoin } from 'common/services/getQuoteCurrency'
 
@@ -33,6 +37,10 @@ import { useExecutionPriceUsdValue } from './hooks/useExecutionPriceUsdValue'
 import { useRateDisplayedValue } from './hooks/useRateDisplayedValue'
 import * as styledEl from './styled'
 
+// TODO: Break down this large function into smaller functions
+// TODO: Add proper return type annotation
+// TODO: Reduce function complexity by extracting logic
+// eslint-disable-next-line max-lines-per-function, @typescript-eslint/explicit-function-return-type, complexity
 export function RateInput() {
   const { chainId } = useWalletInfo()
   // Rate state
@@ -54,6 +62,10 @@ export function RateInput() {
   const { inputCurrency, outputCurrency, inputCurrencyAmount, outputCurrencyAmount } = useLimitOrdersDerivedState()
   const rateImpact = useRateImpact()
   const areBothCurrencies = !!inputCurrency && !!outputCurrency
+
+  const isProviderNetworkUnsupported = useIsProviderNetworkUnsupported()
+  const isProviderNetworkDeprecated = useIsProviderNetworkDeprecated()
+  const isRateInputDisabled = isProviderNetworkUnsupported || isProviderNetworkDeprecated
   const inputCurrencyId = inputCurrency?.symbol
   const outputCurrencyId = outputCurrency?.symbol
 
@@ -215,7 +227,7 @@ export function RateInput() {
   }, [inputCurrency, outputCurrency])
 
   return (
-    <>
+    <styledEl.OuterWrapper $disabled={isRateInputDisabled} htmlFor="rate-limit-amount-input">
       <styledEl.Wrapper>
         <styledEl.Header>
           <HeadingText
@@ -224,12 +236,12 @@ export function RateInput() {
             rateImpact={rateImpact}
             toggleIcon={
               <HoverTooltip
-                content="When locked, the limit price stays fixed when changing the amounts. When unlocked, the limit price will update based on the amount changes."
+                content={t`When locked, the limit price stays fixed when changing the amounts. When unlocked, the limit price will update based on the amount changes.`}
                 wrapInContainer
                 placement="top-start"
               >
                 <styledEl.LockIcon onClick={handleTogglePriceLock}>
-                  <SVG src={limitPriceLocked ? LockedIcon : UnlockedIcon} width={12} height={10} />
+                  <SVG src={limitPriceLocked ? iconLockedSrc : iconUnlockedSrc} width={12} height={10} />
                 </styledEl.LockIcon>
               </HoverTooltip>
             }
@@ -237,7 +249,9 @@ export function RateInput() {
           />
           {areBothCurrencies && (isLoadingMarketRate || marketRateDisplay) && (
             <styledEl.MarketRateWrapper>
-              <i>Market:</i>{' '}
+              <i>
+                <Trans>Market:</Trans>
+              </i>{' '}
               <styledEl.MarketPriceButton disabled={isDisabledMPrice} onClick={handleSetMarketPrice}>
                 {isLoadingMarketRate ? <styledEl.RateLoader size="14px" /> : marketRateDisplay}
               </styledEl.MarketPriceButton>
@@ -245,17 +259,14 @@ export function RateInput() {
           )}
         </styledEl.Header>
         <styledEl.Body>
-          {isLoading && areBothCurrencies ? (
-            <styledEl.RateLoader />
-          ) : (
-            <styledEl.NumericalInput
-              $loading={false}
-              id="rate-limit-amount-input"
-              prependSymbol={isUsdRateMode ? '$' : ''}
-              value={displayedRate + typedTrailingZeros}
-              onUserInput={handleUserInput}
-            />
-          )}
+          <styledEl.NumericalInput
+            $loading={isLoading && areBothCurrencies}
+            id="rate-limit-amount-input"
+            prependSymbol={isUsdRateMode ? '$' : ''}
+            value={displayedRate + typedTrailingZeros}
+            onUserInput={handleUserInput}
+            disabled={isRateInputDisabled}
+          />
 
           {secondaryCurrency && (
             <styledEl.CurrencyToggleGroup>
@@ -267,7 +278,7 @@ export function RateInput() {
               </styledEl.ActiveCurrency>
 
               <styledEl.UsdButton onClick={() => setIsUsdRateMode((state) => !state)} $active={isUsdRateMode}>
-                <SVG src={UsdIcon} />
+                <SVG src={iconUsdSrc} />
               </styledEl.UsdButton>
             </styledEl.CurrencyToggleGroup>
           )}
@@ -289,10 +300,12 @@ export function RateInput() {
           )}
         </b>
         <span>
-          {partialFillsEnabled ? 'Est. partial fill price' : 'Estimated fill price'}
-          <HelpTooltip text="Network costs (incl. gas) are covered by filling your order when the market price is better than your limit price." />
+          {partialFillsEnabled ? <Trans>Est. partial fill price</Trans> : <Trans>Estimated fill price</Trans>}
+          <HelpTooltip
+            text={t`Network costs (incl. gas) are covered by filling your order when the market price is better than your limit price.`}
+          />
         </span>
       </styledEl.EstimatedRate>
-    </>
+    </styledEl.OuterWrapper>
   )
 }

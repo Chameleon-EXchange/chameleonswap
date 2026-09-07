@@ -6,7 +6,7 @@
   "tags": [],
   "targets": {
     "lint": {
-      "executor": "@nx/linter:eslint",
+      "executor": "@nx/eslint:lint",
       "outputs": ["{options.outputFile}"],
       "options": {
         "lintFilePatterns": ["libs/iframe-transport/**/*.{ts,tsx,js,jsx}"]
@@ -15,17 +15,10 @@
     "build": {
       "executor": "@nx/vite:build",
       "outputs": ["{options.outputPath}"],
-      "defaultConfiguration": "production",
       "options": {
-        "outputPath": "dist/libs/iframe-transport"
-      },
-      "configurations": {
-        "development": {
-          "mode": "development"
-        },
-        "production": {
-          "mode": "production"
-        }
+        "outputPath": "dist/libs/iframe-transport",
+        "configFile": "libs/iframe-transport/vite.config.mts",
+        "assets": ["libs/iframe-transport/*.md"]
       }
     },
     "test": {

@@ -1,6 +1,7 @@
 import { isInjectedWidget } from '@cowprotocol/common-utils'
-import { ProductLogo, ProductVariant } from '@cowprotocol/ui'
+import { Color, ProductLogo, ProductVariant } from '@cowprotocol/ui'
 
+import { Trans } from '@lingui/react/macro'
 import { transparentize } from 'color2k'
 import styled, { keyframes, css } from 'styled-components/macro'
 
@@ -43,6 +44,8 @@ const sweepingLight = keyframes`
   }
 `
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 const getGradientColors = (darkMode: boolean) =>
   darkMode
     ? `
@@ -67,7 +70,7 @@ const LoadingWrapper = styled.div`
   justify-content: center;
   position: fixed;
   background: ${({ theme }) =>
-    theme.isInjectedWidgetMode ? 'transparent' : transparentize(theme.darkMode ? '#280e2d' : '#ff65ff', 0.1)};
+    theme.isWidget ? 'transparent' : transparentize(theme.darkMode ? '#0E0F2D' : Color.blue300Primary, 0.1)};
   z-index: 99;
   top: 0;
   left: 0;
@@ -76,7 +79,7 @@ const LoadingWrapper = styled.div`
   backdrop-filter: blur(3px);
 
   ${({ theme }) =>
-    !theme.isInjectedWidgetMode &&
+    !theme.isWidget &&
     css`
       &:before {
         content: '';
@@ -118,7 +121,7 @@ const LoadingWrapper = styled.div`
     font-size: 10px;
     font-weight: 400;
     letter-spacing: 4px;
-    margin: ${({ theme }) => (theme.isInjectedWidgetMode ? '0 auto' : '14px auto 0')};
+    margin: ${({ theme }) => (theme.isWidget ? '0 auto' : '14px auto 0')};
     color: ${({ theme }) => theme.text};
   }
 
@@ -143,6 +146,8 @@ const LoadingWrapper = styled.div`
   }
 `
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export const LoadingApp = () => {
   const isInjectedWidgetMode = isInjectedWidget()
 
@@ -150,11 +155,11 @@ export const LoadingApp = () => {
     <LoadingWrapper>
       {!isInjectedWidgetMode && (
         <span>
-          <ProductLogo variant={ProductVariant.ChameleonSwap} height={100} logoIconOnly />
+          <ProductLogo variant={ProductVariant.CowSwap} height={100} logoIconOnly />
         </span>
       )}
       <p>
-        Loading
+        <Trans>Loading</Trans>
         <span className="dots">
           <span>.</span>
           <span>.</span>

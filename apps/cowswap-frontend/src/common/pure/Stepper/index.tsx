@@ -1,12 +1,11 @@
 import { UI } from '@cowprotocol/ui'
 
-import ICON_CHECK from 'assets/icon/check.svg'
+import { t } from '@lingui/core/macro'
+import iconCheckSrc from 'assets/icon/check.svg'
 import SVG from 'react-inlinesvg'
 import styled from 'styled-components/macro'
 
 import { IconSpinner } from 'common/pure/IconSpinner'
-
-type StepState = 'active' | 'finished' | 'disabled' | 'error' | 'loading' | 'open'
 
 export interface StepProps {
   stepState: StepState
@@ -15,6 +14,8 @@ export interface StepProps {
   dotSize?: number
   dotBorderColor?: UI
 }
+
+type StepState = 'active' | 'finished' | 'disabled' | 'error' | 'loading' | 'open'
 
 interface StepStyles {
   dotBackground: UI
@@ -90,8 +91,8 @@ const Step = styled.div<StepProps>`
       stepState === 'error'
         ? `var(${stateStyles['error'].dotBackground})`
         : stepState === 'finished'
-        ? `var(${stateStyles['finished'].dotBackground})`
-        : `var(${UI.COLOR_TEXT_OPACITY_25})`};
+          ? `var(${stateStyles['finished'].dotBackground})`
+          : `var(${UI.COLOR_TEXT_OPACITY_25})`};
     border-radius: var(${UI.BORDER_RADIUS_NORMAL});
   }
 
@@ -122,6 +123,8 @@ export interface StepperProps {
   dotSize?: number
 }
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function Stepper({ steps, maxWidth, dotSize = 21 }: StepperProps) {
   return (
     <Wrapper maxWidth={maxWidth} dotSize={dotSize}>
@@ -132,7 +135,7 @@ export function Stepper({ steps, maxWidth, dotSize = 21 }: StepperProps) {
               <i>{step.stepNumber}</i>
             </IconSpinner>
           ) : (
-            <i>{step.stepState === 'finished' ? <SVG src={ICON_CHECK} title="checkmark" /> : step.stepNumber}</i>
+            <i>{step.stepState === 'finished' ? <SVG src={iconCheckSrc} title={t`checkmark`} /> : step.stepNumber}</i>
           )}
           <small>{step.label}</small>
           <hr />

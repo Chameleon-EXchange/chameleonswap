@@ -1,11 +1,11 @@
 import { useSetAtom } from 'jotai'
+import { ReactNode } from 'react'
 
-import { SupportedChainId } from '@cowprotocol/cow-sdk'
+import { Percent } from '@cowprotocol/currency'
 import { Command } from '@cowprotocol/types'
 import { CenteredDots, HoverTooltip, LinkStyledButton, RowFixed, UI } from '@cowprotocol/ui'
-import { Percent } from '@uniswap/sdk-core'
 
-import { Trans } from '@lingui/macro'
+import { useLingui, Trans } from '@lingui/react/macro'
 import styled from 'styled-components/macro'
 
 import { getNativeSlippageTooltip, getNonNativeSlippageTooltip } from 'common/utils/tradeSettingsTooltips'
@@ -16,8 +16,10 @@ import { RowStyleProps, StyledInfoIcon, StyledRowBetween, TextWrapper, Transacti
 const DefaultSlippage = styled.span`
   display: inline-flex;
   color: var(${UI.COLOR_TEXT_OPACITY_70});
-  text-decoration: strikethrough;
-  font-size: 0.8em;
+
+  button {
+    padding: 0 6px;
+  }
 
   a {
     text-decoration: underline;
@@ -29,11 +31,7 @@ const DefaultSlippage = styled.span`
   }
 `
 
-const SUGGESTED_SLIPPAGE_TOOLTIP =
-  'This is the recommended slippage tolerance based on current gas prices & trade size. A lower amount may result in slower execution.'
-
 export interface RowSlippageContentProps {
-  chainId: SupportedChainId
   displaySlippage: string
   isEoaEthFlow: boolean
   symbols?: (string | undefined)[]
@@ -45,13 +43,23 @@ export interface RowSlippageContentProps {
   isSlippageModified: boolean
   setAutoSlippage?: Command // todo: make them optional
   smartSlippage?: string
+  isDefaultSlippageApplied: boolean
   isSmartSlippageApplied: boolean
   isSmartSlippageLoading: boolean
+  hideRecommendedSlippage?: boolean
 }
 
-export function RowSlippageContent(props: RowSlippageContentProps) {
+type SlippageTextContentsProps = {
+  isEoaEthFlow: boolean
+  isDefaultSlippageApplied: boolean
+  slippageLabel?: React.ReactNode
+  isDynamicSlippageSet: boolean
+}
+
+export function RowSlippageContent(props: RowSlippageContentProps): ReactNode {
+  const { t } = useLingui()
+  const SUGGESTED_SLIPPAGE_TOOLTIP = t`This is the recommended slippage tolerance based on current gas prices & trade size. A lower amount may result in slower execution.`
   const {
-    chainId,
     displaySlippage,
     isEoaEthFlow,
     symbols,
@@ -63,22 +71,22 @@ export function RowSlippageContent(props: RowSlippageContentProps) {
     smartSlippage,
     isSmartSlippageApplied,
     isSmartSlippageLoading,
+    isDefaultSlippageApplied,
+    hideRecommendedSlippage,
   } = props
 
   const setSettingTabState = useSetAtom(settingsTabStateAtom)
-
-  const openSettings = () => setSettingTabState({ open: true })
+  const openSettings: () => void = () => setSettingTabState({ open: true })
 
   const tooltipContent =
     slippageTooltip ||
-    (isEoaEthFlow
-      ? getNativeSlippageTooltip(chainId, symbols)
-      : getNonNativeSlippageTooltip({ isDynamic: !!smartSlippage }))
+    (isEoaEthFlow ? getNativeSlippageTooltip(symbols) : getNonNativeSlippageTooltip({ isDynamic: !!smartSlippage }))
 
   // In case the user happened to set the same slippage as the suggestion, do not show the suggestion
   const suggestedEqualToUserSlippage = smartSlippage && smartSlippage === displaySlippage
 
-  const displayDefaultSlippage = isSlippageModified &&
+  const displayDefaultSlippage = !hideRecommendedSlippage &&
+    isSlippageModified &&
     setAutoSlippage &&
     smartSlippage &&
     !suggestedEqualToUserSlippage && (
@@ -87,7 +95,9 @@ export function RowSlippageContent(props: RowSlippageContentProps) {
           <CenteredDots />
         ) : (
           <>
-            <LinkStyledButton onClick={setAutoSlippage}>(Recommended: {smartSlippage})</LinkStyledButton>
+            <LinkStyledButton onClick={setAutoSlippage}>
+              (<Trans>Suggested</Trans>: {smartSlippage})
+            </LinkStyledButton>
             <HoverTooltip wrapInContainer content={SUGGESTED_SLIPPAGE_TOOLTIP}>
               <StyledInfoIcon size={16} />
             </HoverTooltip>
@@ -111,8 +121,9 @@ export function RowSlippageContent(props: RowSlippageContentProps) {
       <RowFixed>
         <TextWrapper onClick={openSettings}>
           <SlippageTextContents
-            isEoaEthFlow={isEoaEthFlow}
+            isDefaultSlippageApplied={isDefaultSlippageApplied}
             slippageLabel={slippageLabel}
+            isEoaEthFlow={isEoaEthFlow}
             isDynamicSlippageSet={isSmartSlippageApplied}
           />
         </TextWrapper>
@@ -127,18 +138,27 @@ export function RowSlippageContent(props: RowSlippageContentProps) {
   )
 }
 
-type SlippageTextContentsProps = {
-  isEoaEthFlow: boolean
-  slippageLabel?: React.ReactNode
-  isDynamicSlippageSet: boolean
-}
+function SlippageTextContents({
+  slippageLabel,
+  isDynamicSlippageSet,
+  isEoaEthFlow,
+  isDefaultSlippageApplied,
+}: SlippageTextContentsProps): ReactNode {
+  const { t } = useLingui()
 
-function SlippageTextContents({ isEoaEthFlow, slippageLabel, isDynamicSlippageSet }: SlippageTextContentsProps) {
   return (
     <TransactionText>
-      <Trans>{slippageLabel || 'Slippage tolerance'}</Trans>
-      {isEoaEthFlow && <i>(modified)</i>}
-      {isDynamicSlippageSet && <i>(dynamic)</i>}
+      {slippageLabel || t`Slippage tolerance`}
+      {isDynamicSlippageSet && !isDefaultSlippageApplied && (
+        <i>
+          <Trans>(dynamic)</Trans>
+        </i>
+      )}
+      {isEoaEthFlow && isDefaultSlippageApplied && (
+        <i>
+          <Trans>(modified)</Trans>
+        </i>
+      )}
     </TransactionText>
   )
 }

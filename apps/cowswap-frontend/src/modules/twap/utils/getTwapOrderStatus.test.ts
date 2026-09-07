@@ -1,7 +1,6 @@
-import { getTwapOrderStatus } from './getTwapOrderStatus'
+import { getTwapOrderStatus, isTwapOrderExpired } from './getTwapOrderStatus'
 
-import { TwapOrdersExecution } from '../hooks/useTwapOrdersExecutions'
-import { TwapOrderStatus, TWAPOrderStruct } from '../types'
+import { TwapOrdersExecution, TwapOrderStatus, TWAPOrderStruct } from '../types'
 
 const orderStruct: TWAPOrderStruct = {
   sellToken: '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6',
@@ -17,6 +16,10 @@ const orderStruct: TWAPOrderStruct = {
 }
 
 describe('getTwapOrderStatus()', () => {
+  it('uses a non-zero on-chain start time without a transaction date', () => {
+    expect(isTwapOrderExpired({ ...orderStruct, t0: 1 }, null)).toBe(true)
+  })
+
   describe('When executedSellAmount equals to partSellAmount * n', () => {
     it('Then an order status is Fulfilled', () => {
       const execution: TwapOrdersExecution = {
@@ -28,7 +31,13 @@ describe('getTwapOrderStatus()', () => {
         },
       }
 
-      const status = getTwapOrderStatus(orderStruct, true, new Date(), true, execution)
+      const status = getTwapOrderStatus({
+        execution,
+        executionDate: new Date(),
+        isCancelled: false,
+        isWaitingForSignature: false,
+        order: orderStruct,
+      })
 
       expect(status).toBe(TwapOrderStatus.Fulfilled)
     })
@@ -45,10 +54,81 @@ describe('getTwapOrderStatus()', () => {
         },
       }
 
-      const status = getTwapOrderStatus(orderStruct, true, new Date(), true, execution)
+      const status = getTwapOrderStatus({
+        execution,
+        executionDate: new Date(),
+        isCancelled: false,
+        isWaitingForSignature: false,
+        order: orderStruct,
+      })
 
       expect(status).toBe(TwapOrderStatus.Pending)
     })
+  })
+
+  describe('When the Safe UI snapshot is stale', () => {
+    it('Then Pending when the order is not waiting for a signature', () => {
+      const execution: TwapOrdersExecution = {
+        confirmedPartsCount: 0,
+        info: {
+          executedSellAmount: '0',
+          executedBuyAmount: '0',
+          executedFeeAmount: '0',
+        },
+      }
+
+      const status = getTwapOrderStatus({
+        execution,
+        executionDate: null,
+        isCancelled: false,
+        isWaitingForSignature: false,
+        order: orderStruct,
+      })
+
+      expect(status).toBe(TwapOrderStatus.Pending)
+    })
+
+    it('Then WaitSigning when the order is waiting for a signature', () => {
+      const execution: TwapOrdersExecution = {
+        confirmedPartsCount: 0,
+        info: {
+          executedSellAmount: '0',
+          executedBuyAmount: '0',
+          executedFeeAmount: '0',
+        },
+      }
+
+      const status = getTwapOrderStatus({
+        execution,
+        executionDate: null,
+        isCancelled: false,
+        isWaitingForSignature: true,
+        order: orderStruct,
+      })
+
+      expect(status).toBe(TwapOrderStatus.WaitSigning)
+    })
+  })
+
+  it('returns Cancelled when explicitly cancelled', () => {
+    const execution: TwapOrdersExecution = {
+      confirmedPartsCount: 0,
+      info: {
+        executedSellAmount: '0',
+        executedBuyAmount: '0',
+        executedFeeAmount: '0',
+      },
+    }
+
+    const status = getTwapOrderStatus({
+      execution,
+      executionDate: new Date(),
+      isCancelled: true,
+      isWaitingForSignature: false,
+      order: orderStruct,
+    })
+
+    expect(status).toBe(TwapOrderStatus.Cancelled)
   })
 
   describe('When count of confirmed parts equals to the total parts count', () => {
@@ -62,7 +142,13 @@ describe('getTwapOrderStatus()', () => {
         },
       }
 
-      const status = getTwapOrderStatus(orderStruct, true, new Date(), true, execution)
+      const status = getTwapOrderStatus({
+        execution,
+        executionDate: new Date(),
+        isCancelled: false,
+        isWaitingForSignature: false,
+        order: orderStruct,
+      })
 
       expect(status).toBe(TwapOrderStatus.Expired)
     })

@@ -1,20 +1,25 @@
+import { Connector as WagmiConnector } from 'wagmi'
+import { injected, walletConnect, coinbaseWallet, safe } from 'wagmi/connectors'
+
 import { SupportedChainId } from '@cowprotocol/cow-sdk'
-import { SafeInfoResponse } from '@safe-global/api-kit'
+import type { SafeInfoResponse } from '@safe-global/api-kit'
 
-export enum ConnectionType {
-  NETWORK = 'NETWORK',
-  INJECTED = 'INJECTED',
-  WALLET_CONNECT_V2 = 'WALLET_CONNECT_V2',
-  COINBASE_WALLET = 'COINBASE_WALLET',
-  METAMASK = 'METAMASK',
-  GNOSIS_SAFE = 'GNOSIS_SAFE',
-  TREZOR = 'TREZOR',
-}
+export const ConnectionType = {
+  // wagmi's `baseAccount` connector doesn't expose a static `.type` like the other
+  // connector factories do, so this is hardcoded to match its runtime connector.type.
+  BASE_ACCOUNT: 'baseAccount',
+  COINBASE_WALLET: coinbaseWallet.type,
+  GNOSIS_SAFE: safe.type,
+  INJECTED: injected.type,
+  WALLET_CONNECT_V2: walletConnect.type,
+} as const
 
-export interface WalletInfo {
-  chainId: SupportedChainId
-  account?: string
-  active?: boolean
+export type ConnectionType = (typeof ConnectionType)[keyof typeof ConnectionType]
+
+export type GnosisSafeInfo = Pick<SafeInfoResponse, 'address' | 'threshold' | 'owners'> & {
+  isReadOnly?: boolean
+  chainId: number
+  nonce: number
 }
 
 export interface WalletDetails {
@@ -32,9 +37,11 @@ export interface WalletDetails {
   allowsOffchainSigning: boolean
 }
 
-export type GnosisSafeInfo = Pick<SafeInfoResponse, 'address' | 'threshold' | 'owners' | 'nonce'> & {
-  isReadOnly?: boolean
-  chainId: number
+export interface WalletInfo {
+  chainId: SupportedChainId
+  account?: string
+  active?: boolean
+  connector?: WagmiConnector
 }
 
 export enum WalletType {

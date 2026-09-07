@@ -5,9 +5,11 @@ build
 dist
 tmp
 /out-tsc
+*tsbuildinfo
 
 # dependencies
 node_modules
+.pnpm-store
 
 # IDEs and editors
 /.idea
@@ -18,6 +20,7 @@ node_modules
 *.launch
 .settings/
 *.sublime-workspace
+.cursor/
 
 # IDE - VSCode
 .vscode/*
@@ -28,6 +31,7 @@ node_modules
 
 # misc
 /.sass-cache
+/.cache
 /connect.lock
 /coverage
 /libpeerconnection.log
@@ -35,6 +39,9 @@ npm-debug.log
 yarn-error.log
 testem.log
 /typings
+
+# Environment variables (local only)
+.env.local
 
 # System Files
 .DS_Store
@@ -46,8 +53,6 @@ yalc.lock
 # vercel
 .vercel
 
-analyse.html
-
 # NX
 .nx
 
@@ -58,7 +63,19 @@ out
 # Next.js sitemap
 apps/cow-fi/public/robots.txt
 apps/cow-fi/public/sitemap*
-.qodo
+apps/cowswap-frontend/public/robots.txt
 
-# Misc
-config.bat
+# Claude context files (local only)
+CLAUDE.md
+.claude/
+.superpowers/**/*
+
+# Agents context files (local only)
+.agents/
+.plans/
+
+# Serena project files
+.serena/
+
+# Subagent-driven-development scratch workspace (ledgers, briefs, review packages)
+.superpowers/

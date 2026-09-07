@@ -1,8 +1,12 @@
 import { strict as assert } from 'node:assert'
+
 import { DATA_CACHE_TIME_SECONDS } from '@/const/meta'
 
-const DUNE_API_KEY = process.env.DUNE_API_KEY!
-assert(DUNE_API_KEY, 'DUNE_API_KEY environment var is required')
+interface GetFromDuneResult<T> {
+  metadata: MetadataQuery
+  // column_names: string[]
+  rows: T[]
+}
 
 // TODO: getFromDune will be moved in a future PR to the SDK
 interface MetadataQuery {
@@ -14,22 +18,26 @@ interface MetadataQuery {
   // result_rows: number
 }
 
-interface GetFromDuneResult<T> {
-  metadata: MetadataQuery
-  // column_names: string[]
-  rows: T[]
-}
-
 export async function getFromDune<T>(queryId: number): Promise<GetFromDuneResult<T>> {
+  const duneApiKey = getDuneApiKey()
+
   const response = await fetch(`https://api.dune.com/api/v0/query/${queryId}/results`, {
     next: { revalidate: DATA_CACHE_TIME_SECONDS },
     headers: {
       accept: 'application/json',
-      'X-DUNE-API-KEY': DUNE_API_KEY,
+      'X-DUNE-API-KEY': duneApiKey,
     },
   })
 
   return await response.json()
+}
+
+function getDuneApiKey(): string {
+  const apiKey = process.env.DUNE_API_KEY?.trim()
+
+  assert(apiKey, 'DUNE_API_KEY environment var is required')
+
+  return apiKey
 }
 
 // ------ End of TODO
@@ -44,7 +52,6 @@ interface TotalCount {
 
 export async function _getTotalCount(queryId: number): Promise<TotalCount> {
   const queryResut = await getFromDune<{ count: number }>(queryId)
-  console.log('queryResut', queryId, queryResut)
 
   // Expect one row
   assert(
@@ -61,7 +68,7 @@ export async function _getTotalCount(queryId: number): Promise<TotalCount> {
 /**
  * @deprecated
  */
-export const getTotalTrades = () => _getTotalCount(TOTAL_TRADES_COUNT_QUERY_ID)
+export const getTotalTrades = (): Promise<TotalCount> => _getTotalCount(TOTAL_TRADES_COUNT_QUERY_ID)
 
 /**
  * @deprecated

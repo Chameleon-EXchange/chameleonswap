@@ -1,13 +1,20 @@
-import { useAtomValue, useSetAtom } from 'jotai'
-import { useEffect } from 'react'
+import { useAtomValue } from 'jotai'
+import { useMemo } from 'react'
+
+import { isSellOrder } from '@cowprotocol/common-utils'
+
+import { captchaCanQuoteAtom } from 'entities/captcha'
 
 import {
+  DEFAULT_LIMIT_DERIVED_STATE,
   LimitOrdersDerivedState,
   limitOrdersDerivedStateAtom,
   limitOrdersRawStateAtom,
 } from 'modules/limitOrders/state/limitOrdersRawStateAtom'
-import { TradeType } from 'modules/trade'
 import { useBuildTradeDerivedState } from 'modules/trade/hooks/useBuildTradeDerivedState'
+
+import { useIsProviderNetworkUnsupported } from 'common/hooks/useIsProviderNetworkUnsupported'
+import { TradeType } from 'common/modules/tradeNavigation'
 
 import { useIsWidgetUnlocked } from './useIsWidgetUnlocked'
 
@@ -17,17 +24,27 @@ export function useLimitOrdersDerivedState(): LimitOrdersDerivedState {
   return useAtomValue(limitOrdersDerivedStateAtom)
 }
 
-export function useFillLimitOrdersDerivedState() {
-  const updateDerivedState = useSetAtom(limitOrdersDerivedStateAtom)
+export function useLimitOrdersDerivedStateToFill(): LimitOrdersDerivedState {
+  const canQuote = useAtomValue(captchaCanQuoteAtom)
+  const isProviderNetworkUnsupported = useIsProviderNetworkUnsupported()
   const isUnlocked = useIsWidgetUnlocked()
-  const derivedState = useBuildTradeDerivedState(limitOrdersRawStateAtom)
+  const derivedState = useBuildTradeDerivedState(limitOrdersRawStateAtom, false)
 
-  useEffect(() => {
-    updateDerivedState({
+  return useMemo(() => {
+    if (isProviderNetworkUnsupported) return DEFAULT_LIMIT_DERIVED_STATE
+
+    const gatedAmounts = canQuote
+      ? {}
+      : isSellOrder(derivedState.orderKind)
+        ? { outputCurrencyAmount: null, outputCurrencyFiatAmount: null }
+        : { inputCurrencyAmount: null, inputCurrencyFiatAmount: null }
+
+    return {
       ...derivedState,
+      ...gatedAmounts,
       isUnlocked,
       slippage: LIMIT_ORDER_SLIPPAGE,
       tradeType: TradeType.LIMIT_ORDER,
-    })
-  }, [derivedState, updateDerivedState, isUnlocked])
+    }
+  }, [canQuote, derivedState, isUnlocked, isProviderNetworkUnsupported])
 }

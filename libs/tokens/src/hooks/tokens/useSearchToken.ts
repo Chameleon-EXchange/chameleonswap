@@ -1,17 +1,18 @@
 import { useAtomValue } from 'jotai'
 import { useEffect, useMemo, useState } from 'react'
 
+import { useConfig } from 'wagmi'
+
 import { TokenWithLogo } from '@cowprotocol/common-const'
 import { useDebounce } from '@cowprotocol/common-hooks'
 import { isAddress } from '@cowprotocol/common-utils'
-import { useWalletProvider } from '@cowprotocol/wallet-provider'
 
 import ms from 'ms.macro'
-import useSWR from 'swr'
+import useSWR, { SWRResponse } from 'swr'
 
 import { searchTokensInApi } from '../../services/searchTokensInApi'
 import { environmentAtom } from '../../state/environmentAtom'
-import { activeTokensAtom, inactiveTokensAtom } from '../../state/tokens/allTokensAtom'
+import { allActiveTokensAtom, inactiveTokensAtom } from '../../state/tokens/allTokensAtom'
 import { fetchTokenFromBlockchain } from '../../utils/fetchTokenFromBlockchain'
 import { getTokenSearchFilter } from '../../utils/getTokenSearchFilter'
 import { parseTokensFromApi } from '../../utils/parseTokensFromApi'
@@ -49,6 +50,7 @@ const emptyFromListsResult: FromListsResult = { tokensFromActiveLists: [], token
 export function useSearchToken(input: string | null): TokenSearchResponse {
   const inputLowerCase = input?.toLowerCase()
   const [isLoading, setIsLoading] = useState(false)
+
   const debouncedInputInList = useDebounce(inputLowerCase, IN_LISTS_DEBOUNCE_TIME)
   const debouncedInputInExternals = useDebounce(inputLowerCase, IN_EXTERNALS_DEBOUNCE_TIME)
 
@@ -59,20 +61,20 @@ export function useSearchToken(input: string | null): TokenSearchResponse {
 
   const isTokenAlreadyFoundByAddress = useMemo(() => {
     return [...tokensFromActiveLists, ...tokensFromInactiveLists].some(
-      (token) => token.address.toLowerCase() === debouncedInputInList
+      (token) => token.address.toLowerCase() === debouncedInputInList,
     )
   }, [debouncedInputInList, tokensFromActiveLists, tokensFromInactiveLists])
 
   // Search in external API
   const { data: apiResultTokens, isLoading: apiIsLoading } = useSearchTokensInApi(
     debouncedInputInExternals,
-    isTokenAlreadyFoundByAddress
+    isTokenAlreadyFoundByAddress,
   )
 
   // Search in Blockchain
   const { data: tokenFromBlockChain, isLoading: blockchainIsLoading } = useFetchTokenFromBlockchain(
     debouncedInputInExternals,
-    isTokenAlreadyFoundByAddress
+    isTokenAlreadyFoundByAddress,
   )
 
   useEffect(() => {
@@ -131,27 +133,26 @@ export function useSearchToken(input: string | null): TokenSearchResponse {
   ])
 }
 
-function useSearchTokensInLists(input: string | undefined): FromListsResult {
-  const activeTokens = useAtomValue(activeTokensAtom)
-  const inactiveTokens = useAtomValue(inactiveTokensAtom)
+function useFetchTokenFromBlockchain(
+  input: string | undefined,
+  isTokenAlreadyFoundByAddress: boolean,
+): SWRResponse<TokenWithLogo | null> {
+  const { chainId } = useAtomValue(environmentAtom)
+  const config = useConfig()
 
-  const { data: inListsResult } = useSWR<FromListsResult>(
-    ['searchTokensInLists', input, activeTokens, inactiveTokens],
-    () => {
-      if (!input) return emptyFromListsResult
-
-      const filter = getTokenSearchFilter(input)
-      const tokensFromActiveLists = activeTokens.filter(filter)
-      const tokensFromInactiveLists = inactiveTokens.filter(filter)
-
-      return { tokensFromActiveLists, tokensFromInactiveLists }
+  return useSWR<TokenWithLogo | null>(['fetchTokenFromBlockchain', chainId, input], () => {
+    if (isTokenAlreadyFoundByAddress || !input || !isAddress(input)) {
+      return null
     }
-  )
 
-  return inListsResult || emptyFromListsResult
+    return fetchTokenFromBlockchain(input, chainId, config).then(TokenWithLogo.fromToken)
+  })
 }
 
-function useSearchTokensInApi(input: string | undefined, isTokenAlreadyFoundByAddress: boolean) {
+function useSearchTokensInApi(
+  input: string | undefined,
+  isTokenAlreadyFoundByAddress: boolean,
+): SWRResponse<TokenWithLogo[] | null> {
   const { chainId } = useAtomValue(environmentAtom)
 
   return useSWR<TokenWithLogo[] | null>(['searchTokensInApi', input], () => {
@@ -163,15 +164,23 @@ function useSearchTokensInApi(input: string | undefined, isTokenAlreadyFoundByAd
   })
 }
 
-function useFetchTokenFromBlockchain(input: string | undefined, isTokenAlreadyFoundByAddress: boolean) {
+function useSearchTokensInLists(input: string | undefined): FromListsResult {
   const { chainId } = useAtomValue(environmentAtom)
-  const provider = useWalletProvider()
+  const activeTokens = useAtomValue(allActiveTokensAtom).tokens
+  const inactiveTokens = useAtomValue(inactiveTokensAtom)
 
-  return useSWR<TokenWithLogo | null>(['fetchTokenFromBlockchain', input], () => {
-    if (isTokenAlreadyFoundByAddress || !input || !provider || !isAddress(input)) {
-      return null
-    }
+  const { data: inListsResult } = useSWR<FromListsResult>(
+    ['searchTokensInLists', chainId, input, activeTokens, inactiveTokens],
+    () => {
+      if (!input) return emptyFromListsResult
 
-    return fetchTokenFromBlockchain(input, chainId, provider).then(TokenWithLogo.fromToken)
-  })
+      const filter = getTokenSearchFilter(input)
+      const tokensFromActiveLists = activeTokens.filter(filter)
+      const tokensFromInactiveLists = inactiveTokens.filter(filter)
+
+      return { tokensFromActiveLists, tokensFromInactiveLists }
+    },
+  )
+
+  return inListsResult ?? emptyFromListsResult
 }

@@ -3,12 +3,11 @@ import React, { ReactNode } from 'react'
 import { Command } from '@cowprotocol/types'
 import { useWalletDisplayedAddress } from '@cowprotocol/wallet'
 
-import { Trans } from '@lingui/macro'
+import { Trans, useLingui } from '@lingui/react/macro'
 import { CheckCircle, UserCheck } from 'react-feather'
 
 import { ConfirmationPendingContentShell } from './ConfirmationPendingContentShell'
-import { StepsWrapper } from './styled'
-import { StepsIconWrapper } from './styled'
+import { StepsIconWrapper, StepsWrapper } from './styled'
 
 interface ConfirmationPendingContentProps {
   onDismiss: Command
@@ -16,6 +15,7 @@ interface ConfirmationPendingContentProps {
   description: ReactNode
   operationLabel: string
   modalMode?: boolean
+  isPendingInProgress?: boolean
 }
 
 export function ConfirmationPendingContent({
@@ -24,10 +24,22 @@ export function ConfirmationPendingContent({
   operationLabel,
   onDismiss,
   modalMode,
-}: ConfirmationPendingContentProps) {
+  isPendingInProgress,
+}: ConfirmationPendingContentProps): ReactNode {
   const walletAddress = useWalletDisplayedAddress()
+  const { t } = useLingui()
 
-  const operationSubmittedMessage = `The ${operationLabel} is submitted.`
+  const firstStepLabel = isPendingInProgress ? (
+    t`The ${operationLabel} is signed.`
+  ) : (
+    <>
+      {t`Sign the ${operationLabel} with your wallet.`} {walletAddress && <span>{walletAddress}</span>}{' '}
+    </>
+  )
+
+  const secondStepLabel = isPendingInProgress ? t`Waiting for confirmation.` : t`The ${operationLabel} is submitted.`
+
+  const animateSecondStep = isPendingInProgress === true
 
   return (
     <ConfirmationPendingContentShell
@@ -36,31 +48,25 @@ export function ConfirmationPendingContent({
       modalMode={modalMode}
       description={
         <>
-          <span>{description} </span>
+          <span>{description}</span>
           <br />
-          <span>
-            <Trans>Follow these steps:</Trans>
-          </span>
+          <Trans>Follow these steps:</Trans>
         </>
       }
     >
-      <StepsWrapper>
+      <StepsWrapper animateSecondStep={animateSecondStep}>
         <div>
           <StepsIconWrapper>
             <UserCheck />
           </StepsIconWrapper>
-          <p>
-            <Trans>
-              Sign the {operationLabel} with your wallet. {walletAddress && <span>{walletAddress}</span>}
-            </Trans>
-          </p>
+          <p>{firstStepLabel}</p>
         </div>
         <hr />
         <div>
           <StepsIconWrapper>
             <CheckCircle />
           </StepsIconWrapper>
-          <p>{operationSubmittedMessage}</p>
+          <p>{secondStepLabel}</p>
         </div>
       </StepsWrapper>
     </ConfirmationPendingContentShell>

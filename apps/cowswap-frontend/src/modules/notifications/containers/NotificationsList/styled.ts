@@ -1,5 +1,6 @@
 import { UI } from '@cowprotocol/ui'
 
+import SVG from 'react-inlinesvg'
 import styled from 'styled-components/macro'
 
 export const ListWrapper = styled.div`
@@ -109,11 +110,68 @@ export const NoNotifications = styled.div`
   display: flex;
   flex-flow: column wrap;
   align-items: center;
-  justify-content: space-between;
-  margin-top: 30px;
-  opacity: 0.7;
+  justify-content: center;
+  margin: auto;
+  gap: 16px;
+  text-align: center;
+  margin: 30% 0 0;
 
   > h4 {
     margin: 0;
+    font-size: 24px;
+    font-weight: var(${UI.FONT_WEIGHT_SEMIBOLD});
+    color: var(${UI.COLOR_TEXT_OPACITY_70});
+  }
+
+  > p {
+    margin: 0;
+    font-size: 14px;
+    color: var(${UI.COLOR_TEXT_OPACITY_70});
+    line-height: 1.4;
+  }
+`
+
+export const MessageReadIcon = styled(SVG)`
+  --size: 90px;
+  width: var(--size);
+  height: var(--size);
+  color: var(${UI.COLOR_TEXT_OPACITY_15});
+`
+
+export const PromoBanner = styled.div`
+  background: var(${UI.COLOR_SUCCESS_BG});
+  color: var(${UI.COLOR_SUCCESS_TEXT});
+  border-radius: 16px;
+  padding: 12px 14px;
+  margin: 0 0 16px;
+  text-align: left;
+
+  > p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.4;
+    text-align: left;
+  }
+`
+
+export const PromoBannerLink = styled.button`
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+  font-weight: var(${UI.FONT_WEIGHT_SEMIBOLD});
+  text-decoration: underline;
+  cursor: pointer;
+`
+
+export const EnableAlertsLink = styled.button`
+  color: var(${UI.COLOR_PRIMARY});
+  font-size: inherit;
+  font-weight: var(${UI.FONT_WEIGHT_MEDIUM});
+  text-decoration: underline;
+
+  &:hover {
+    color: var(${UI.COLOR_PRIMARY_DARKER});
   }
 `

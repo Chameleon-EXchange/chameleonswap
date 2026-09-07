@@ -1,17 +1,32 @@
+/* eslint-disable @typescript-eslint/no-restricted-imports */ // TODO: Don't use 'modules' import
 import { useCallback, useEffect, useRef } from 'react'
 
 import { CANCELLED_ORDERS_PENDING_TIME } from '@cowprotocol/common-const'
-import { EnrichedOrder, SupportedChainId as ChainId } from '@cowprotocol/cow-sdk'
+import { areAddressesEqual, SupportedChainId as ChainId } from '@cowprotocol/cow-sdk'
 import { useIsSafeWallet, useWalletInfo } from '@cowprotocol/wallet'
+
+import { useGetSerializedBridgeOrder } from 'entities/bridgeOrders'
+import { useAddOrderToSurplusQueue } from 'entities/surplusModal'
 
 import { MARKET_OPERATOR_API_POLL_INTERVAL } from 'legacy/state/orders/consts'
 import { useCancelledOrders, useFulfillOrdersBatch } from 'legacy/state/orders/hooks'
 import { OrderTransitionStatus } from 'legacy/state/orders/utils'
 
 import { emitFulfilledOrderEvent } from 'modules/orders'
-import { useAddOrderToSurplusQueue } from 'modules/swap/state/surplusModal'
 
-import { fetchAndClassifyOrder } from './utils'
+import { getIsBridgeOrder } from 'common/utils/getIsBridgeOrder'
+
+import { fetchAndClassifyOrder, getOrdersFromTransitionData, OrderTransitionData } from './utils'
+
+const DEFAULT_ORDERS_STATE: Record<OrderTransitionStatus, OrderTransitionData[]> = {
+  fulfilled: [],
+  presigned: [],
+  expired: [],
+  cancelled: [],
+  unknown: [],
+  presignaturePending: [],
+  pending: [],
+}
 
 /**
  * Updater for cancelled orders.
@@ -33,6 +48,7 @@ export function CancelledOrdersUpdater(): null {
 
   const cancelled = useCancelledOrders({ chainId })
   const addOrderToSurplusQueue = useAddOrderToSurplusQueue()
+  const getSerializedBridgeOrder = useGetSerializedBridgeOrder()
 
   // Ref, so we don't rerun useEffect
   const cancelledRef = useRef(cancelled)
@@ -43,7 +59,6 @@ export function CancelledOrdersUpdater(): null {
 
   const updateOrders = useCallback(
     async (chainId: ChainId, account: string, isSafeWallet: boolean) => {
-      const lowerCaseAccount = account.toLowerCase()
       const now = Date.now()
 
       if (isUpdating.current) {
@@ -62,11 +77,11 @@ export function CancelledOrdersUpdater(): null {
             const creationTime = new Date(creationTimeString).getTime()
 
             return (
-              owner.toLowerCase() === lowerCaseAccount &&
+              areAddressesEqual(owner, account) &&
               now - creationTime < CANCELLED_ORDERS_PENDING_TIME &&
               !(cancellationHash && status === 'cancelled')
             )
-          }
+          },
         )
 
         if (pending.length === 0) {
@@ -77,48 +92,45 @@ export function CancelledOrdersUpdater(): null {
 
         // Iterate over pending orders fetching operator order data, async
         const unfilteredOrdersData = await Promise.all(
-          pending.map(async (orderFromStore) => fetchAndClassifyOrder(orderFromStore, chainId))
+          pending.map(async (orderFromStore) => fetchAndClassifyOrder(orderFromStore, chainId)),
         )
 
         // Group resolved promises by status
         // Only pick fulfilled
-        const { fulfilled } = unfilteredOrdersData.reduce<Record<OrderTransitionStatus, EnrichedOrder[]>>(
+        const { fulfilled } = unfilteredOrdersData.reduce<Record<OrderTransitionStatus, OrderTransitionData[]>>(
           (acc, orderData) => {
             if (orderData && orderData.order) {
-              acc[orderData.status].push(orderData.order)
+              acc[orderData.status].push(orderData)
             }
             return acc
           },
-          {
-            fulfilled: [],
-            presigned: [],
-            expired: [],
-            cancelled: [],
-            unknown: [],
-            presignaturePending: [],
-            pending: [],
-          }
+          { ...DEFAULT_ORDERS_STATE },
         )
 
         // Bach state update fulfilled orders, if any
         if (fulfilled.length) {
+          const fulfilledOrders = getOrdersFromTransitionData(fulfilled)
+
           fulfillOrdersBatch({
-            orders: fulfilled,
+            orders: fulfilledOrders,
             chainId,
             isSafeWallet,
           })
 
-          fulfilled.forEach((order) => {
-            addOrderToSurplusQueue(order.uid)
+          fulfilled.forEach(({ order, orderType }) => {
+            if (!getIsBridgeOrder(order)) {
+              addOrderToSurplusQueue(order.uid)
+            }
 
-            emitFulfilledOrderEvent(chainId, order)
+            const bridgeOrder = getSerializedBridgeOrder(chainId, order.uid)
+            emitFulfilledOrderEvent(chainId, order, bridgeOrder, orderType)
           })
         }
       } finally {
         isUpdating.current = false
       }
     },
-    [addOrderToSurplusQueue, fulfillOrdersBatch]
+    [addOrderToSurplusQueue, fulfillOrdersBatch, getSerializedBridgeOrder],
   )
 
   useEffect(() => {

@@ -5,28 +5,15 @@ import {
   PERCENTAGE_PRECISION,
   ZERO_FRACTION,
 } from '@cowprotocol/common-const'
-import { Currency, CurrencyAmount, Percent, Rounding } from '@uniswap/sdk-core'
-
-import JSBI from 'jsbi'
+import { Currency, CurrencyAmount, Percent, Rounding } from '@cowprotocol/currency'
+import { Nullish } from '@cowprotocol/types'
 
 import { getPrecisionForAmount, getSuffixForAmount, lessThanPrecisionSymbol, trimHugeAmounts } from './utils'
 
 import { FractionUtils } from '../fractionUtils'
 import { maxAmountSpend } from '../maxAmountSpend'
 import { trimTrailingZeros } from '../trimTrailingZeros'
-import { FractionLike, Nullish } from '../types'
-
-export function formatFiatAmount(amount: Nullish<FractionLike>): string {
-  return formatAmountWithPrecision(amount, FIAT_PRECISION)
-}
-
-export function formatTokenAmount(amount: Nullish<FractionLike>): string {
-  return formatAmountWithPrecision(amount, getPrecisionForAmount(amount))
-}
-
-export function formatPercent(percent: Nullish<Percent>): string {
-  return percent ? trimTrailingZeros(percent.toFixed(PERCENTAGE_PRECISION)) : ''
-}
+import { FractionLike } from '../types'
 
 export function formatAmountWithPrecision(
   amount: Nullish<FractionLike>,
@@ -52,7 +39,7 @@ export function formatAmountWithPrecision(
   const reminderWithPrecision = remainder.toFixed(precision, undefined, Rounding.ROUND_HALF_UP)
 
   // If rounding up means we carry over to the next integer, add 1 to quotient
-  const adjustedQuotient = +reminderWithPrecision >= 1 ? JSBI.add(quotient, JSBI.BigInt(1)) : quotient
+  const adjustedQuotient = +reminderWithPrecision >= 1 ? quotient + 1n : quotient
 
   // Apply the language formatting for the amount
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/NumberFormat
@@ -75,6 +62,10 @@ export function formatAmountWithPrecision(
   return nonZeroAmountIsRoundedToZero ? lessThanPrecisionSymbol(precision) : result
 }
 
+export function formatFiatAmount(amount: Nullish<FractionLike>): string {
+  return formatAmountWithPrecision(amount, FIAT_PRECISION)
+}
+
 export function formatInputAmount(
   amount: Nullish<FractionLike>,
   balance: Nullish<CurrencyAmount<Currency>> = null,
@@ -93,4 +84,12 @@ export function formatInputAmount(
   const result = amount.toFixed(precision, undefined, Rounding.ROUND_HALF_UP)
 
   return trimTrailingZeros(+result === 0 ? amount.toSignificant(AMOUNT_PRECISION) : result)
+}
+
+export function formatPercent(percent: Nullish<Percent>): string {
+  return percent ? trimTrailingZeros(percent.toFixed(PERCENTAGE_PRECISION)) : ''
+}
+
+export function formatTokenAmount(amount: Nullish<FractionLike>): string {
+  return formatAmountWithPrecision(amount, getPrecisionForAmount(amount))
 }

@@ -1,33 +1,39 @@
-import { useEffect, useState } from 'react'
+import { useMemo } from 'react'
 
-import { CowSwapWidgetPaletteParams } from '@cowprotocol/widget-lib'
+import { CowSwapWidgetPalette } from '@cowprotocol/widget-lib'
 
-import { useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router'
 
-// The theme palette provided by a consumer
-export function useInjectedWidgetPalette(): Partial<CowSwapWidgetPaletteParams> | undefined {
+/**
+ * Palette from the widget URL query string.
+ *
+ * - No param (`palette === null`): Keep the last applied custom palette.
+ * - Explicitly set to null (`palette === "null"`): Reset to the default theme.
+ * - Unparseable `palette` value: Reset to the default theme.
+ * - object: custom palette JSON from the host.
+ */
+export function useInjectedWidgetPalette(): Partial<CowSwapWidgetPalette> | null | undefined {
   const { search } = useLocation()
-  const [paletteParams, setPaletteParams] = useState<CowSwapWidgetPaletteParams | undefined>(undefined)
 
-  useEffect(() => {
+  return useMemo(() => {
     const searchParams = new URLSearchParams(search)
     const palette = searchParams.get('palette')
 
-    // When the palette is not provided, then do nothing
-    if (!palette) return undefined
+    // When the palette param is absent, do not change the current palette state.
+    if (palette === null) {
+      return undefined
+    }
 
-    // Reset palette state when the value is null
+    // Explicit reset to defaults (see widget-lib `addThemePaletteToQuery`).
     if (palette === 'null') {
-      setPaletteParams(undefined)
-      return
+      return null
     }
 
     try {
-      setPaletteParams(JSON.parse(decodeURIComponent(palette)))
+      return JSON.parse(decodeURIComponent(palette)) as Partial<CowSwapWidgetPalette>
     } catch (e) {
       console.error('Failed to parse palette from URL', e)
+      return null
     }
   }, [search])
-
-  return paletteParams
 }

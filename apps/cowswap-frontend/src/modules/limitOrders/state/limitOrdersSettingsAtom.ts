@@ -1,7 +1,7 @@
-import { atom, Getter, Setter } from 'jotai'
+import { atom, Getter, SetStateAction, Setter } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
 
-import { getJotaiIsolatedStorage } from '@cowprotocol/core'
+import { getJotaiIsolatedStorage, migrateLocalStorageKey } from '@cowprotocol/core'
 
 import { Milliseconds, Timestamp } from 'types'
 
@@ -21,6 +21,7 @@ export interface LimitOrdersSettingsState {
   readonly limitPriceLocked: boolean
   readonly ordersTableOnLeft: boolean
   readonly isUsdValuesMode: boolean
+  readonly enablePartialApprovalBySettings: boolean
 }
 
 export const defaultLimitOrdersSettings: LimitOrdersSettingsState = {
@@ -32,11 +33,16 @@ export const defaultLimitOrdersSettings: LimitOrdersSettingsState = {
   limitPriceLocked: true,
   ordersTableOnLeft: false,
   isUsdValuesMode: false,
+  enablePartialApprovalBySettings: true,
 }
+
+migrateLocalStorageKey<LimitOrdersSettingsState>('limit-orders-settings-atom:v3', 'limit-orders-settings-atom:v4', {
+  enablePartialApprovalBySettings: true,
+})
 
 // regular
 const regularLimitOrdersSettingsAtom = atomWithStorage<LimitOrdersSettingsState>(
-  'limit-orders-settings-atom:v3',
+  'limit-orders-settings-atom:v4',
   defaultLimitOrdersSettings,
   getJotaiIsolatedStorage(),
 )
@@ -67,16 +73,16 @@ export const updateLimitOrdersSettingsAtom = atom(
 function partialFillsOverrideSetterFactory(
   atomToUpdate: typeof regularLimitOrdersSettingsAtom | typeof alternativeLimitOrdersSettingsAtom,
 ) {
-  return (get: Getter, set: Setter, nextState: Partial<LimitOrdersSettingsState>) => {
-    set(atomToUpdate, () => {
-      const prevState = get(atomToUpdate)
+  return (_: Getter, set: Setter, nextState: SetStateAction<Partial<LimitOrdersSettingsState>>) => {
+    set(atomToUpdate, (prevState) => {
+      const update = typeof nextState === 'function' ? nextState(prevState) : nextState
 
-      if (nextState.partialFillsEnabled !== prevState.partialFillsEnabled) {
+      if (update.partialFillsEnabled !== prevState.partialFillsEnabled) {
         // Whenever `partialFillsEnabled` changes, reset `partiallyFillableOverrideAtom`
         set(partiallyFillableOverrideAtom, undefined)
       }
 
-      return { ...prevState, ...nextState }
+      return { ...prevState, ...update }
     })
   }
 }

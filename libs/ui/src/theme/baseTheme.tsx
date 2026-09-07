@@ -1,13 +1,27 @@
-import { transparentize, darken } from 'color2k'
-// eslint-disable-next-line no-restricted-imports
-import { CowProtocolTheme } from 'styled-components'
+import { darken, transparentize } from 'color2k'
 import { css } from 'styled-components/macro'
 
-import { Colors } from './typings'
+import { Colors, CowProtocolTheme } from './typings'
 
+import { Color, Gradients, getThemeColors } from '../colors'
 import { UI } from '../enum'
 import { CowSwapTheme } from '../types'
 
+/**
+ * Base theme implementation for CoW Protocol applications
+ *
+ * The base theme provides:
+ * 1. Dark mode color variations
+ * 2. Utility functions for styling
+ * 3. Integration of static colors with theme context
+ *
+ * Usage:
+ * const theme = baseTheme('dark')
+ * <ThemeProvider theme={theme}>
+ *
+ * @param theme - Theme mode ('dark' | 'light')
+ * @returns Complete theme object with colors and utilities
+ */
 export function baseTheme<T extends CowProtocolTheme>(theme: CowSwapTheme): CowProtocolTheme {
   const darkMode = theme === 'dark'
 
@@ -17,7 +31,16 @@ export function baseTheme<T extends CowProtocolTheme>(theme: CowSwapTheme): CowP
   } as T
 }
 
+/**
+ * Generates the complete color palette based on theme mode
+ * Combines:
+ * 1. Dynamic theme-aware colors
+ * 2. Static colors from Color enum
+ * 3. Gradient definitions
+ */
 function colors(darkMode: boolean): Colors {
+  const themeColors = getThemeColors(darkMode)
+
   const buttonTextCustom = '#DC70FA'
   const blueDark2 = '#880194'
   const blueDark3 = '#A40DDB'
@@ -35,6 +58,12 @@ function colors(darkMode: boolean): Colors {
   const success = darkMode ? '#02D725' : '#00737D'
 
   return {
+    // Import all static colors from Color first
+    ...Color,
+    // Add dynamic colors from Gradients
+    ...Gradients,
+    // Spread all the computed theme colors
+    ...themeColors,
     darkMode,
     primary: darkMode ? buttonTextCustom : blueDark2,
     background,
@@ -66,11 +95,9 @@ function colors(darkMode: boolean): Colors {
     // ****** other ******
     blue1: '#B640FF',
     blue2: darkMode ? '#D0A4FF' : '#9A0BC1',
-    purple: '#577EFF',
-    yellow: '#fff6dc',
     orange: '#FF784A',
     blueShade: '#0f2644',
-    blueShade3: darkMode ? '##581C70' : '#DABDE2',
+    blueShade3: darkMode ? '#581C70' : '#DABDE2',
 
     // ****** other ******
     border: darkMode ? blueDark4 : '#030003',
@@ -91,6 +118,8 @@ function colors(darkMode: boolean): Colors {
   }
 }
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 function utils(darkMode: boolean) {
   return {
     shimmer: css`
@@ -109,8 +138,14 @@ function utils(darkMode: boolean) {
       }
     `,
     colorScrollbar: css`
-      scrollbar-color: var(${UI.COLOR_PAPER_DARKEST}), var(${UI.COLOR_TEXT_OPACITY_10});
       scroll-behavior: smooth;
+
+      /* Firefox-only styles */
+      @supports (-moz-appearance: none) {
+        /* another browsers support ::-webkit-scrollbar, so we need "scrollbar-color" only for Firefox */
+        /* see https://caniuse.com/mdn-css_selectors_-webkit-scrollbar */
+        scrollbar-color: var(${UI.COLOR_PAPER_DARKEST}) var(${UI.COLOR_TEXT_OPACITY_10});
+      }
 
       &::-webkit-scrollbar {
         background: var(${UI.COLOR_PAPER_DARKER});

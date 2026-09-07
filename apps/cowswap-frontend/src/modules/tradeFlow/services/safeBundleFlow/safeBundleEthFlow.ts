@@ -1,43 +1,64 @@
-import { Erc20 } from '@cowprotocol/abis'
 import { WRAPPED_NATIVE_CURRENCIES } from '@cowprotocol/common-const'
-import { SupportedChainId } from '@cowprotocol/cow-sdk'
+import { captureError, ERROR_TYPES, normalizeError } from '@cowprotocol/common-utils'
+import { SigningScheme, SupportedChainId } from '@cowprotocol/cow-sdk'
+import { Percent } from '@cowprotocol/currency'
 import { UiOrderType } from '@cowprotocol/types'
-import { MetaTransactionData } from '@safe-global/safe-core-sdk-types'
-import { Percent } from '@uniswap/sdk-core'
+import type { MetaTransactionData } from '@safe-global/types-kit'
+
+import { tradingSdk } from 'tradingSdk/tradingSdk'
 
 import { PriceImpact } from 'legacy/hooks/usePriceImpact'
 import { partialOrderUpdate } from 'legacy/state/orders/utils'
-import { type PostOrderParams, signAndPostOrder } from 'legacy/utils/trade'
+import { mapUnsignedOrderToOrder, type PostOrderParams, wrapErrorInOperatorError } from 'legacy/utils/trade'
 
 import { removePermitHookFromAppData } from 'modules/appData'
 import { buildApproveTx } from 'modules/operations/bundle/buildApproveTx'
-import { buildPresignTx } from 'modules/operations/bundle/buildPresignTx'
 import { buildWrapTx } from 'modules/operations/bundle/buildWrapTx'
 import { emitPostedOrderEvent } from 'modules/orders'
 import { addPendingOrderStep } from 'modules/trade/utils/addPendingOrderStep'
 import { logTradeFlow } from 'modules/trade/utils/logger'
-import { getSwapErrorMessage } from 'modules/trade/utils/swapErrorHelper'
-import { tradeFlowAnalytics } from 'modules/trade/utils/tradeFlowAnalytics'
+import { TradeFlowAnalytics } from 'modules/trade/utils/tradeFlowAnalytics'
+import { assertValidBridgeRecipient } from 'modules/tradeQuote'
+
+import { getSwapErrorMessage } from 'common/utils/getSwapErrorMessage'
 
 import { SafeBundleFlowContext, TradeFlowContext } from '../../types/TradeFlowContext'
 
 const LOG_PREFIX = 'SAFE BUNDLE ETH FLOW'
 
+// TODO: Break down this large function into smaller functions
+// eslint-disable-next-line max-lines-per-function
 export async function safeBundleEthFlow(
   tradeContext: TradeFlowContext,
   safeBundleContext: SafeBundleFlowContext,
   priceImpactParams: PriceImpact,
   confirmPriceImpactWithoutFee: (priceImpact: Percent) => Promise<boolean>,
+  analytics: TradeFlowAnalytics,
 ): Promise<void | boolean> {
+  const {
+    context,
+    callbacks,
+    swapFlowAnalyticsContext,
+    tradeConfirmActions,
+    typedHooks,
+    tradeQuote,
+    bridgeQuoteAmounts,
+  } = tradeContext
+
   logTradeFlow(LOG_PREFIX, 'STEP 1: confirm price impact')
 
   if (priceImpactParams?.priceImpact && !(await confirmPriceImpactWithoutFee(priceImpactParams.priceImpact))) {
     return false
   }
 
-  const { context, callbacks, swapFlowAnalyticsContext, tradeConfirmActions, typedHooks } = tradeContext
-
-  const { spender, settlementContract, sendBatchTransactions, needsApproval, wrappedNativeContract } = safeBundleContext
+  const {
+    spender,
+    sendBatchTransactions,
+    needsApproval,
+    wrappedNativeContract,
+    amountToApprove,
+    maximumSendSellAmount,
+  } = safeBundleContext
 
   const { chainId, inputAmount, outputAmount } = context
 
@@ -47,9 +68,15 @@ export async function safeBundleEthFlow(
   }
 
   const { account, recipientAddressOrName, kind } = orderParams
+  const isBridgingOrder = inputAmount.currency.chainId !== outputAmount.currency.chainId
 
-  tradeFlowAnalytics.wrapApproveAndPresign(swapFlowAnalyticsContext)
-  const nativeAmountInWei = inputAmount.quotient.toString()
+  analytics.wrapApproveAndPresign({
+    ...swapFlowAnalyticsContext,
+    quoteId: orderParams.quoteId,
+    allowsOffchainSigning: orderParams.allowsOffchainSigning,
+  })
+  // Wrap the max sell amount (slippage-adjusted for buy orders); inputAmount alone underwraps buy orders and makes them unfillable.
+  const nativeAmountInWei = maximumSendSellAmount.quotient.toString()
   const tradeAmounts = { inputAmount, outputAmount }
 
   tradeConfirmActions.onSign(tradeAmounts)
@@ -57,7 +84,7 @@ export async function safeBundleEthFlow(
     const txs: MetaTransactionData[] = []
 
     logTradeFlow(LOG_PREFIX, 'STEP 2: wrap native token')
-    const wrapTx = await buildWrapTx({ wrappedNativeContract, weiAmount: nativeAmountInWei })
+    const wrapTx = buildWrapTx({ wrappedNativeContract, weiAmount: nativeAmountInWei })
 
     txs.push({
       to: wrapTx.to!,
@@ -70,9 +97,9 @@ export async function safeBundleEthFlow(
 
     if (needsApproval) {
       const approveTx = await buildApproveTx({
-        erc20Contract: wrappedNativeContract as unknown as Erc20,
+        tokenAddress: wrappedNativeContract.address,
         spender,
-        amountToApprove: inputAmount,
+        amountToApprove: BigInt(amountToApprove.quotient.toString()),
       })
 
       txs.push({
@@ -86,9 +113,48 @@ export async function safeBundleEthFlow(
     orderParams.appData = await removePermitHookFromAppData(orderParams.appData, typedHooks)
 
     logTradeFlow(LOG_PREFIX, 'STEP 4: post order')
-    const { id: orderId, order } = await signAndPostOrder(orderParams).finally(() => {
-      callbacks.closeModals()
+    assertValidBridgeRecipient(tradeContext.tradeQuoteState)
+
+    const {
+      orderId,
+      signature,
+      signingScheme,
+      orderToSign: unsignedOrder,
+    } = await wrapErrorInOperatorError(() =>
+      tradeQuote
+        .postSwapOrderFromQuote({
+          appData: orderParams.appData.doc,
+          quoteRequest: {
+            signingScheme: SigningScheme.PRESIGN,
+            validTo: orderParams.validTo,
+            receiver: orderParams.recipient,
+            // Override the sellToken to be the wrapped native token
+            sellToken: WRAPPED_NATIVE_CURRENCIES[chainId as SupportedChainId].address,
+          },
+        })
+        .finally(() => {
+          callbacks.closeModals()
+        }),
+    )
+
+    const order = mapUnsignedOrderToOrder({
+      unsignedOrder,
+      additionalParams: {
+        ...orderParams,
+        orderId,
+        signature,
+        signingScheme,
+      },
     })
+
+    if (bridgeQuoteAmounts) {
+      tradeContext.callbacks.addBridgeOrder({
+        orderUid: orderId,
+        quoteAmounts: bridgeQuoteAmounts,
+        creationTimestamp: Date.now(),
+        recipient: orderParams.recipient,
+      })
+    }
 
     const { isSafeWallet } = orderParams
     addPendingOrderStep(
@@ -106,7 +172,7 @@ export async function safeBundleEthFlow(
     )
 
     logTradeFlow(LOG_PREFIX, 'STEP 5: build presign tx')
-    const presignTx = await buildPresignTx({ settlementContract, orderId })
+    const presignTx = await tradingSdk.getPreSignTransaction({ orderUid: orderId })
 
     txs.push({
       to: presignTx.to!,
@@ -123,11 +189,15 @@ export async function safeBundleEthFlow(
       chainId,
       id: orderId,
       kind,
+      quoteId: orderParams.quoteId,
+      isCrossChain: isBridgingOrder,
+      destinationChainId: outputAmount.currency.chainId,
       receiver: recipientAddressOrName,
       inputAmount,
-      outputAmount,
+      outputAmount: bridgeQuoteAmounts?.bridgeMinReceiveAmount || outputAmount,
       owner: account,
       uiOrderType: UiOrderType.SWAP,
+      isEthFlow: true,
     })
 
     logTradeFlow(LOG_PREFIX, 'STEP 7: add safe tx hash and unhide order')
@@ -145,17 +215,20 @@ export async function safeBundleEthFlow(
       },
       callbacks.dispatch,
     )
-    tradeFlowAnalytics.sign(swapFlowAnalyticsContext)
+    analytics.sign(swapFlowAnalyticsContext)
 
     logTradeFlow(LOG_PREFIX, 'STEP 8: show UI of the successfully sent transaction')
     tradeConfirmActions.onSuccess(orderId)
 
     return true
-  } catch (error) {
-    logTradeFlow(LOG_PREFIX, 'STEP 9: error', error)
-    const swapErrorMessage = getSwapErrorMessage(error)
+  } catch (err: unknown) {
+    const error = normalizeError(err)
 
-    tradeFlowAnalytics.error(error, swapErrorMessage, swapFlowAnalyticsContext)
+    logTradeFlow(LOG_PREFIX, 'STEP 9: error', error)
+    const swapErrorMessage = getSwapErrorMessage(error, chainId as SupportedChainId)
+
+    captureError(error, ERROR_TYPES.ON_SWAP, { swapErrorMessage })
+    analytics.error(error, swapErrorMessage, swapFlowAnalyticsContext)
 
     tradeConfirmActions.onError(swapErrorMessage)
   }

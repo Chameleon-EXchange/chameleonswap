@@ -9,10 +9,36 @@ import { subgraphApiSDK } from '../../../../cowSdk'
 import { useNetworkId } from '../../../../state/network'
 import { Network } from '../../../../types'
 
-
 type RawVolumeItem = {
   timestamp: number
   volumeUsd: string
+}
+
+export function buildVolumeData(
+  _data: RawVolumeItem[],
+  volumePeriod: VolumePeriod,
+): {
+  data: HistogramData[]
+  currentVolume: number
+  changedVolume: number
+} {
+  const periods = {
+    [VolumePeriod.DAILY]: 24,
+    [VolumePeriod.WEEKLY]: 7,
+    [VolumePeriod.MONTHLY]: 30,
+    [VolumePeriod.YEARLY]: 365,
+  }
+  const currentPeriodData = _data.slice(0, periods[volumePeriod])
+  const previousPeriodData = _data.slice(periods[volumePeriod], periods[volumePeriod] * 2)
+
+  return {
+    data: currentPeriodData.map((item) => ({
+      time: Number(item.timestamp) as UTCTimestamp,
+      value: Number(item.volumeUsd),
+    })),
+    currentVolume: getAccumulatedVolume(currentPeriodData),
+    changedVolume: getAccumulatedVolume(previousPeriodData),
+  }
 }
 
 export function useGetVolumeData(volumeTimePeriod = VolumePeriod.DAILY): VolumeDataResponse | undefined {
@@ -41,15 +67,13 @@ export function useGetVolumeData(volumeTimePeriod = VolumePeriod.DAILY): VolumeD
   return volumeData
 }
 
-async function getLastHoursData(network: Network): Promise<RawVolumeItem[]> {
-  const data = await subgraphApiSDK.getLastHoursVolume(48, { chainId: network })
-
-  return (data?.hourlyTotals as RawVolumeItem[]) || []
+function getAccumulatedVolume(data: RawVolumeItem[]): number {
+  return data.reduce((acc, item) => acc + Number(item.volumeUsd), 0)
 }
 
 async function getLastDaysData(
   period: VolumePeriod.WEEKLY | VolumePeriod.MONTHLY | VolumePeriod.YEARLY,
-  network: Network
+  network: Network,
 ): Promise<RawVolumeItem[]> {
   const days = {
     [VolumePeriod.WEEKLY]: 7 * 2,
@@ -61,33 +85,8 @@ async function getLastDaysData(
   return (data?.dailyTotals as RawVolumeItem[]) || []
 }
 
-export function buildVolumeData(
-  _data: RawVolumeItem[],
-  volumePeriod: VolumePeriod
-): {
-  data: HistogramData[]
-  currentVolume: number
-  changedVolume: number
-} {
-  const periods = {
-    [VolumePeriod.DAILY]: 24,
-    [VolumePeriod.WEEKLY]: 7,
-    [VolumePeriod.MONTHLY]: 30,
-    [VolumePeriod.YEARLY]: 365,
-  }
-  const currentPeriodData = _data.slice(0, periods[volumePeriod])
-  const previousPeriodData = _data.slice(periods[volumePeriod], periods[volumePeriod] * 2)
+async function getLastHoursData(network: Network): Promise<RawVolumeItem[]> {
+  const data = await subgraphApiSDK.getLastHoursVolume(48, { chainId: network })
 
-  return {
-    data: currentPeriodData.map((item) => ({
-      time: Number(item.timestamp) as UTCTimestamp,
-      value: Number(item.volumeUsd),
-    })),
-    currentVolume: getAccumulatedVolume(currentPeriodData),
-    changedVolume: getAccumulatedVolume(previousPeriodData),
-  }
-}
-
-function getAccumulatedVolume(data: RawVolumeItem[]): number {
-  return data.reduce((acc, item) => acc + Number(item.volumeUsd), 0)
+  return (data?.hourlyTotals as RawVolumeItem[]) || []
 }

@@ -12,13 +12,15 @@ describe('genericPropsChecker() to check component props via React.memo', () => 
         foo() {
           console.log('***')
         },
-      }
+      },
     )
 
     expect(result).toBe(false)
   })
 
   it('Must return true, when props are functions with the same reference', () => {
+    // TODO: Add proper return type annotation
+    // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
     const func = function () {
       console.log('***')
     }
@@ -32,7 +34,7 @@ describe('genericPropsChecker() to check component props via React.memo', () => 
       it('And return true, when objects are equal', () => {
         const result = genericPropsChecker(
           { options: { foo: { bar: 1 } } }, //
-          { options: { foo: { bar: 1 } } } //
+          { options: { foo: { bar: 1 } } }, //
         )
 
         expect(result).toBe(true)
@@ -42,7 +44,7 @@ describe('genericPropsChecker() to check component props via React.memo', () => 
         // bar - are not the same function (different references)
         const result = genericPropsChecker(
           { options: { foo: { bar: () => 1 } } },
-          { options: { foo: { bar: () => 1 } } }
+          { options: { foo: { bar: () => 1 } } },
         )
 
         expect(result).toBe(false)

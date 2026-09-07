@@ -1,17 +1,19 @@
-import React from 'react'
+import { ReactNode } from 'react'
 
 import ChameleonErrorImg from '@cowprotocol/assets/images/Chameleon-1.png'
 import { CODE_LINK, DISCORD_LINK } from '@cowprotocol/common-const'
 import { userAgent } from '@cowprotocol/common-utils'
-import { AutoRow, ButtonPrimary, ExternalLink, Media, MEDIA_WIDTHS, UI } from '@cowprotocol/ui'
+import { AutoRow, MEDIA_WIDTHS, ExternalLink, UI, Media } from '@cowprotocol/ui'
 
-import { Trans } from '@lingui/macro'
+import { t } from '@lingui/core/macro'
+import { Trans } from '@lingui/react/macro'
 import styled from 'styled-components/macro'
 import { ThemedText } from 'theme'
 
 import { AutoColumn } from 'legacy/components/Column'
-import { cowSwapStore, AppState } from 'legacy/state'
+import CopyHelper from 'legacy/components/Copy'
 
+// eslint-disable-next-line import/no-internal-modules -- Direct import to avoid circular dependency (barrel re-exports App which imports ErrorBoundary)
 import { Title } from 'modules/application/pure/Page'
 
 const FlexContainer = styled.div`
@@ -29,26 +31,6 @@ const FlexContainer = styled.div`
 const StyledTitle = styled(Title)`
   @media screen and (max-width: ${MEDIA_WIDTHS.upToSmall}px) {
     text-align: center;
-  }
-`
-
-const StyledParagraph = styled.p`
-  overflow-x: auto;
-`
-
-const CodeBlockWrapper = styled.div`
-  background: var(${UI.COLOR_PAPER});
-  overflow: auto;
-  white-space: pre;
-  box-shadow: 0 0 1px rgba(0, 0, 0, 0.01), 0 4px 8px rgba(0, 0, 0, 0.04), 0 16px 24px rgba(0, 0, 0, 0.04),
-    0 24px 32px rgba(0, 0, 0, 0.01);
-  border-radius: 16px;
-  padding: 16px;
-  color: inherit;
-
-  ${Media.upToSmall()} {
-    padding: 12px;
-    width: auto;
   }
 `
 
@@ -88,21 +70,60 @@ const SecondaryRecoveryButton = styled.button`
   transition: background 0.2s ease;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.16);
+  }
+`
+
+const StyledParagraph = styled.p`
+  overflow-x: auto;
+`
+
+const CodeBlockWrapper = styled.div`
+  background: var(${UI.COLOR_PAPER});
+  overflow: auto;
+  white-space: pre;
+  box-shadow:
+    0 0 1px rgba(0, 0, 0, 0.01),
+    0 4px 8px rgba(0, 0, 0, 0.04),
+    0 16px 24px rgba(0, 0, 0, 0.04),
+    0 24px 32px rgba(0, 0, 0, 0.01);
+  border-radius: 16px;
+  padding: 16px;
+  color: inherit;
+
+  ${Media.upToSmall()} {
+    padding: 12px;
+    width: auto;
   }
 `
 
 const LinkWrapper = styled.div`
   color: ${({ theme }) => theme.blue1};
-  padding: 6px 12px;
+  padding: 6px 24px;
 `
+
+const IdText = styled(ThemedText.Main)`
+  opacity: 0.7;
+`
+
+const IdRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+`
+
+interface ErrorWithStackTraceProps {
+  error: Error
+  eventId: string
+}
 
 function truncate(value?: string): string | undefined {
   return value ? value.slice(0, 1000) : undefined
 }
 
-export const ErrorWithStackTrace = ({ error }: { error: Error }) => {
-  const encodedBody = encodeURIComponent(issueBody(error))
+export const ErrorWithStackTrace = ({ error, eventId }: ErrorWithStackTraceProps): ReactNode => {
+  const encodedBody = encodeURIComponent(issueBody(error, eventId))
 
   return (
     <>
@@ -126,6 +147,12 @@ export const ErrorWithStackTrace = ({ error }: { error: Error }) => {
             <Trans>Back to Home</Trans>
           </SecondaryRecoveryButton>
         </ActionButtonsRow>
+        {eventId && (
+          <IdRow>
+            <IdText fontSize={14}>Event ID:</IdText>
+            <CopyHelper toCopy={eventId}>{eventId}</CopyHelper>
+          </IdRow>
+        )}
         <CodeBlockWrapper>
           <code>
             <ThemedText.Main fontSize={10}>
@@ -140,11 +167,11 @@ export const ErrorWithStackTrace = ({ error }: { error: Error }) => {
               href={
                 CODE_LINK +
                 `/issues/new?assignees=&labels=🐞 Bug,🔥 Critical&body=${encodedBody}&title=${encodeURIComponent(
-                  `Crash report: \`${error.name}${error.message && `: ${truncate(error.message)}`}\``
+                  `Crash report${eventId ? ` [${eventId}]` : ''}: \`${error.name}${error.message && `: ${truncate(error.message)}`}\``,
                 )}`
               }
             >
-              <ThemedText.Link fontSize={14}>
+              <ThemedText.Link fontSize={16}>
                 <Trans>Create an issue on GitHub</Trans>
                 <span>↗</span>
               </ThemedText.Link>
@@ -152,7 +179,7 @@ export const ErrorWithStackTrace = ({ error }: { error: Error }) => {
           </LinkWrapper>
           <LinkWrapper>
             <ExternalLink id="get-support-on-discord" href={DISCORD_LINK}>
-              <ThemedText.Link fontSize={14}>
+              <ThemedText.Link fontSize={16}>
                 <Trans>Get support on Discord</Trans>
                 <span>↗</span>
               </ThemedText.Link>
@@ -164,42 +191,21 @@ export const ErrorWithStackTrace = ({ error }: { error: Error }) => {
   )
 }
 
-function getRelevantState(): null | keyof AppState {
-  const path = window.location.hash
-  if (!path.startsWith('#/')) {
-    return null
-  }
-  const pieces = path.substring(2).split(/[/\\?]/)
-  switch (pieces[0]) {
-    case 'swap':
-      return 'swap'
-    /* case 'add':
-        if (pieces[1] === 'v2') return 'mint'
-        else return 'mintV3'
-      case 'remove':
-        if (pieces[1] === 'v2') return 'burn'
-        else return 'burnV3' */
-  }
-  return null
-}
-
-function issueBody(error: Error): string {
-  const relevantState = getRelevantState()
+function issueBody(error: Error, eventId: string): string {
   const deviceData = userAgent
+  const sentryEventUrl = `https://cowprotocol.sentry.io/issues/?query=${encodeURIComponent(`id:${eventId}`)}`
   return `## URL
 
 ${window.location.href}
 
-${
-  relevantState
-    ? `## \`${relevantState}\` state
+## Sentry Event ID
 
-\`\`\`json
-${JSON.stringify(cowSwapStore.getState()[relevantState], null, 2)}
 \`\`\`
-`
-    : ''
-}
+${eventId}
+\`\`\`
+
+${sentryEventUrl}
+
 ${
   error.name &&
   `## Error

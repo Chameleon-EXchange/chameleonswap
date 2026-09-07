@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { ReactNode, useState } from 'react'
 
 import { HoverTooltip } from '@cowprotocol/ui'
 import { useConnectionType, useWalletDetails } from '@cowprotocol/wallet'
+
+import { t } from '@lingui/core/macro'
 
 import { StatusIcon } from 'modules/wallet/pure/StatusIcon'
 
@@ -12,7 +14,7 @@ interface AccountIconProps {
   account?: string
 }
 
-export const AccountIcon = ({ size = 16, account }: AccountIconProps) => {
+export const AccountIcon = ({ size = 16, account }: AccountIconProps): ReactNode => {
   const walletDetails = useWalletDetails()
   const connectionType = useConnectionType()
   const [imageLoadError, setImageLoadError] = useState(false)
@@ -30,8 +32,8 @@ export const AccountIcon = ({ size = 16, account }: AccountIconProps) => {
 
   if (walletDetails && !walletDetails.isSupportedWallet) {
     return (
-      <HoverTooltip wrapInContainer content="This wallet is not yet supported">
-        <IconWrapper role="img" aria-label="Warning sign. Wallet not supported">
+      <HoverTooltip wrapInContainer content={t`This wallet is not yet supported`}>
+        <IconWrapper role="img" aria-label={t`Warning sign. Wallet not supported`}>
           ⚠️
         </IconWrapper>
       </HoverTooltip>

@@ -1,16 +1,20 @@
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { Address, Hex } from 'viem'
+import type { Config } from 'wagmi'
+import { estimateGas } from 'wagmi/actions'
 
-import { DEFAULT_PERMIT_GAS_LIMIT, DEFAULT_PERMIT_VALUE, PERMIT_SIGNER } from '../const'
+import { PERMIT_HOOK_DAPP_ID } from '@cowprotocol/hook-dapp-lib'
+
+import { DEFAULT_PERMIT_GAS_LIMIT, DEFAULT_PERMIT_VALUE, PERMIT_ACCOUNT } from '../const'
 import { PermitHookData, PermitHookParams } from '../types'
-import { buildDaiLikePermitCallData, buildEip2162PermitCallData } from '../utils/buildPermitCallData'
+import { buildDaiLikePermitCallData, buildEip2612PermitCallData } from '../utils/buildPermitCallData'
 import { getPermitDeadline } from '../utils/getPermitDeadline'
 import { isSupportedPermitInfo } from '../utils/isSupportedPermitInfo'
 
-// keccak(PERMIT_TOKEN)
-// See hookDappsRegistry.json in @cowprotocol/hook-dapp-lib
-const PERMIT_HOOK_DAPP_ID = '1db4bacb661a90fb6b475fd5b585acba9745bc373573c65ecc3e8f5bfd5dee1f'
-
 const REQUESTS_CACHE: { [permitKey: string]: Promise<PermitHookData | undefined> } = {}
+
+// User rejection detection (EIP-1193 error codes and common wallet messages)
+const USER_REJECTION_CODES = [4001, -32000]
+const USER_REJECTION_MESSAGES = ['user denied', 'user rejected', 'rejected transaction', 'transaction was rejected']
 
 export async function generatePermitHook(params: PermitHookParams): Promise<PermitHookData | undefined> {
   const permitKey = getCacheKey(params)
@@ -23,6 +27,10 @@ export async function generatePermitHook(params: PermitHookParams): Promise<Perm
 
   const request = generatePermitHookRaw(params)
     .catch((e) => {
+      // Re-throw user rejection errors so they propagate to the UI
+      if (isUserRejectionError(e)) {
+        throw e
+      }
       console.debug(`[generatePermitHook] cached request failed`, e)
       return undefined
     })
@@ -36,8 +44,38 @@ export async function generatePermitHook(params: PermitHookParams): Promise<Perm
   return request
 }
 
+async function calculateGasLimit({
+  data,
+  from,
+  to,
+  config,
+  isUserAccount,
+}: {
+  data: Hex
+  from: Address
+  to: Address
+  config: Config
+  isUserAccount: boolean
+}): Promise<bigint> {
+  try {
+    // Query the actual gas estimate
+    const actual = await estimateGas(config, { account: from, to, data })
+
+    // Add 10% to actual value to account for minor differences with real account
+    // Do not add it if this is the real user's account
+    const gasLimit = !isUserAccount ? actual + actual / 10n : actual
+
+    // Pick the biggest between estimated and default
+    return gasLimit > DEFAULT_PERMIT_GAS_LIMIT ? gasLimit : DEFAULT_PERMIT_GAS_LIMIT
+  } catch (e) {
+    console.debug(`[calculatePermitGasLimit] Failed to estimateGas, using default`, e)
+
+    return DEFAULT_PERMIT_GAS_LIMIT
+  }
+}
+
 async function generatePermitHookRaw(params: PermitHookParams): Promise<PermitHookData> {
-  const { inputToken, spender, chainId, permitInfo, provider, account, eip2162Utils, nonce: preFetchedNonce } = params
+  const { inputToken, spender, chainId, permitInfo, config, account, eip2612Utils, nonce: preFetchedNonce } = params
 
   const tokenAddress = inputToken.address
   // TODO: remove the need for `name` from input token. Should come from permitInfo instead
@@ -51,24 +89,24 @@ async function generatePermitHookRaw(params: PermitHookParams): Promise<PermitHo
     throw new Error(`No token name for token: ${tokenAddress}`)
   }
 
-  const owner = account || PERMIT_SIGNER.address
+  const owner = account || PERMIT_ACCOUNT.address
 
   // Only fetch the nonce in case it wasn't pre-fetched before
   // That's the case for static account
-  const nonce = preFetchedNonce === undefined ? await eip2162Utils.getTokenNonce(tokenAddress, owner) : preFetchedNonce
+  const nonce = preFetchedNonce === undefined ? await eip2612Utils.getTokenNonce(tokenAddress, owner) : preFetchedNonce
 
   const deadline = getPermitDeadline()
-  const value = DEFAULT_PERMIT_VALUE
+  const value = params.amount || DEFAULT_PERMIT_VALUE
 
   const callData =
     permitInfo.type === 'eip-2612'
-      ? await buildEip2162PermitCallData({
-          eip2162Utils,
+      ? await buildEip2612PermitCallData({
+          eip2612Utils,
           callDataParams: [
             {
               owner,
               spender,
-              value,
+              value: value.toString(),
               nonce,
               deadline,
             },
@@ -79,13 +117,13 @@ async function generatePermitHookRaw(params: PermitHookParams): Promise<PermitHo
           ],
         })
       : await buildDaiLikePermitCallData({
-          eip2162Utils,
+          eip2612Utils,
           callDataParams: [
             {
               holder: owner,
               spender,
               allowed: true,
-              value,
+              value: value.toString(),
               nonce,
               expiry: deadline,
             },
@@ -96,42 +134,31 @@ async function generatePermitHookRaw(params: PermitHookParams): Promise<PermitHo
           ],
         })
 
-  const gasLimit = await calculateGasLimit(callData, owner, tokenAddress, provider, !!account)
+  const gasLimit = await calculateGasLimit({
+    data: callData,
+    from: owner,
+    to: tokenAddress,
+    config,
+    isUserAccount: !!account,
+  })
 
   return {
     target: tokenAddress,
     callData,
-    gasLimit,
+    gasLimit: gasLimit.toString(),
     dappId: PERMIT_HOOK_DAPP_ID,
   }
 }
 
-async function calculateGasLimit(
-  data: string,
-  from: string,
-  to: string,
-  provider: JsonRpcProvider,
-  isUserAccount: boolean,
-): Promise<string> {
-  try {
-    // Query the actual gas estimate
-    const actual = await provider.estimateGas({ data, from, to })
-
-    // Add 10% to actual value to account for minor differences with real account
-    // Do not add it if this is the real user's account
-    const gasLimit = !isUserAccount ? actual.add(actual.div(10)) : actual
-
-    // Pick the biggest between estimated and default
-    return gasLimit.gt(DEFAULT_PERMIT_GAS_LIMIT) ? gasLimit.toString() : DEFAULT_PERMIT_GAS_LIMIT
-  } catch (e) {
-    console.debug(`[calculatePermitGasLimit] Failed to estimateGas, using default`, e)
-
-    return DEFAULT_PERMIT_GAS_LIMIT
-  }
+function getCacheKey(params: PermitHookParams): string {
+  const { inputToken, chainId, account, amount } = params
+  return `${inputToken.address.toLowerCase()}-${chainId}${account ? `-${account.toLowerCase()}` : ''}${amount ? `-${amount.toString()}` : ''}`
 }
 
-function getCacheKey(params: PermitHookParams): string {
-  const { inputToken, chainId, account } = params
-
-  return `${inputToken.address.toLowerCase()}-${chainId}${account ? `-${account.toLowerCase()}` : ''}`
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isUserRejectionError(error: any): boolean {
+  if (!error) return false
+  if (USER_REJECTION_CODES.includes(error.code)) return true
+  const message = (typeof error === 'string' ? error : error.message)?.toLowerCase() || ''
+  return USER_REJECTION_MESSAGES.some((msg) => message.includes(msg))
 }

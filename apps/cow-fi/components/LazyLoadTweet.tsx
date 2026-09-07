@@ -21,7 +21,7 @@ const LazyLoadTweet: React.FC<LazyLoadTweetProps> = ({ tweetUrl }) => {
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting && tweetRef.current) {
-          tweetRef.current.innerHTML = `<blockquote class="twitter-tweet" data-dnt="true" data-theme="dark"><a href="${tweetUrl}" target="_blank">Loading X...</a></blockquote>`
+          tweetRef.current.innerHTML = `<blockquote class="twitter-tweet" data-dnt="true" data-theme="light"><a href="${tweetUrl}" target="_blank">Loading X...</a></blockquote>`
           if (window.twttr && window.twttr.widgets) {
             window.twttr.widgets.load(tweetRef.current)
           }
@@ -30,7 +30,7 @@ const LazyLoadTweet: React.FC<LazyLoadTweetProps> = ({ tweetUrl }) => {
       },
       {
         threshold: 0.1, // Load the tweet when 10% of it is visible
-      }
+      },
     )
 
     if (tweetRef.current) {

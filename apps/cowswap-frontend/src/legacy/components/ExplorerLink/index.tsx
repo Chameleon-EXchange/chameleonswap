@@ -1,10 +1,14 @@
-import { PropsWithChildren } from 'react'
+import { PropsWithChildren, ReactNode } from 'react'
 
 import { getExplorerLabel, getEtherscanLink } from '@cowprotocol/common-utils'
 import { getSafeWebUrl } from '@cowprotocol/core'
 import { SupportedChainId } from '@cowprotocol/cow-sdk'
 import { ExternalLink } from '@cowprotocol/ui'
 import { useWalletInfo } from '@cowprotocol/wallet'
+
+import { t } from '@lingui/core/macro'
+
+export type Props = PropsWithId | PropsComposableOrder
 
 interface PropsBase extends PropsWithChildren {
   // type?: BlockExplorerLinkType
@@ -13,23 +17,21 @@ interface PropsBase extends PropsWithChildren {
   defaultChain?: SupportedChainId
 }
 
-interface PropsWithId extends PropsBase {
-  type: 'transaction' | 'token' | 'address' | 'block' | 'token-transfer'
-  id: string
-}
-
 interface PropsComposableOrder extends PropsBase {
   type: 'composable-order'
   id: string
 }
 
-export type Props = PropsWithId | PropsComposableOrder
+interface PropsWithId extends PropsBase {
+  type: 'transaction' | 'token' | 'address' | 'block' | 'token-transfer'
+  id: string
+}
 
 /**
  * Creates a link to the relevant explorer: Etherscan, GP Explorer or Blockscout
  * @param props
  */
-export function ExplorerLink(props: Props) {
+export function ExplorerLink(props: Props): ReactNode {
   const { chainId, account } = useWalletInfo()
 
   if (!account) return null
@@ -41,6 +43,7 @@ export function ExplorerLink(props: Props) {
   const { className } = props
 
   const linkContent = getContent(chainId, props)
+
   return (
     <ExternalLink className={className} href={url}>
       {linkContent}
@@ -48,7 +51,27 @@ export function ExplorerLink(props: Props) {
   )
 }
 
-function getUrl(chainId: SupportedChainId, account: string, props: Props) {
+function getContent(chainId: SupportedChainId, props: Props): ReactNode {
+  if (props.children) {
+    return props.children
+  }
+
+  const linkLabel = props.type === 'composable-order' ? t`View on Safe` : getLabel(chainId, props)
+
+  return (
+    <>
+      {linkLabel} <span style={{ fontSize: '0.8em' }}>↗</span>
+    </>
+  )
+}
+
+function getLabel(chainId: SupportedChainId, props: Props): string {
+  const { label, type } = props
+
+  return label || getExplorerLabel(chainId, type, props.id)
+}
+
+function getUrl(chainId: SupportedChainId, account: string, props: Props): string {
   const { type } = props
 
   if (type === 'composable-order') {
@@ -57,23 +80,4 @@ function getUrl(chainId: SupportedChainId, account: string, props: Props) {
 
   // return
   return getEtherscanLink(chainId, type, props.id)
-}
-
-function getLabel(chainId: SupportedChainId, props: Props) {
-  const { label, type } = props
-
-  return label || getExplorerLabel(chainId, type, props.id)
-}
-function getContent(chainId: SupportedChainId, props: Props) {
-  if (props.children) {
-    return props.children
-  }
-
-  const linkLabel = props.type === 'composable-order' ? 'View on Safe' : getLabel(chainId, props)
-
-  return (
-    <>
-      {linkLabel} <span style={{ fontSize: '0.8em' }}>↗</span>
-    </>
-  )
 }

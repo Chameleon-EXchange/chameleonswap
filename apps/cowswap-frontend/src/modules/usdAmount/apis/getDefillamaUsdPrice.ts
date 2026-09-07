@@ -1,10 +1,8 @@
-import { FractionUtils } from '@cowprotocol/common-utils'
-import { SupportedChainId } from '@cowprotocol/cow-sdk'
-import { Fraction, Token } from '@uniswap/sdk-core'
+import { fetchWithRateLimit, FractionUtils } from '@cowprotocol/common-utils'
+import { getAddressKey, SupportedChainId } from '@cowprotocol/cow-sdk'
+import { Fraction, Token } from '@cowprotocol/currency'
 
 import ms from 'ms.macro'
-
-import { fetchWithRateLimit } from 'common/utils/fetch'
 
 import { RateLimitError, UnknownCurrencyError, UnsupportedPlatformError } from './errors'
 
@@ -22,6 +20,13 @@ export const DEFILLAMA_PLATFORMS: Record<SupportedChainId, string | null> = {
   [SupportedChainId.ARBITRUM_ONE]: 'arbitrum-one',
   [SupportedChainId.BASE]: 'base',
   [SupportedChainId.SEPOLIA]: null,
+  [SupportedChainId.POLYGON]: 'polygon',
+  [SupportedChainId.AVALANCHE]: 'avalanche',
+  [SupportedChainId.BNB]: 'bsc', // BNB Chain is called BSC in Defillama
+  [SupportedChainId.LINEA]: 'linea',
+  [SupportedChainId.PLASMA]: 'plasma',
+  [SupportedChainId.INK]: 'ink',
+  [SupportedChainId.SOLANA]: 'solana',
 }
 
 const BASE_URL = 'https://coins.llama.fi/prices/current'
@@ -51,7 +56,7 @@ export async function getDefillamaUsdPrice(currency: Token): Promise<Fraction | 
 
   if (!platform) throw new UnsupportedPlatformError({ cause: `Defillama does not support chain '${currency.chainId}'` })
 
-  const key = `${platform}:${currency.address}`.toLowerCase()
+  const key = `${platform}:${getAddressKey(currency.address)}`
   const url = `${BASE_URL}/${key}`
 
   return fetchRateLimited(url)

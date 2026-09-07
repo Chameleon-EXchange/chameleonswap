@@ -1,12 +1,10 @@
 import React from 'react'
 
-import { Media } from '@cowprotocol/ui'
+import { Media, Color } from '@cowprotocol/ui'
 
 import styled from 'styled-components/macro'
 
 import ShimmerBar from '../../../explorer/components/common/ShimmerBar'
-
-export type statusType = 'success' | 'danger'
 
 export interface CardContentProps {
   variant: '2row' | '3row' | 'double'
@@ -26,6 +24,15 @@ export interface CardContentProps {
   caption2?: string
   hint2?: string
   loading?: boolean
+}
+
+export type statusType = 'success' | 'danger'
+
+const resolveCardColor = (colorType: string | undefined): string => {
+  if (!colorType) return 'inherit'
+  if (colorType === 'green') return Color.explorer_green1
+  if (colorType === 'red1') return Color.explorer_red1
+  return Color.explorer_grey
 }
 
 const CardBody = styled.div<{
@@ -49,7 +56,7 @@ const CardBody = styled.div<{
       margin: 0;
       margin-right: ${({ variant, direction }): string =>
         variant === 'double' && direction === 'row' ? '0.5rem' : '0'};
-      color: ${({ theme }): string => theme.grey};
+      color: ${Color.explorer_grey};
       display: flex;
       align-items: center;
       justify-content: ${({ variant, direction }): string =>
@@ -79,10 +86,10 @@ const CardBody = styled.div<{
         font-size: 11px;
         margin-left: ${({ variant }): string => (variant === '2row' ? '0.5rem' : '0')};
         margin-top: ${({ variant }): string => (variant === '2row' ? '0' : '6px')};
-        color: ${({ theme, captionColor }): string => captionColor && theme[captionColor]};
+        color: ${({ captionColor }): string => resolveCardColor(captionColor)};
         > span {
           margin-left: 0.25rem;
-          color: ${({ theme, hintColor }): string => hintColor && theme[hintColor]};
+          color: ${({ hintColor }): string => resolveCardColor(hintColor)};
         }
       }
     }
@@ -94,6 +101,8 @@ const CardBody = styled.div<{
  *
  * An extensible content container.
  */
+// TODO: Break down this large function into smaller functions
+
 export const CardContent: React.FC<CardContentProps> = ({
   variant,
   valueSize,

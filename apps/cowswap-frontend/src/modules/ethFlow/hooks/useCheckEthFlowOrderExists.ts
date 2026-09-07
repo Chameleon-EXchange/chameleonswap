@@ -1,0 +1,51 @@
+import { useAtomValue } from 'jotai'
+import { useCallback } from 'react'
+
+import type { Hex } from 'viem'
+import { useConfig } from 'wagmi'
+import { readContract } from 'wagmi/actions'
+
+import { ZERO_ADDRESS } from '@cowprotocol/common-const'
+import { areAddressesEqual } from '@cowprotocol/cow-sdk'
+
+import { useEthFlowContractData } from 'common/hooks/useContract'
+
+import { ethFlowInFlightOrderIdsAtom } from '../state/ethFlowInFlightOrderIdsAtom'
+
+export interface EthFlowOrderExistsCallback {
+  (orderId: string, orderDigest: string): Promise<boolean>
+}
+
+export function useCheckEthFlowOrderExists(): EthFlowOrderExistsCallback {
+  const config = useConfig()
+  const ethFlowInFlightOrderIds = useAtomValue(ethFlowInFlightOrderIdsAtom)
+  const ethFlowContract = useEthFlowContractData()
+
+  return useCallback(
+    async (orderId: string, orderDigest: string) => {
+      if (ethFlowInFlightOrderIds.includes(orderId)) {
+        return true
+      }
+
+      if (ethFlowContract) {
+        try {
+          const [owner] = await readContract(config, {
+            abi: ethFlowContract.abi,
+            address: ethFlowContract.address as `0x${string}`,
+            functionName: 'orders',
+            args: [orderDigest as Hex],
+          })
+
+          return !areAddressesEqual(owner, ZERO_ADDRESS)
+        } catch (e) {
+          console.error('Eth-flow order existing check error: ', e)
+
+          return false
+        }
+      }
+
+      return false
+    },
+    [config, ethFlowInFlightOrderIds, ethFlowContract],
+  )
+}

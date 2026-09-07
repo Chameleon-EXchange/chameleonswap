@@ -1,18 +1,19 @@
-import React, { useEffect, useRef, useState } from 'react'
+import { ReactElement, useEffect, useRef, useState } from 'react'
 
-import { UI, CenteredDots, LongLoadText } from '@cowprotocol/ui'
+import { useMediaQuery } from '@cowprotocol/common-hooks'
+import { TEST_IDS } from '@cowprotocol/test-ids'
+import { CenteredDots, LongLoadText, UI, Media } from '@cowprotocol/ui'
 
-import { Trans } from '@lingui/macro'
+import { Trans } from '@lingui/react/macro'
 import ms from 'ms.macro'
 import styled from 'styled-components/macro'
-
-import { useMediaQuery, upToMedium } from 'legacy/hooks/useMediaQuery'
 
 const JUST_CLICKED_TIMEOUT = ms`1s`
 const LONG_TEXT_LENGTH = 20
 
 const ActionButton = styled.button<{ hasLongText$: boolean }>`
   display: flex;
+  gap: 8px;
   width: 100%;
   align-items: center;
   justify-content: center;
@@ -21,14 +22,11 @@ const ActionButton = styled.button<{ hasLongText$: boolean }>`
   font-size: ${({ hasLongText$ }) => (hasLongText$ ? '16px' : '18px')};
   font-weight: 600;
   border-radius: 16px;
-  cursor: pointer;
   min-height: 58px;
   text-align: center;
   transition:
     background var(${UI.ANIMATION_DURATION}) ease-in-out,
     color var(${UI.ANIMATION_DURATION}) ease-in-out;
-  border: none;
-  outline: none;
 
   &:hover {
     background: var(${UI.COLOR_PRIMARY_LIGHTER});
@@ -38,22 +36,28 @@ const ActionButton = styled.button<{ hasLongText$: boolean }>`
     background-color: var(${UI.COLOR_PAPER_DARKER});
     color: var(${UI.COLOR_TEXT_PAPER});
     background-image: none;
-    border: 0;
     cursor: auto;
     animation: none;
     transform: none;
+    cursor: not-allowed;
   }
 `
 
 export interface TradeFormPrimaryButtonProps {
-  children: JSX.Element | string
+  children: ReactElement | string
   disabled?: boolean
   loading?: boolean
   id?: string
+  clickEvent?: string
+
   onClick?(): void
+
   className?: string
 }
 
+// TODO: Break down this large function into smaller functions
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function TradeFormBlankButton({
   onClick,
   children,
@@ -61,11 +65,12 @@ export function TradeFormBlankButton({
   loading,
   id,
   className,
+  clickEvent,
 }: TradeFormPrimaryButtonProps) {
   const ref = useRef<HTMLButtonElement>(null)
   const [hasLongText, setHasLongText] = useState(false)
   const [justClicked, setJustClicked] = useState(false)
-  const isUpToMedium = useMediaQuery(upToMedium)
+  const isUpToMedium = useMediaQuery(Media.upToMedium(false))
 
   const showLoader = justClicked || loading
 
@@ -78,6 +83,8 @@ export function TradeFormBlankButton({
   }, [children])
 
   // Combine local onClick logic with incoming onClick
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   const handleClick = () => {
     if (isUpToMedium) {
       window.scrollTo({ top: 0, left: 0 })
@@ -103,16 +110,21 @@ export function TradeFormBlankButton({
       ref={ref}
       id={id}
       className={className}
+      data-testid={TEST_IDS.tradeFormBlankButton}
       onClick={handleClick}
       disabled={showLoader || disabled}
       hasLongText$={hasLongText}
+      data-click-event={clickEvent}
     >
       {showLoader ? (
         <>
-          <LongLoadText>Confirm with your wallet </LongLoadText> <CenteredDots smaller />
+          <LongLoadText>
+            <Trans>Confirm with your wallet</Trans>
+          </LongLoadText>{' '}
+          <CenteredDots smaller />
         </>
       ) : (
-        <Trans>{children}</Trans>
+        <>{children}</>
       )}
     </ActionButton>
   )

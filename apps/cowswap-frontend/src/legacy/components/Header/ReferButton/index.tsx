@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { UserPlus } from 'react-feather'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router'
 import styled from 'styled-components/macro'
 import { useWalletInfo } from '@cowprotocol/wallet'
 

@@ -1,26 +1,26 @@
 import { useAtomValue } from 'jotai'
-import { useSetAtom } from 'jotai/index'
-import { useEffect } from 'react'
+import { useMemo } from 'react'
 
 import { INITIAL_ALLOWED_SLIPPAGE_PERCENT } from '@cowprotocol/common-const'
 
-import { TradeType, useBuildTradeDerivedState } from 'modules/trade'
+import { useBuildTradeDerivedState } from 'modules/trade'
 
-import { yieldDerivedStateAtom, yieldRawStateAtom } from '../state/yieldRawStateAtom'
+import { TradeType } from 'common/modules/tradeNavigation'
 
-export function useYieldDerivedState() {
+import { YieldDerivedState, yieldDerivedStateAtom, yieldRawStateAtom } from '../state/yieldRawStateAtom'
+
+export function useYieldDerivedState(): YieldDerivedState {
   return useAtomValue(yieldDerivedStateAtom)
 }
 
-export function useFillYieldDerivedState() {
-  const updateDerivedState = useSetAtom(yieldDerivedStateAtom)
-  const derivedState = useBuildTradeDerivedState(yieldRawStateAtom)
+export function useYieldDerivedStateToFill(): YieldDerivedState {
+  const derivedState = useBuildTradeDerivedState(yieldRawStateAtom, false)
 
-  useEffect(() => {
-    updateDerivedState({
+  return useMemo(() => {
+    return {
       ...derivedState,
       slippage: INITIAL_ALLOWED_SLIPPAGE_PERCENT,
       tradeType: TradeType.YIELD,
-    })
-  }, [derivedState, updateDerivedState])
+    }
+  }, [derivedState])
 }

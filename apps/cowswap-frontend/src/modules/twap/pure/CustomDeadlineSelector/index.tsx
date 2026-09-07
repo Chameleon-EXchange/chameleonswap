@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
 
+import { useCowAnalytics } from '@cowprotocol/analytics'
 import { Command } from '@cowprotocol/types'
 import { ButtonPrimary } from '@cowprotocol/ui'
 
-import { Trans } from '@lingui/macro'
+import { t } from '@lingui/core/macro'
+import { Trans } from '@lingui/react/macro'
 
 import { TradeNumberInput } from 'modules/trade/pure/TradeNumberInput'
 
+import { CowSwapAnalyticsCategory, toCowSwapGtmEvent } from 'common/analytics/types'
 import { CowModal as Modal } from 'common/pure/Modal'
 
 import * as styledEl from './styled'
@@ -19,9 +22,13 @@ interface CustomDeadlineSelectorProps {
   customDeadline: CustomDeadline
   selectCustomDeadline(deadline: CustomDeadline): void
 }
+// TODO: Break down this large function into smaller functions
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function CustomDeadlineSelector(props: CustomDeadlineSelectorProps) {
   const { isOpen, onDismiss, customDeadline, selectCustomDeadline } = props
   const { hours = 0, minutes = 0 } = customDeadline
+  const analytics = useCowAnalytics()
 
   const [hoursValue, setHoursValue] = useState(hours)
   const [minutesValue, setMinutesValue] = useState(minutes)
@@ -34,7 +41,14 @@ export function CustomDeadlineSelector(props: CustomDeadlineSelectorProps) {
 
   const isDisabled = !hoursValue && !minutesValue
 
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   const onApply = () => {
+    analytics.sendEvent({
+      category: CowSwapAnalyticsCategory.TWAP,
+      action: 'Apply custom deadline',
+      label: `${hoursValue}h ${minutesValue}m`,
+    })
     onDismiss()
     selectCustomDeadline({
       hours: hoursValue,
@@ -55,12 +69,18 @@ export function CustomDeadlineSelector(props: CustomDeadlineSelectorProps) {
           <h3>
             <Trans>Define custom total time</Trans>
           </h3>
-          <styledEl.CloseIcon onClick={_onDismiss} />
+          <styledEl.CloseIcon
+            onClick={_onDismiss}
+            data-click-event={toCowSwapGtmEvent({
+              category: CowSwapAnalyticsCategory.TWAP,
+              action: 'Close custom deadline selector',
+            })}
+          />
         </styledEl.ModalHeader>
 
         <styledEl.ModalContent>
           <TradeNumberInput
-            label="Hours"
+            label={t`Hours`}
             onUserInput={onHoursChange}
             value={hoursValue}
             showUpDownArrows
@@ -68,7 +88,7 @@ export function CustomDeadlineSelector(props: CustomDeadlineSelectorProps) {
             max={null}
           />
           <TradeNumberInput
-            label="Minutes"
+            label={t`Minutes`}
             onUserInput={onMinutesChange}
             value={minutesValue}
             showUpDownArrows
@@ -78,7 +98,13 @@ export function CustomDeadlineSelector(props: CustomDeadlineSelectorProps) {
         </styledEl.ModalContent>
 
         <styledEl.ModalFooter>
-          <styledEl.CancelButton onClick={_onDismiss}>
+          <styledEl.CancelButton
+            onClick={_onDismiss}
+            data-click-event={toCowSwapGtmEvent({
+              category: CowSwapAnalyticsCategory.TWAP,
+              action: 'Cancel custom deadline selection',
+            })}
+          >
             <Trans>Cancel</Trans>
           </styledEl.CancelButton>
           <ButtonPrimary disabled={isDisabled} onClick={onApply}>

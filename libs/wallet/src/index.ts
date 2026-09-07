@@ -1,57 +1,65 @@
 import './types.d.ts'
 
 export * from './api/types'
-export * from './web3-react/types'
 export * from './assets'
 export * from './constants'
+export { COW_WIDGET_CONNECTOR_ID } from './reown/consts'
 
 // Hooks
 export * from './api/hooks'
-export { useWalletCapabilities } from './api/hooks/useWalletCapabilities'
+export { useOpenWalletConnectionModal } from './api/hooks/useOpenWalletConnectionModal'
+export { useWidgetProviderMetaInfo } from './api/hooks/useWidgetProviderMetaInfo'
+export { useWatchChainBlockNumber } from './api/hooks/useWatchChainBlockNumber'
+export { useSolanaNativeBalance } from './api/hooks/useSolanaNativeBalance'
+export { useSolanaWalletProvider } from './api/hooks/useSolanaWalletProvider'
 export { useSendBatchTransactions } from './api/hooks/useSendBatchTransactions'
 export type { SendBatchTxCallback } from './api/hooks/useSendBatchTransactions'
-export * from './web3-react/hooks/useWalletMetadata'
-export * from './web3-react/hooks/useIsWalletConnect'
-export * from './web3-react/hooks/useSafeAppsSdk'
-export * from './web3-react/hooks/useIsSmartContractWallet'
-export * from './web3-react/hooks/useActivateConnector'
-export * from './web3-react/hooks/useDisconnectWallet'
-export * from './web3-react/hooks/useSwitchNetwork'
-export * from './web3-react/hooks/useConnectionType'
+export { useNetworkSwitchUnsupported } from './api/hooks/useNetworkSwitchUnsupported'
+export * from './wagmi/hooks/useWalletMetadata'
+export * from './wagmi/hooks/useIsWalletConnect'
+export * from './wagmi/hooks/useSafeAppsSdk'
+export * from './wagmi/hooks/useIsSmartContractWallet'
+export * from './wagmi/hooks/useDisconnectWallet'
+export * from './wagmi/hooks/useSwitchNetwork'
+export * from './wagmi/hooks/useConnectionType'
+export * from './wagmi/hooks/useIsRestoringConnection'
+export { WidgetStandaloneModeUpdater } from './updaters/WidgetStandaloneMode.updater'
+export { WidgetSafeApp } from './updaters/WidgetSafeApp.updater'
+export { wagmiConfig, reownAppKit, wagmiAdapter, wagmiStorage } from './wagmi/config'
 
 // Updater
-export * from './web3-react/updater'
-export * from './web3-react/updaters/HwAccountIndexUpdater'
+export { WalletUpdater } from './wagmi/updater'
 
 // Components
 export * from './api/container/Identicon'
-export * from './web3-react/pure/AccountIndexSelect'
+export * from './api/pure/JazzIcon'
+export { AccountIndexSelect, type AccountIndexSelectProps } from './pure/AccountIndexSelect'
 
 // Utils
 export * from './api/utils/connection'
-export * from './web3-react/utils/getIsHardWareWallet'
-export { accountsLoaders } from './api/utils/accountsLoaders'
-export { isChainAllowed } from './web3-react/utils/isChainAllowed'
-export { getWeb3ReactConnection } from './web3-react/utils/getWeb3ReactConnection'
-export { switchChain } from './web3-react/utils/switchChain'
+export * from './wagmi/utils/isEip7702EOA.utils'
+export * from './wagmi/utils/isSafeConnector.utils'
+export {
+  isEip1193Provider,
+  getPublicClient,
+  getPublicClientFromEIP1193Provider,
+  getPublicClientFromProvider,
+} from '@cowprotocol/common-utils'
 
-// Connectors
-export { Web3Provider } from './web3-react/Web3Provider'
-export { injectedWalletConnection } from './web3-react/connection/injectedWallet'
-export { networkConnection } from './web3-react/connection/network'
-export { gnosisSafeConnection } from './web3-react/connection/safe'
-export { walletConnectConnectionV2 } from './web3-react/connection/walletConnectV2'
+export * from './utils/getIsSafeAppIframe'
+export * from './utils/connectWalletById'
 
-// Connect options
-export { InjectedOption, Eip6963Option } from './web3-react/connection/injectedOptions'
-
-export { ConnectWalletOption } from './api/pure/ConnectWalletOption'
-export { TrezorOption } from './web3-react/connection/trezor'
-export { WalletConnectV2Option } from './web3-react/connection/walletConnectV2'
-export { CoinbaseWalletOption } from './web3-react/connection/coinbase'
-export { MetaMaskSdkOption } from './web3-react/connection/metaMaskSdk'
+// Connectors and providers
+export { WalletProvider } from './api/container/WalletProvider'
+export { Web3Provider } from './wagmi/Web3Provider'
 
 // State
 // TODO: this export is discussable, however it's already used outside
 export * from './api/state'
-export * from './api/state'
+export {
+  walletCapabilitiesAtom,
+  isAtomicBatchSupportedAtom,
+  isAtomicBatchSupportedLoadableAtom,
+  type WalletCapabilities,
+} from './api/state/walletCapabilitiesAtom'
+export * from './wagmi/state/walletMetadata.atoms'

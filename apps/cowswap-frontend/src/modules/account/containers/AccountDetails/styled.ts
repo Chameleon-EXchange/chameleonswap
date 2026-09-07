@@ -1,19 +1,17 @@
-import { Command } from '@cowprotocol/types'
-import { ButtonSecondary, Media } from '@cowprotocol/ui'
-import { ExternalLink, StyledLink } from '@cowprotocol/ui'
-import { UI } from '@cowprotocol/ui'
+import { ButtonSecondary, Media, ExternalLink, StyledLink, UI } from '@cowprotocol/ui'
 
 import styled from 'styled-components/macro'
 
 import { YellowCard } from 'legacy/components/Card'
 import { CopyIcon, TransactionStatusText } from 'legacy/components/Copy'
 
+import { TransactionInnerDetail } from 'common/pure/TransactionInnerDetail'
+
 import {
   StatusLabelWrapper,
   Summary,
   SummaryInner,
   TextAlert,
-  TransactionInnerDetail,
   TransactionStatusText as ActivityDetailsText,
   TransactionWrapper,
 } from '../../containers/Transaction/styled'
@@ -128,18 +126,6 @@ export const WalletNameAddress = styled.div`
 `
 
 export const Wrapper = styled.div`
-  display: block;
-  width: 100%;
-  color: inherit;
-  padding: 0;
-  height: 100%;
-  margin: 0 24px;
-
-  ${Media.upToMedium()} {
-    padding: 12px 0 0;
-    margin: 0 16px;
-  }
-
   ${WalletName},
   ${AddressLink},
   ${CopyIcon},
@@ -287,11 +273,58 @@ export const AccountGroupingRow = styled.div`
   }
 `
 
+export const CreationDateRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+`
+
+export const GetNotifiedButton = styled.button`
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 6px;
+  cursor: pointer;
+  border-radius: 16px;
+  background: var(${UI.COLOR_PAPER});
+  border: 1px solid var(${UI.COLOR_TEXT_OPACITY_10});
+  color: var(${UI.COLOR_TEXT});
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  padding: 12px;
+  transition:
+    background var(${UI.ANIMATION_DURATION}) ease-in-out,
+    border-color var(${UI.ANIMATION_DURATION}) ease-in-out;
+
+  > svg {
+    flex: 0 0 auto;
+    color: inherit;
+  }
+
+  &:hover {
+    background: var(${UI.COLOR_PAPER_DARKER});
+    border-color: var(${UI.COLOR_PAPER_DARKER});
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(${UI.COLOR_PRIMARY});
+    outline-offset: 2px;
+  }
+
+  ${Media.upToSmall()} {
+    width: 100%;
+    justify-content: center;
+  }
+`
+
 export const NoActivityMessage = styled.p`
   font-size: 14px;
   color: inherit;
   width: 100%;
-  padding: 24px 0 0;
+  margin: 24px 0 0;
   text-align: center;
   display: flex;
   justify-content: center;
@@ -304,24 +337,14 @@ export const LowerSection = styled.div`
   align-items: flex-start;
   justify-content: flex-start;
   color: inherit;
-
-  > span {
-    display: flex;
-    color: inherit;
-    justify-content: space-between;
-    padding: 0 0 12px;
-
-    ${Media.upToMedium()} {
-      top: 42px;
-    }
-  }
+  padding: 0 0 48px;
 
   > div {
     display: flex;
     flex-flow: column wrap;
     width: 100%;
     background-color: inherit;
-    padding: 0 0 48px;
+    padding: 0;
     color: inherit;
 
     > ${StyledLink} {
@@ -330,8 +353,23 @@ export const LowerSection = styled.div`
       margin: 24px auto 0;
     }
   }
+`
 
-  > span > h5 {
+export const ActivityHeader = styled.span`
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  color: inherit;
+  gap: 8px 12px;
+  padding: 0 0 12px;
+  width: 100%;
+
+  ${Media.upToMedium()} {
+    top: 42px;
+  }
+
+  > h5 {
+    order: 1;
     margin: 0;
     font-weight: 500;
     color: inherit;
@@ -346,13 +384,29 @@ export const LowerSection = styled.div`
     }
   }
 
-  > span > ${StyledLink} {
+  > button {
+    order: 2;
+  }
+
+  > ${StyledLink} {
+    order: 3;
+    margin-left: auto;
     color: inherit;
     text-decoration: underline;
     font-size: 14px;
 
     &:hover {
       color: ${({ theme }) => theme.info};
+    }
+  }
+
+  ${Media.upToSmall()} {
+    row-gap: 24px;
+
+    > button {
+      order: 0;
+      flex: 1 1 100%;
+      margin-top: -12px;
     }
   }
 `
@@ -443,45 +497,10 @@ export const NetworkCard = styled(NetworkCardUni)`
   }
 `
 
-interface WalletSelectorProps {
-  isHardWareWallet?: boolean
-  onClick?: Command
-}
-
-export const WalletSelector = styled.div<WalletSelectorProps>`
+export const WalletSelector = styled.div`
   display: flex;
   border-radius: 16px;
   align-items: center;
   justify-content: center;
   transition: background var(${UI.ANIMATION_DURATION}) ease-in-out;
-
-  ${({ isHardWareWallet }) =>
-    isHardWareWallet &&
-    `
-    cursor: pointer;
-    border: 1px solid var(${UI.COLOR_TEXT_OPACITY_25});
-    background: transparent;
-    padding: 6px 10px;
-
-    &:after {
-      content: '';
-      display: block;
-      width: 0;
-      height: 0;
-      border-left: 4px solid transparent;
-      border-right: 4px solid transparent;
-      border-top: 4px solid var(${UI.COLOR_TEXT});
-      margin-left: 8px;
-      opacity: 0.5;
-      transition: opacity var(${UI.ANIMATION_DURATION}) ease-in-out;
-    }
-
-    &:hover {
-      background: var(${UI.COLOR_TEXT_OPACITY_25});
-    }
-
-    &:hover::after {
-      opacity: 1;
-    }
-  `}
 `

@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useCallback } from 'react'
 
+import { useConfig } from 'wagmi'
+
+import { useTradeSpenderAddress } from '@cowprotocol/balances-and-allowances'
 import { getIsNativeToken } from '@cowprotocol/common-utils'
-import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
+import { Currency, CurrencyAmount } from '@cowprotocol/currency'
 
 import { Nullish } from 'types'
 
-import { useTokenContract } from 'common/hooks/useContract'
-import { useTradeSpenderAddress } from 'common/hooks/useTradeSpenderAddress'
-import { useApprovalStateForSpender } from 'lib/hooks/useApproval'
+import { useApprovalStateForSpender } from 'modules/erc20Approve'
 
 import { shouldZeroApprove as shouldZeroApproveFn } from './shouldZeroApprove'
 
@@ -15,39 +16,26 @@ import { shouldZeroApprove as shouldZeroApproveFn } from './shouldZeroApprove'
 /**
  * Return null when decision is not taken yet
  * @param amountToApprove
+ * @param ignoreApproveState
  */
-export function useShouldZeroApprove(amountToApprove: Nullish<CurrencyAmount<Currency>>): boolean | null {
-  const [shouldZeroApprove, setShouldZeroApprove] = useState<boolean | null>(null)
+export function useShouldZeroApprove(
+  amountToApprove: Nullish<CurrencyAmount<Currency>>,
+  ignoreApproveState?: boolean,
+): () => Promise<boolean | null> {
+  const config = useConfig()
   const spender = useTradeSpenderAddress()
   const currency = amountToApprove?.currency
   const token = currency && !getIsNativeToken(currency) ? currency : undefined
-  const { contract: tokenContract } = useTokenContract(token?.address)
-  const approvalState = useApprovalStateForSpender(amountToApprove, spender, () => false) // ignore approval pending state
+  const approvalState = useApprovalStateForSpender(amountToApprove, spender)
 
-  useEffect(() => {
-    let isStale = false
-    ;(async () => {
-      const result = await shouldZeroApproveFn({
-        approvalState: approvalState.approvalState,
-        amountToApprove,
-        tokenContract,
-        spender,
-      })
-
-      if (result === null) {
-        if (shouldZeroApprove) setShouldZeroApprove(false)
-        return
-      }
-
-      if (!isStale) {
-        setShouldZeroApprove(result)
-      }
-    })()
-
-    return () => {
-      isStale = true
-    }
-  }, [tokenContract, spender, amountToApprove, approvalState, shouldZeroApprove])
-
-  return shouldZeroApprove
+  return useCallback(() => {
+    return shouldZeroApproveFn({
+      approvalState: approvalState.approvalState,
+      amountToApprove,
+      tokenAddress: token?.address,
+      spender,
+      forceApprove: ignoreApproveState,
+      config,
+    })
+  }, [ignoreApproveState, approvalState.approvalState, amountToApprove, spender, token?.address, config])
 }

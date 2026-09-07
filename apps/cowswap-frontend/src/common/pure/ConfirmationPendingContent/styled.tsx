@@ -128,7 +128,9 @@ export const StepsIconWrapper = styled.div`
     z-index: -1;
     border-radius: calc(var(--border-radius) - var(--border-size));
     background: linear-gradient(145deg, var(${UI.COLOR_PAPER}), var(${UI.COLOR_PAPER_DARKER}));
-    box-shadow: inset 0 1px 1px 0 hsl(0deg 0% 100% / 10%), 0 10px 40px -20px #000000;
+    box-shadow:
+      inset 0 1px 1px 0 hsl(0deg 0% 100% / 10%),
+      0 10px 40px -20px var(${UI.COLOR_NEUTRAL_0});
   }
 
   > svg {
@@ -148,7 +150,7 @@ export const StepsIconWrapper = styled.div`
   }
 `
 
-export const StepsWrapper = styled.div`
+export const StepsWrapper = styled.div<{ animateSecondStep?: boolean }>`
   display: flex;
   flex-flow: row wrap;
   justify-content: space-between;
@@ -169,7 +171,7 @@ export const StepsWrapper = styled.div`
       &::before {
         content: '';
         background: conic-gradient(var(${UI.COLOR_PAPER}) 40grad, 80grad, var(${UI.COLOR_PRIMARY}) 360grad);
-        display: block;
+        display: ${({ animateSecondStep }) => (animateSecondStep ? 'none' : 'block')};
         width: var(--circle-size);
         padding: 0;
         position: absolute;
@@ -180,7 +182,28 @@ export const StepsWrapper = styled.div`
         margin: auto;
         border-radius: 100%;
         z-index: -2;
-        animation: spin 1.5s linear infinite;
+        animation: ${({ animateSecondStep }) => (animateSecondStep ? 'none' : 'spin 1.5s linear infinite')};
+      }
+    }
+  }
+
+  > div:last-child {
+    ${StepsIconWrapper} {
+      &::before {
+        content: '';
+        background: conic-gradient(var(${UI.COLOR_PAPER}) 40grad, 80grad, var(${UI.COLOR_PRIMARY}) 360grad);
+        display: ${({ animateSecondStep }) => (animateSecondStep ? 'block' : 'none')};
+        width: var(--circle-size);
+        padding: 0;
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        right: 0;
+        margin: auto;
+        border-radius: 100%;
+        z-index: -2;
+        animation: ${({ animateSecondStep }) => (animateSecondStep ? 'spin 1.5s linear infinite' : 'none')};
       }
     }
   }

@@ -1,10 +1,10 @@
-import { useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router'
 import styled from 'styled-components/macro'
-import { useReferralSignup } from 'modules/referral/useReferralSignup'
-import { useWeb3React } from '@web3-react/core'
 import { shortenAddress } from '@cowprotocol/common-utils'
 import { Loader, UI } from '@cowprotocol/ui'
+import { useWalletInfo } from '@cowprotocol/wallet'
+import { useReferralSignup } from 'modules/referral/useReferralSignup'
 
 const CenteredContainer = styled.div`
   min-height: 100vh;
@@ -83,7 +83,7 @@ export default function ReferralConfirmation() {
     const queryParams = new URLSearchParams(location.search)
     const referral = queryParams.get('ref')
 
-    const { account } = useWeb3React()
+    const { account } = useWalletInfo()
     const { signup, loading, status, message } = useReferralSignup()
 
     useEffect(() => {

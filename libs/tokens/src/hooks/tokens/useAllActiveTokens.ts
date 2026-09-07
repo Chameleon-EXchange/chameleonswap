@@ -1,9 +1,8 @@
 import { useAtomValue } from 'jotai'
 
-import { TokenWithLogo } from '@cowprotocol/common-const'
+import { allActiveTokensAtom } from '../../state/tokens/allTokensAtom'
+import { ActiveTokensState } from '../../types'
 
-import { activeTokensAtom } from '../../state/tokens/allTokensAtom'
-
-export function useAllActiveTokens(): TokenWithLogo[] {
-  return useAtomValue(activeTokensAtom)
+export function useAllActiveTokens(): ActiveTokensState {
+  return useAtomValue(allActiveTokensAtom)
 }

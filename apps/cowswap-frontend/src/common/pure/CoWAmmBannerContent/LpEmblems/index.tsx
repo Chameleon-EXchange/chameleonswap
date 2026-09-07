@@ -1,6 +1,6 @@
 import React from 'react'
 
-import ICON_ARROW from '@cowprotocol/assets/cow-swap/arrow.svg'
+import svgArrowSrc from '@cowprotocol/assets/cow-swap/arrow.svg'
 import { USDC } from '@cowprotocol/common-const'
 import { SupportedChainId } from '@cowprotocol/cow-sdk'
 import { TokenLogo } from '@cowprotocol/tokens'
@@ -16,11 +16,13 @@ interface LpEmblemsProps {
   comparedProviders: LpTokenProvider[] | undefined
 }
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function LpEmblems({ comparedProviders }: LpEmblemsProps) {
   const EmblemContent = (
     <>
       <styledEl.EmblemArrow>
-        <SVG src={ICON_ARROW} />
+        <SVG src={svgArrowSrc} />
       </styledEl.EmblemArrow>
       <styledEl.CoWAMMEmblemItem>
         <ProductLogo

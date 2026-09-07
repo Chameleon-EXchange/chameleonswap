@@ -2,7 +2,18 @@ import { ReactElement, useCallback, useState } from 'react'
 
 import { isDevelopmentEnv, uriToHttp } from '@cowprotocol/common-utils'
 import { HookDappWalletCompatibility } from '@cowprotocol/hook-dapp-lib'
-import { BannerOrientation, ButtonOutlined, ButtonPrimary, InlineBanner, Loader, SearchInput } from '@cowprotocol/ui'
+import {
+  BannerOrientation,
+  ButtonOutlined,
+  ButtonPrimary,
+  InlineBanner,
+  Loader,
+  SearchInput,
+  StatusColorVariant,
+} from '@cowprotocol/ui'
+
+import { t } from '@lingui/core/macro'
+import { Trans } from '@lingui/react/macro'
 
 import { ExternalSourceAlert } from 'common/pure/ExternalSourceAlert'
 
@@ -19,6 +30,9 @@ interface AddCustomHookFormProps {
   children: ReactElement | null
 }
 
+// TODO: Break down this large function into smaller functions
+// TODO: Add proper return type annotation
+// eslint-disable-next-line max-lines-per-function, @typescript-eslint/explicit-function-return-type
 export function AddCustomHookForm({ addHookDapp, children, isPreHook, walletType }: AddCustomHookFormProps) {
   const [input, setInput] = useState<string>('')
   const [isSearchOpen, setSearchOpen] = useState<boolean>(false)
@@ -49,6 +63,8 @@ export function AddCustomHookForm({ addHookDapp, children, isPreHook, walletType
   }, [addHookDapp, dappInfo, goBack])
 
   // Normalizes URLs only on explicit actions (paste/submit) to prevent interrupting user typing
+  // TODO: Reduce function complexity by extracting logic
+
   const normalizeUrl = useCallback((url: string, shouldNormalize = false) => {
     if (!url) return ''
 
@@ -151,7 +167,7 @@ export function AddCustomHookForm({ addHookDapp, children, isPreHook, walletType
       {!isSearchOpen && (
         <Wrapper>
           <ButtonPrimary disabled={loading} onClick={() => setSearchOpen(true)}>
-            {loading ? <Loader /> : 'Add custom hook'}
+            {loading ? <Loader /> : t`Add custom hook`}
           </ButtonPrimary>
         </Wrapper>
       )}
@@ -160,8 +176,7 @@ export function AddCustomHookForm({ addHookDapp, children, isPreHook, walletType
         <Wrapper>
           <form onSubmit={handleSubmit}>
             <SearchInput
-              type="text"
-              placeholder="Enter a hook dapp URL"
+              placeholder={t`Enter a hook dapp URL`}
               value={input}
               onChange={handleInputChange}
               onPaste={handlePaste}
@@ -169,7 +184,7 @@ export function AddCustomHookForm({ addHookDapp, children, isPreHook, walletType
             />
 
             {manifestError && (
-              <InlineBanner bannerType="danger" orientation={BannerOrientation.Horizontal}>
+              <InlineBanner bannerType={StatusColorVariant.Danger} orientation={BannerOrientation.Horizontal}>
                 <div>{manifestError}</div>
               </InlineBanner>
             )}
@@ -192,24 +207,29 @@ export function AddCustomHookForm({ addHookDapp, children, isPreHook, walletType
             {isFinalStep && (
               <>
                 <ExternalSourceAlert
-                  title="Add the app at your own risk"
+                  title={t`Add the app at your own risk`}
                   onChange={() => setWarningAccepted((state) => !state)}
                 >
                   <p>
-                    Adding this app/hook grants it access to your wallet actions and trading information. Ensure you
-                    understand the implications. <br />
+                    <Trans>
+                      Adding this app/hook grants it access to your wallet actions and trading information. Ensure you
+                      understand the implications.
+                    </Trans>
                     <br />
-                    <strong>Always review wallet requests carefully before approving.</strong>
+                    <br />
+                    <strong>
+                      <Trans>Always review wallet requests carefully before approving.</Trans>
+                    </strong>
                   </p>
                 </ExternalSourceAlert>
                 <ButtonPrimary disabled={!isWarningAccepted} onClick={addHookDappCallback}>
-                  Add custom hook
+                  <Trans>Add custom hook</Trans>
                 </ButtonPrimary>
               </>
             )}
 
             <ButtonOutlined style={{ fontSize: '16px', padding: '12px 0' }} onClick={goBack}>
-              Back
+              <Trans>Back</Trans>
             </ButtonOutlined>
           </form>
         </Wrapper>

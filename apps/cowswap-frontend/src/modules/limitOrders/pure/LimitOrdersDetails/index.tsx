@@ -1,11 +1,15 @@
-import React, { ReactNode, useMemo, useState } from 'react'
+import { ReactNode, useMemo, useState } from 'react'
 
-import ArrowDownImage from '@cowprotocol/assets/cow-swap/arrowDownRight.svg'
+import { i18n } from '@lingui/core'
+
+import svgArrowDownRightSrc from '@cowprotocol/assets/cow-swap/arrowDownRight.svg'
 import { DEFAULT_DATE_FORMAT } from '@cowprotocol/common-const'
 import { formatInputAmount } from '@cowprotocol/common-utils'
+import { Currency, Price } from '@cowprotocol/currency'
 import { InfoTooltip, HelpTooltip, RowFixed } from '@cowprotocol/ui'
-import { Currency, Price } from '@uniswap/sdk-core'
 
+import { t } from '@lingui/core/macro'
+import { Trans } from '@lingui/react/macro'
 import SVG from 'react-inlinesvg'
 import styled from 'styled-components/macro'
 
@@ -20,7 +24,7 @@ import { DividerHorizontal, RecipientRow } from 'modules/trade'
 
 import { ordersTableFeatures } from 'common/constants/featureFlags'
 import { ExecutionPrice } from 'common/pure/ExecutionPrice'
-import { RateInfoParams } from 'common/pure/RateInfo'
+import { RateInfoParams, RateInfo } from 'common/pure/RateInfo'
 
 import * as styledEl from './styled'
 
@@ -50,7 +54,7 @@ export interface LimitOrdersDetailsProps {
   children?: ReactNode
 }
 
-export function LimitOrdersDetails(props: LimitOrdersDetailsProps) {
+export function LimitOrdersDetails(props: LimitOrdersDetailsProps): ReactNode {
   const {
     executionPrice,
     tradeContext,
@@ -78,7 +82,7 @@ export function LimitOrdersDetails(props: LimitOrdersDetailsProps) {
   return (
     <Wrapper>
       <styledEl.DetailsRow>
-        <styledEl.StyledRateInfo isInvertedState={isInvertedState} rateInfoParams={rateInfoParams} />
+        <RateInfo isInvertedState={isInvertedState} rateInfoParams={rateInfoParams} fontSize={13} rightAlign />
       </styledEl.DetailsRow>
 
       {children}
@@ -90,9 +94,11 @@ export function LimitOrdersDetails(props: LimitOrdersDetailsProps) {
           <div>
             <span>
               <ArrowDownRight>
-                <SVG src={ArrowDownImage} />
+                <SVG src={svgArrowDownRightSrc} />
               </ArrowDownRight>
-              <p>order executes at</p>{' '}
+              <p>
+                <Trans>order executes at</Trans>
+              </p>{' '}
               <HelpTooltip
                 text={
                   <ExecutionPriceTooltip
@@ -114,19 +120,24 @@ export function LimitOrdersDetails(props: LimitOrdersDetailsProps) {
 
       <styledEl.DetailsRow>
         <RowFixed>
-          <p>Order expires</p>
+          <p>
+            <Trans>Order expires</Trans>
+          </p>
 
           <InfoTooltip
-            content={
-              "If your order has not been filled by this date & time, it will expire. Don't worry - expirations and order placement are free on Chameleon swap!"
-            }
+            content={t`If your order has not been filled by this date & time, it will expire. Don't worry - expirations and order placement are free on CoW Swap!`}
           />
         </RowFixed>
 
-        <span>{expiryDate.toLocaleString(undefined, DEFAULT_DATE_FORMAT)}</span>
+        <span>{expiryDate.toLocaleString(i18n.locale, DEFAULT_DATE_FORMAT)}</span>
       </styledEl.DetailsRow>
       <OrderType isPartiallyFillable={partiallyFillable} partiallyFillableOverride={partiallyFillableOverride} />
-      <RecipientRow chainId={tradeContext.chainId} recipient={recipientAddressOrName || recipient} account={account} />
+      <RecipientRow
+        chainId={tradeContext.chainId}
+        recipient={recipientAddressOrName || recipient}
+        recipientAddress={recipient}
+        account={account}
+      />
     </Wrapper>
   )
 }

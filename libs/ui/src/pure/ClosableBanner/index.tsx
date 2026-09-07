@@ -1,22 +1,22 @@
 import { useAtom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
-import { useCallback } from 'react'
+import { ReactElement, useCallback } from 'react'
 
 import { getJotaiMergerStorage } from '@cowprotocol/core'
 
 import { CLOSABLE_BANNER_STORAGE } from './constants'
 
-// true - when banner closed
-type ClosableBannersState = Record<string, true | undefined>
-
-interface ClosableBannerCallback {
-  (close: () => void): JSX.Element
-}
-
 export interface ClosableBannerProps {
   storageKey: string
   callback: ClosableBannerCallback
 }
+
+interface ClosableBannerCallback {
+  (close: () => void): ReactElement
+}
+
+// true - when banner closed
+type ClosableBannersState = Record<string, true | undefined>
 
 const DEFAULT_STATE: ClosableBannersState = {}
 
@@ -26,7 +26,9 @@ export const closableBannersStateAtom = atomWithStorage<ClosableBannersState>(
   getJotaiMergerStorage(),
 )
 
-function ClosableBannerInner({ storageKey, callback }: ClosableBannerProps) {
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export function ClosableBanner({ storageKey, callback }: ClosableBannerProps) {
   const [state, setState] = useAtom(closableBannersStateAtom)
 
   const isStateLoading = state === DEFAULT_STATE
@@ -37,8 +39,4 @@ function ClosableBannerInner({ storageKey, callback }: ClosableBannerProps) {
   }, [setState, storageKey])
 
   return isBannerDisplayed ? callback(closeBanner) : null
-}
-
-export function ClosableBanner(storageKey: string, callback: ClosableBannerCallback) {
-  return <ClosableBannerInner storageKey={storageKey} callback={callback}></ClosableBannerInner>
 }

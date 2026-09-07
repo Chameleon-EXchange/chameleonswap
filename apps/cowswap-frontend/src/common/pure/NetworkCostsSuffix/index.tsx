@@ -2,6 +2,7 @@ import React from 'react'
 
 import { UI } from '@cowprotocol/ui'
 
+import { Trans } from '@lingui/react/macro'
 import styled from 'styled-components/macro'
 
 const Wrapper = styled.span`
@@ -10,6 +11,13 @@ const Wrapper = styled.span`
   margin-left: 4px;
 `
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function NetworkCostsSuffix() {
-  return <Wrapper> + gas</Wrapper>
+  return (
+    <Wrapper>
+      {' '}
+      + <Trans>gas</Trans>
+    </Wrapper>
+  )
 }

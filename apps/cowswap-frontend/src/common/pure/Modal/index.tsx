@@ -5,6 +5,7 @@ import { isMobile } from '@cowprotocol/common-utils'
 import { Command } from '@cowprotocol/types'
 import { Media, UI } from '@cowprotocol/ui'
 
+import { t } from '@lingui/core/macro'
 import { useSpringValue, useTransition } from '@react-spring/web'
 import { useGesture } from '@use-gesture/react'
 import styled from 'styled-components/macro'
@@ -13,12 +14,15 @@ import { ContentWrapper, HeaderRow, HoverText, StyledDialogContent, StyledDialog
 
 import { openModalState } from '../../state/openModalState'
 
-export * from './styled'
+export { ContentWrapper, HeaderRow, HoverText, StyledDialogContent, StyledDialogOverlay, CloseIcon } from './styled'
+
 interface ModalProps {
   isOpen: boolean
   onDismiss: Command
   minHeight?: number | false
   maxHeight?: number
+  // TODO: Replace any with proper type definitions
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   initialFocusRef?: React.RefObject<any>
   className?: string
   children?: React.ReactNode
@@ -27,6 +31,9 @@ interface ModalProps {
 /**
  * @deprecated use common/pure/NewModal instead
  */
+// TODO: Break down this large function into smaller functions
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function Modal({
   isOpen,
   onDismiss,
@@ -48,8 +55,11 @@ export function Modal({
   const bind = useGesture({
     onDrag: (state) => {
       y.set(state.down ? state.movement[1] : 0)
+    },
+    onDragEnd: (state) => {
       if (state.movement[1] > 300 || (state.velocity[1] > 3 && state.direction[1] > 0)) {
         onDismiss()
+        y.set(0)
       }
     },
   })
@@ -79,10 +89,10 @@ export function Modal({
                 {...(isMobile
                   ? {
                       ...bind(),
-                      style: { transform: y.interpolate((y) => `translateY(${(y as number) > 0 ? y : 0}px)`) },
+                      style: { transform: y.to((y) => `translateY(${y > 0 ? y : 0}px)`) },
                     }
                   : {})}
-                aria-label="dialog content"
+                aria-label={t`dialog content`}
                 $minHeight={minHeight}
                 $maxHeight={maxHeight}
                 $mobile={isMobile}

@@ -1,12 +1,8 @@
 import { SupportedChainId } from '@cowprotocol/cow-sdk'
+import { Currency } from '@cowprotocol/currency'
 import { PermitHookData, PermitHookParams, PermitInfo } from '@cowprotocol/permit-utils'
-import { Currency } from '@uniswap/sdk-core'
 
 import { AppDataInfo, TypedAppDataHooks } from 'modules/appData'
-
-import { ParsedOrder } from 'utils/orderUtils/parseOrder'
-
-export type IsTokenPermittableResult = PermitInfo | undefined
 
 export type AddPermitTokenParams = {
   chainId: SupportedChainId
@@ -14,11 +10,26 @@ export type AddPermitTokenParams = {
   permitInfo: PermitInfo
 }
 
-export type GeneratePermitHookParams = Pick<PermitHookParams, 'inputToken' | 'permitInfo' | 'account'> & {
-  customSpender?: string
+export type CachedPermitData = {
+  hookData: PermitHookData
+  nonce: number | undefined
 }
 
 export type GeneratePermitHook = (params: GeneratePermitHookParams) => Promise<PermitHookData | undefined>
+
+export type GeneratePermitHookParams = Pick<PermitHookParams, 'inputToken' | 'permitInfo' | 'account' | 'amount'> & {
+  customSpender?: string
+  preSignCallback?: () => void | Promise<void>
+  postSignCallback?: () => void
+  /**
+   * Full sell currency. When provided, a cache-miss fires the `ON_BEFORE_APPROVAL` widget hook
+   * before requesting the permit signature. Omit for speculative/pre-generation callers that must
+   * never prompt the host widget.
+   */
+  sellCurrency?: Currency
+}
+
+export type GetPermitCacheParams = PermitCacheKeyParams
 
 export type HandlePermitParams = Omit<GeneratePermitHookParams, 'permitInfo' | 'inputToken'> & {
   permitInfo: IsTokenPermittableResult
@@ -28,12 +39,9 @@ export type HandlePermitParams = Omit<GeneratePermitHookParams, 'permitInfo' | '
   typedHooks?: TypedAppDataHooks
 }
 
-export type PermitCache = Record<string, string>
+export type IsTokenPermittableResult = PermitInfo | undefined
 
-export type CachedPermitData = {
-  hookData: PermitHookData
-  nonce: number | undefined
-}
+export type PermitCache = Record<string, string>
 
 export type PermitCacheKeyParams = {
   chainId: SupportedChainId
@@ -41,14 +49,9 @@ export type PermitCacheKeyParams = {
   account: string | undefined
   nonce: number | undefined
   spender: string
+  amount?: bigint
 }
 
-export type StorePermitCacheParams = PermitCacheKeyParams & { hookData: PermitHookData }
-
-export type GetPermitCacheParams = PermitCacheKeyParams
-
-export type CheckHasValidPendingPermit = (order: ParsedOrder) => Promise<boolean | undefined>
-
-export type OrdersPermitStatus = Record<string, boolean | undefined>
-
 export type PermitCompatibleTokens = Record<string, boolean>
+
+export type StorePermitCacheParams = PermitCacheKeyParams & { hookData: PermitHookData }

@@ -34,11 +34,13 @@ import {
 import { ThemeProvider, createTheme } from '@mui/material/styles'
 
 import http from 'utils/http'
-import EmailIcon from '@mui/icons-material/Email'
-import LockIcon from '@mui/icons-material/Lock'
-import Visibility from '@mui/icons-material/Visibility'
-import VisibilityOff from '@mui/icons-material/VisibilityOff'
+import { Mail, Lock, Eye, EyeOff } from 'react-feather'
 import { SystemSettings, getSystemSettings } from 'modules/system/services/systemSettings'
+
+const EmailIcon = (_props: any) => <Mail size={20} style={{ opacity: 0.7 }} />
+const LockIcon = (_props: any) => <Lock size={20} style={{ opacity: 0.7 }} />
+const Visibility = (_props: any) => <Eye size={20} />
+const VisibilityOff = (_props: any) => <EyeOff size={20} />
 
 interface TabPanelProps {
   children?: React.ReactNode
@@ -880,14 +882,14 @@ function AdminPage({ user }: any) {
                 label="Fee Address"
                 type="text"
                 value={settings.revenueWalletAddress}
-                onChange={(e) => setSettings({ ...settings, revenueWalletAddress: e.target.value })}
+                onChange={(e: any) => setSettings({ ...settings, revenueWalletAddress: e.target.value })}
                 fullWidth
               />
               <TextField
                 label="Fee Percentage"
                 type="number"
                 value={settings.feePercentage}
-                onChange={(e) => setSettings({ ...settings, feePercentage: Number(e.target.value) })}
+                onChange={(e: any) => setSettings({ ...settings, feePercentage: Number(e.target.value) })}
                 inputProps={{ step: '0.01' }}
                 fullWidth
               />
@@ -1026,7 +1028,7 @@ function AdminPage({ user }: any) {
                       select
                       label="Filter by Chain"
                       value={selectedChain}
-                      onChange={(e) => handleChainChange(e.target.value)}
+                      onChange={(e: any) => handleChainChange(e.target.value)}
                       sx={{ minWidth: 150 }}
                     >
                       <MenuItem value="all">All Chains</MenuItem>
@@ -1228,7 +1230,7 @@ function AdminPage({ user }: any) {
                 type="email"
                 fullWidth
                 value={newAdminEmail}
-                onChange={(e) => setNewAdminEmail(e.target.value)}
+                onChange={(e: any) => setNewAdminEmail(e.target.value)}
               />
               <TextField
                 margin="dense"
@@ -1236,7 +1238,7 @@ function AdminPage({ user }: any) {
                 type={showNewAdminPassword ? 'text' : 'password'}
                 fullWidth
                 value={newAdminPassword}
-                onChange={(e) => setNewAdminPassword(e.target.value)}
+                onChange={(e: any) => setNewAdminPassword(e.target.value)}
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
@@ -1257,7 +1259,7 @@ function AdminPage({ user }: any) {
                 type={showNewAdminConfirmPassword ? 'text' : 'password'}
                 fullWidth
                 value={newAdminConfirmPassword}
-                onChange={(e) => setNewAdminConfirmPassword(e.target.value)}
+                onChange={(e: any) => setNewAdminConfirmPassword(e.target.value)}
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
@@ -1318,7 +1320,7 @@ function AdminPage({ user }: any) {
                 type={showCurrentPassword ? 'text' : 'password'}
                 fullWidth
                 value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
+                onChange={(e: any) => setCurrentPassword(e.target.value)}
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
@@ -1339,7 +1341,7 @@ function AdminPage({ user }: any) {
                 type={showNewPassword ? 'text' : 'password'}
                 fullWidth
                 value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                onChange={(e: any) => setNewPassword(e.target.value)}
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
@@ -1360,7 +1362,7 @@ function AdminPage({ user }: any) {
                 type={showConfirmNewPassword ? 'text' : 'password'}
                 fullWidth
                 value={confirmNewPassword}
-                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                onChange={(e: any) => setConfirmNewPassword(e.target.value)}
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
@@ -1398,7 +1400,7 @@ function AdminPage({ user }: any) {
                 type={showAdminPassword ? 'text' : 'password'}
                 fullWidth
                 value={adminPassword}
-                onChange={(e) => setAdminPassword(e.target.value)}
+                onChange={(e: any) => setAdminPassword(e.target.value)}
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
@@ -1784,7 +1786,7 @@ const Login = ({ setLogin }: { setLogin: Function }) => {
             type="email"
             fullWidth
             value={email}
-            onChange={(e) => {
+            onChange={(e: any) => {
               setEmail(e.target.value)
               setError('')
             }}
@@ -1804,7 +1806,7 @@ const Login = ({ setLogin }: { setLogin: Function }) => {
             type={showPassword ? 'text' : 'password'}
             fullWidth
             value={password}
-            onChange={(e) => {
+            onChange={(e: any) => {
               setPassword(e.target.value)
               setError('')
             }}
@@ -1831,7 +1833,7 @@ const Login = ({ setLogin }: { setLogin: Function }) => {
           />
           <FormControlLabel
             control={
-              <Checkbox checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} color="primary" />
+              <Checkbox checked={rememberMe} onChange={(e: any) => setRememberMe(e.target.checked)} color="primary" />
             }
             label="Remember me"
           />

@@ -1,17 +1,19 @@
 import { useMemo } from 'react'
 
+import { toHex } from 'viem'
+
 import { NATIVE_CURRENCIES, TokenWithLogo } from '@cowprotocol/common-const'
 import { SupportedChainId } from '@cowprotocol/cow-sdk'
-import { CurrencyAmount } from '@uniswap/sdk-core'
+import { CurrencyAmount } from '@cowprotocol/currency'
 
 import { useNativeTokenBalance } from './useNativeTokenBalance'
 
 export function useNativeCurrencyAmount(
   chainId: SupportedChainId,
-  account: string | undefined
+  account: string | undefined,
 ): CurrencyAmount<TokenWithLogo> | undefined {
-  const { data } = useNativeTokenBalance(account)
-  const balance = data && data.toHexString()
+  const { data } = useNativeTokenBalance(account, chainId)
+  const balance = data?.value && toHex(data.value)
 
   return useMemo(() => {
     if (!balance) return undefined

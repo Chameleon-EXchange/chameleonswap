@@ -1,11 +1,11 @@
 import { FULL_PRICE_PRECISION } from '@cowprotocol/common-const'
-import { BigintIsh, Currency, CurrencyAmount, Fraction, Price, Rounding, Token } from '@uniswap/sdk-core'
+import { BigintIsh, Currency, CurrencyAmount, Fraction, Percent, Price, Rounding, Token } from '@cowprotocol/currency'
+import { Nullish } from '@cowprotocol/types'
 
 import { BigNumber } from 'bignumber.js'
-import JSBI from 'jsbi'
 
 import { trimTrailingZeros } from './trimTrailingZeros'
-import { FractionLike, Nullish } from './types'
+import { FractionLike } from './types'
 
 export class FractionUtils {
   static serializeFractionToJSON(amount: Nullish<CurrencyAmount<Currency>>): string {
@@ -60,7 +60,7 @@ export class FractionUtils {
   static round(value: FractionLike, rounding: Rounding = Rounding.ROUND_UP): Fraction {
     const { quotient, remainder } = FractionUtils.fractionLikeToFraction(value)
 
-    return new Fraction(JSBI.add(quotient, JSBI.BigInt(remainder.toFixed(0, undefined, rounding))), 1)
+    return new Fraction(quotient + BigInt(remainder.toFixed(0, undefined, rounding)), 1)
   }
 
   static gte(fraction: Fraction, value: Fraction | BigintIsh): boolean {
@@ -124,22 +124,22 @@ export class FractionUtils {
    * For example, a fraction like 1.1/1 representing the price of USDC, DAI in units, will be turned into
    * 1.1/1000000000000 in atoms
    */
-  static adjustDecimalsAtoms(
-    value: CurrencyAmount<Currency>,
+  static adjustDecimalsAtoms<R extends Currency>(
+    value: CurrencyAmount<R>,
     decimalsA: number,
     decimalsB: number,
-  ): CurrencyAmount<Currency>
-  static adjustDecimalsAtoms(value: Fraction, decimalsA: number, decimalsB: number): Fraction
-  static adjustDecimalsAtoms(
-    value: Fraction | CurrencyAmount<Currency>,
+  ): typeof value
+  static adjustDecimalsAtoms(value: Fraction, decimalsA: number, decimalsB: number): typeof value
+  static adjustDecimalsAtoms<R extends Currency>(
+    value: Fraction | CurrencyAmount<R>,
     decimalsA: number,
     decimalsB: number,
-  ): Fraction | CurrencyAmount<Currency> {
+  ): typeof value {
     if (decimalsA === decimalsB) {
       return value
     }
 
-    const decimalsShift = JSBI.BigInt(JSBI.exponentiate(JSBI.BigInt(10), JSBI.BigInt(Math.abs(decimalsA - decimalsB))))
+    const decimalsShift = 10n ** BigInt(Math.abs(decimalsA - decimalsB))
 
     return decimalsA < decimalsB ? value.multiply(decimalsShift) : value.divide(decimalsShift)
   }
@@ -154,14 +154,14 @@ export class FractionUtils {
     const decimalPlaces = bigNumber.decimalPlaces()
 
     if (!decimalPlaces) {
-      return new Fraction(JSBI.BigInt(n))
+      return new Fraction(BigInt(n))
     }
 
     const denominator = Math.pow(10, decimalPlaces)
 
     const numerator = bigNumber.times(denominator).decimalPlaces(0).toFixed()
 
-    return new Fraction(JSBI.BigInt(numerator), JSBI.BigInt(denominator))
+    return new Fraction(BigInt(numerator), BigInt(denominator))
   }
 
   /**
@@ -178,9 +178,11 @@ export class FractionUtils {
   static simplify(fraction: Fraction): Fraction {
     return reduce(trimZeros(fraction))
   }
-}
 
-const ZERO = JSBI.BigInt(0)
+  static addPercent<T extends Currency>(amount: CurrencyAmount<T>, percent: Percent): typeof amount {
+    return amount.add(amount.multiply(percent))
+  }
+}
 
 /**
  * Use GCD to reduce the fraction to the smallest possible
@@ -192,18 +194,17 @@ const ZERO = JSBI.BigInt(0)
 function reduce(fraction: Fraction): Fraction {
   let numerator = fraction.numerator
   let denominator = fraction.denominator
-  let rest: JSBI
 
-  if (JSBI.equal(denominator, ZERO)) {
-    return new Fraction(JSBI.BigInt(0), JSBI.BigInt(1))
+  if (denominator === 0n) {
+    return new Fraction(0n, 1n)
   }
 
-  while (JSBI.notEqual(denominator, ZERO)) {
-    rest = JSBI.remainder(numerator, denominator)
+  while (denominator !== 0n) {
+    const rest = numerator % denominator
     numerator = denominator
     denominator = rest
   }
-  return new Fraction(JSBI.divide(fraction.numerator, numerator), JSBI.divide(fraction.denominator, numerator))
+  return new Fraction(fraction.numerator / numerator, fraction.denominator / numerator)
 }
 
 /**

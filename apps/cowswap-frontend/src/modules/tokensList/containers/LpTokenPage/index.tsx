@@ -1,7 +1,11 @@
+import { ReactNode } from 'react'
+
 import { TokenWithLogo } from '@cowprotocol/common-const'
 import { ExplorerDataType, getExplorerLink, shortenAddress } from '@cowprotocol/common-utils'
 import { TokenLogo, useTokensByAddressMap } from '@cowprotocol/tokens'
-import { ExternalLink, TokenSymbol } from '@cowprotocol/ui'
+import { ExternalLink, ModalHeader, TokenSymbol } from '@cowprotocol/ui'
+
+import { Trans } from '@lingui/react/macro'
 
 import { usePoolsInfo } from 'modules/yield/shared'
 
@@ -16,20 +20,17 @@ import {
   Wrapper,
 } from './styled'
 
-import { ModalHeader } from '../../pure/ModalHeader'
-
-function renderValue<T>(value: T | undefined, template: (v: T) => string, defaultValue?: string): string | undefined {
-  return value ? template(value) : defaultValue
-}
-
 interface LpTokenPageProps {
   poolAddress: string
+
   onBack(): void
+
   onDismiss(): void
+
   onSelectToken(token: TokenWithLogo): void
 }
 
-export function LpTokenPage({ poolAddress, onBack, onDismiss, onSelectToken }: LpTokenPageProps) {
+export function LpTokenPage({ poolAddress, onBack, onDismiss, onSelectToken }: LpTokenPageProps): ReactNode {
   const poolsInfo = usePoolsInfo()
   const tokensByAddress = useTokensByAddressMap()
 
@@ -59,44 +60,56 @@ export function LpTokenPage({ poolAddress, onBack, onDismiss, onSelectToken }: L
                 onSelectToken(token)
               }}
             >
-              Select
+              <Trans>Select</Trans>
             </SelectButton>
           </div>
         </TokenWrapper>
       )}
       <InfoTable>
         <InfoRow>
-          <div>Symbol</div>
+          <div>
+            <Trans>Symbol</Trans>
+          </div>
           <div>
             <TokenSymbol token={token} />
           </div>
         </InfoRow>
         <InfoRow>
-          <div>Fee tier</div>
           <div>
-            <span>{renderValue(info?.feeTier, (t) => `${t}%`, '-')}</span>
+            <Trans>Fee tier</Trans>
+          </div>
+          <div>
+            <span>{formatValue(info?.feeTier, (t) => `${t}%`, '-')}</span>
           </div>
         </InfoRow>
         <InfoRow>
-          <div>Volume (24h)</div>
           <div>
-            <span>{renderValue(info?.volume24h, (t) => `$${t}`, '-')}</span>
+            <Trans>Volume (24h)</Trans>
+          </div>
+          <div>
+            <span>{formatValue(info?.volume24h, (t) => `$${t}`, '-')}</span>
           </div>
         </InfoRow>
         <InfoRow>
-          <div>APR</div>
           <div>
-            <span>{renderValue(info?.apy, (t) => `${t}%`, '-')}</span>
+            <Trans>APR</Trans>
+          </div>
+          <div>
+            <span>{formatValue(info?.apy, (t) => `${t}%`, '-')}</span>
           </div>
         </InfoRow>
         <InfoRow>
-          <div>TVL</div>
           <div>
-            <span>{renderValue(info?.tvl, (t) => `$${t}`, '-')}</span>
+            <Trans>TVL</Trans>
+          </div>
+          <div>
+            <span>{formatValue(info?.tvl, (t) => `$${t}`, '-')}</span>
           </div>
         </InfoRow>
         <InfoRow>
-          <div>Pool address</div>
+          <div>
+            <Trans>Pool address</Trans>
+          </div>
           <div>
             {token && (
               <ExternalLink href={getExplorerLink(token.chainId, token.address, ExplorerDataType.ADDRESS)}>
@@ -108,4 +121,8 @@ export function LpTokenPage({ poolAddress, onBack, onDismiss, onSelectToken }: L
       </InfoTable>
     </Wrapper>
   )
+}
+
+function formatValue<T>(value: T | undefined, template: (v: T) => string, defaultValue?: string): string | undefined {
+  return value ? template(value) : defaultValue
 }

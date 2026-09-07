@@ -12,8 +12,8 @@ export interface ConfirmationModalContentProps {
   styles?: React.CSSProperties
   className?: string
   onDismiss: Command
-  topContent: () => ReactNode
-  bottomContent?: () => ReactNode | undefined
+  topContent: ReactNode
+  bottomContent?: ReactNode
 }
 
 // @deprecated use common/pure/NewModal instead
@@ -25,7 +25,7 @@ export function LegacyConfirmationModalContent({
   bottomContent,
   onDismiss,
   topContent,
-}: ConfirmationModalContentProps) {
+}: ConfirmationModalContentProps): ReactNode {
   return (
     <ContentWrapper className={className}>
       <Section>
@@ -35,9 +35,9 @@ export function LegacyConfirmationModalContent({
           </Text>
           <CloseIconWrapper onClick={() => onDismiss()} />
         </GPModalHeader>
-        {topContent()}
+        {topContent}
       </Section>
-      {bottomContent && <BottomSection gap="12px">{bottomContent()}</BottomSection>}
+      {bottomContent && <BottomSection gap="12px">{bottomContent}</BottomSection>}
     </ContentWrapper>
   )
 }

@@ -1,24 +1,17 @@
-import { useEffect, useRef } from 'react'
+import { ReactElement, useEffect, useRef } from 'react'
 
+import { Link } from 'react-router'
 import styled from 'styled-components/macro'
 
 import { headingToId } from './utils'
 
-import { LinkScrollable } from '../Link'
-
-const LinkScrollableStyled = styled(LinkScrollable)`
+export const LinkScrollableStyled = styled(Link)`
   color: ${({ theme }) => theme.blue1} !important;
 `
 
-function Table({ children }: { children: JSX.Element }) {
-  return (
-    <div id="table-container">
-      <table>{children}</table>
-    </div>
-  )
-}
-
-function H2({ children }: { children: JSX.Element }) {
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export function H2({ children }: { children: ReactElement }) {
   const ref = useRef<HTMLHeadingElement>(null)
 
   useEffect(() => {
@@ -32,4 +25,12 @@ function H2({ children }: { children: JSX.Element }) {
   return <h2 ref={ref}>{children}</h2>
 }
 
-export const markdownComponents = { table: Table, h2: H2, a: LinkScrollableStyled }
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export function Table({ children }: { children: ReactElement }) {
+  return (
+    <div id="table-container">
+      <table>{children}</table>
+    </div>
+  )
+}

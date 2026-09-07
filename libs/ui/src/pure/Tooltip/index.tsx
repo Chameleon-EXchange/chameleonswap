@@ -1,5 +1,6 @@
-import { MouseEvent, ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import { MouseEvent, ReactNode, RefObject, useCallback, useEffect, useRef, useState } from 'react'
 
+import { useOnClickOutside, useOnScroll } from '@cowprotocol/common-hooks'
 import { isMobile } from '@cowprotocol/common-utils'
 import { Command } from '@cowprotocol/types'
 
@@ -17,6 +18,7 @@ export const TooltipContainer = styled.div`
 `
 
 export interface HoverTooltipProps extends Omit<PopoverProps, 'content' | 'show'> {
+  isClosed?: boolean
   /**
    * The content of the tooltip
    */
@@ -36,6 +38,30 @@ export interface HoverTooltipProps extends Omit<PopoverProps, 'content' | 'show'
    * Whether to disable the hover and content display
    */
   disableHover?: boolean
+
+  /**
+   * In milliseconds, the delay before the tooltip is closed
+   */
+  tooltipCloseDelay?: number
+}
+
+export interface TooltipProps extends Omit<PopoverProps, 'content'> {
+  /**
+   * Shows the tooltip
+   */
+  show: boolean
+
+  /**
+   * Whether to wrap the content in a container
+   */
+  wrapInContainer?: boolean
+
+  /**
+   * The content of the tooltip
+   */
+  content: ReactNode
+
+  containerRef: RefObject<HTMLElement | null>
 }
 
 /**
@@ -44,12 +70,25 @@ export interface HoverTooltipProps extends Omit<PopoverProps, 'content' | 'show'
  * @see HelpTooltip as an alternative if you need to show a tooltip with a question mark icon (or icon of your choice)
  * @see InfoTooltip as an alternative if you need to show a tooltip with an info icon
  * @see Tooltip as an alternative if you need to control when the tooltip is shown
+ * @deprecated Use `NewTooltip` instead.
  *
  * @param props
  * @returns
  */
+// TODO: Break down this large function into smaller functions
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function HoverTooltip(props: HoverTooltipProps) {
-  const { content, children, onOpen = undefined, disableHover, wrapInContainer = false, ...rest } = props
+  const {
+    content,
+    children,
+    onOpen = undefined,
+    disableHover,
+    wrapInContainer = false,
+    tooltipCloseDelay = TOOLTIP_CLOSE_DELAY,
+    isClosed,
+    ...rest
+  } = props
 
   // { text, className, ...rest }: TooltipProps
 
@@ -67,34 +106,39 @@ export function HoverTooltip(props: HoverTooltipProps) {
   )
 
   // Close the tooltip
-  const close = useCallback((e: MouseEvent<HTMLDivElement> | null, eager = false) => {
-    e && e.preventDefault()
+  const close = useCallback(
+    (e: MouseEvent<HTMLDivElement> | null, eager = false) => {
+      e && e.preventDefault()
 
-    // Cancel any previous scheduled close
-    if (cancelCloseRef.current) {
-      cancelCloseRef.current()
-    }
-
-    const closeNow = () => {
-      cancelCloseRef.current = null
-      setShow(false)
-    }
-
-    if (eager) {
-      // Close eagerly
-      closeNow()
-    } else {
-      // Close after a delay
-      const closeTimeout = setTimeout(closeNow, TOOLTIP_CLOSE_DELAY)
-
-      cancelCloseRef.current = () => {
-        cancelCloseRef.current = null
-        clearTimeout(closeTimeout)
+      // Cancel any previous scheduled close
+      if (cancelCloseRef.current) {
+        cancelCloseRef.current()
       }
-    }
 
-    return () => cancelCloseRef.current && cancelCloseRef.current()
-  }, [])
+      // TODO: Add proper return type annotation
+      // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+      const closeNow = () => {
+        cancelCloseRef.current = null
+        setShow(false)
+      }
+
+      if (eager) {
+        // Close eagerly
+        closeNow()
+      } else {
+        // Close after a delay
+        const closeTimeout = setTimeout(closeNow, tooltipCloseDelay)
+
+        cancelCloseRef.current = () => {
+          cancelCloseRef.current = null
+          clearTimeout(closeTimeout)
+        }
+      }
+
+      return () => cancelCloseRef.current && cancelCloseRef.current()
+    },
+    [tooltipCloseDelay],
+  )
 
   // Stop the delayed close when hovering the tooltip
   const stopDelayedClose = useCallback(() => {
@@ -116,8 +160,16 @@ export function HoverTooltip(props: HoverTooltipProps) {
     [close, open, show],
   )
 
+  useEffect(() => {
+    if (isClosed) {
+      setShow(false)
+    }
+  }, [isClosed])
+
   // Hide tooltip when scrolling
   useEffect(() => {
+    // TODO: Add proper return type annotation
+    // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
     const handleScroll = () => {
       if (show) {
         close(null, true)
@@ -144,21 +196,13 @@ export function HoverTooltip(props: HoverTooltipProps) {
   )
 }
 
-export interface TooltipProps extends Omit<PopoverProps, 'content'> {
-  /**
-   * Shows the tooltip
-   */
-  show: boolean
-
-  /**
-   * Whether to wrap the content in a container
-   */
-  wrapInContainer?: boolean
-
-  /**
-   * The content of the tooltip
-   */
-  content: ReactNode
+// TODO: Replace any with proper type definitions
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function renderTooltip(tooltip: ReactNode | ((params?: any) => ReactNode), params?: any): ReactNode {
+  if (typeof tooltip === 'function') {
+    return tooltip(params)
+  }
+  return tooltip
 }
 
 /**
@@ -167,19 +211,27 @@ export interface TooltipProps extends Omit<PopoverProps, 'content'> {
  * IMPORTANT: Don't use it if you need to show the tooltip when you hover on one element. For that use `HoverTooltip`
  * @see HoverTooltip as an alternative if you need to show the tooltip on hover
  */
-export function Tooltip({ content, className, wrapInContainer, ...rest }: TooltipProps) {
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export function Tooltip({ content, className, wrapInContainer, show, containerRef, ...rest }: TooltipProps) {
+  const tooltipRef = useRef<HTMLDivElement>(null)
+
+  const handleClick = useCallback(() => {
+    if (show && rest.onClickCapture) {
+      rest.onClickCapture({} as React.MouseEvent<HTMLDivElement>)
+    }
+  }, [show, rest])
+
+  useOnClickOutside([tooltipRef], handleClick)
+
+  useOnScroll(containerRef, handleClick)
+
   return (
     <Popover
       className={className}
-      content={wrapInContainer ? <TooltipContainer>{content}</TooltipContainer> : content}
+      show={show}
+      content={<div ref={tooltipRef}>{wrapInContainer ? <TooltipContainer>{content}</TooltipContainer> : content}</div>}
       {...rest}
     />
   )
-}
-
-export function renderTooltip(tooltip: ReactNode | ((params?: any) => ReactNode), params?: any): ReactNode {
-  if (typeof tooltip === 'function') {
-    return tooltip(params)
-  }
-  return tooltip
 }

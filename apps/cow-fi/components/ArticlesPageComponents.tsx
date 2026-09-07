@@ -1,5 +1,15 @@
 'use client'
 
+import { useCowAnalytics } from '@cowprotocol/analytics'
+import { Media, UI } from '@cowprotocol/ui'
+
+import Link from 'next/link'
+import { CowFiCategory } from 'src/common/analytics/types'
+import styled from 'styled-components/macro'
+
+import { Article } from '../services/cms'
+
+import { ArticlesList } from '@/components/ArticlesList'
 import { CategoryLinks } from '@/components/CategoryLinks'
 import { SearchBar } from '@/components/SearchBar'
 import {
@@ -12,17 +22,10 @@ import {
   LinkSection,
   Pagination,
 } from '@/styles/styled'
-import { clickOnKnowledgeBase } from '../modules/analytics'
-import { ArticlesList } from '@/components/ArticlesList'
-import { Article } from '../services/cms'
-import styled from 'styled-components/macro'
-import { Color, Font, Media } from '@cowprotocol/ui'
-import Link from 'next/link'
+import { calculateTotalPages, calculatePageRange, createPaginationArray } from '@/util/paginationUtils'
 
-const LEARN_PATH = '/learn/'
-const ARTICLES_PATH = `${LEARN_PATH}articles/`
-
-const ITEMS_PER_PAGE = 24
+const LEARN_PATH = '/learn'
+const ARTICLES_PATH = `${LEARN_PATH}/articles`
 
 const Wrapper = styled.div`
   display: flex;
@@ -36,8 +39,8 @@ const Wrapper = styled.div`
 
   > h1 {
     font-size: 28px;
-    font-weight: ${Font.weight.medium};
-    color: ${Color.neutral50};
+    font-weight: var(${UI.FONT_WEIGHT_MEDIUM});
+    color: var(${UI.COLOR_NEUTRAL_50});
     text-align: center;
 
     ${Media.upToMedium()} {
@@ -60,27 +63,38 @@ interface ArticlesPageProps {
   totalArticles: number
   currentPage: number
   allCategories: { name: string; slug: string }[]
+  allArticles: Article[]
 }
 
 export function ArticlesPageComponents({ articles, totalArticles, currentPage, allCategories }: ArticlesPageProps) {
-  const totalPages = Math.ceil(totalArticles / ITEMS_PER_PAGE)
+  const analytics = useCowAnalytics()
+  const totalPages = calculateTotalPages(totalArticles)
+  const { start, end } = calculatePageRange(currentPage, totalArticles)
 
   return (
     <Wrapper>
       <CategoryLinks allCategories={allCategories} />
-      <SearchBar articles={articles} />
+      <SearchBar />
       <ContainerCard gap={42} gapMobile={24} touchFooter>
         <ContainerCardInner maxWidth={970} gap={24} gapMobile={24}>
           <ContainerCardSectionTop>
             <Breadcrumbs padding="0">
-              <Link href="/learn" onClick={() => clickOnKnowledgeBase('click-breadcrumbs-home')}>
+              <Link
+                href={LEARN_PATH}
+                onClick={() =>
+                  analytics.sendEvent({
+                    category: CowFiCategory.KNOWLEDGEBASE,
+                    action: 'Click breadcrumb',
+                    label: 'home',
+                  })
+                }
+              >
                 Knowledge Base
               </Link>
               <h1>All articles</h1>
             </Breadcrumbs>
             <ArticleCount>
-              Showing {ITEMS_PER_PAGE * (currentPage - 1) + 1}-{Math.min(ITEMS_PER_PAGE * currentPage, totalArticles)}{' '}
-              of {totalArticles} articles
+              Showing {start}-{end} of {totalArticles} articles
             </ArticleCount>
           </ContainerCardSectionTop>
           <ContainerCardSection>
@@ -89,14 +103,20 @@ export function ArticlesPageComponents({ articles, totalArticles, currentPage, a
             </LinkSection>
           </ContainerCardSection>
           <Pagination>
-            {Array.from({ length: totalPages }, (_, i) => (
+            {createPaginationArray(totalPages).map((pageNum) => (
               <Link
-                key={i}
-                href={`${ARTICLES_PATH}${i + 1}`}
-                className={i + 1 === currentPage ? 'active' : ''}
-                onClick={() => clickOnKnowledgeBase(`click-pagination-${i + 1}`)}
+                key={pageNum - 1}
+                href={pageNum === 1 ? ARTICLES_PATH : `${ARTICLES_PATH}/${pageNum}`}
+                className={pageNum === currentPage ? 'active' : ''}
+                onClick={() =>
+                  analytics.sendEvent({
+                    category: CowFiCategory.KNOWLEDGEBASE,
+                    action: 'Click pagination',
+                    label: `page-${pageNum}`,
+                  })
+                }
               >
-                {i + 1}
+                {pageNum}
               </Link>
             ))}
           </Pagination>

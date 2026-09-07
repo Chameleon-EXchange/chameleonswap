@@ -1,19 +1,20 @@
 import { PropsWithChildren } from 'react'
 
-import { COW, NATIVE_CURRENCIES } from '@cowprotocol/common-const'
-import { useWalletInfo } from '@cowprotocol/wallet'
-import { BigNumber } from '@ethersproject/bignumber'
+import { pad } from 'viem'
+import { writeContract } from 'wagmi/actions'
 
-import { renderHook } from '@testing-library/react'
+import { COW_TOKEN_TO_CHAIN, NATIVE_CURRENCIES } from '@cowprotocol/common-const'
+import { useWalletInfo } from '@cowprotocol/wallet'
+
+import { act, renderHook } from '@testing-library/react'
 
 import { useTransactionAdder } from 'legacy/state/enhancedTransactions/hooks'
 import { Order } from 'legacy/state/orders/actions'
 import { useRequestOrderCancellation, useSetOrderCancellationHash } from 'legacy/state/orders/hooks'
 
-import { useEthFlowContract, useGP2SettlementContract } from 'common/hooks/useContract'
-
 import { useSendOnChainCancellation } from './useSendOnChainCancellation'
 
+import { LinguiWrapper } from '../../../../LinguiJestProvider'
 import { WithMockedWeb3 } from '../../../test-utils'
 
 const chainId = 1
@@ -25,17 +26,29 @@ jest.mock('@cowprotocol/wallet', () => {
   return {
     ...jest.requireActual('@cowprotocol/wallet'),
     useWalletInfo: jest.fn().mockReturnValue({ chainId }),
+    useSendBatchTransactions: jest.fn().mockResolvedValue('0x01'),
   }
 })
-jest.mock('common/hooks/useContract', () => {
+jest.mock('wagmi/actions', () => {
   return {
-    ...jest.requireActual('common/hooks/useContract'),
-    useEthFlowContract: jest.fn(),
-    useGP2SettlementContract: jest.fn(),
+    estimateGas: jest.fn().mockResolvedValue(1n),
+    writeContract: jest.fn(),
+  }
+})
+
+jest.mock('modules/twap/hooks/useSetPartOrderCancelling', () => {
+  return {
+    ...jest.requireActual('modules/twap/hooks/useSetPartOrderCancelling'),
+    useSetPartOrderCancelling: jest.fn().mockReturnValue(jest.fn()),
+  }
+})
+jest.mock('modules/twap/hooks/useCancelTwapOrder', () => {
+  return {
+    ...jest.requireActual('modules/twap/hooks/useCancelTwapOrder'),
+    useCancelTwapOrder: jest.fn(),
   }
 })
 jest.mock('legacy/state/enhancedTransactions/hooks')
-jest.mock('modules/analytics/useAnalyticsReporterCowSwap')
 
 const orderMock = {
   id: 'xx1',
@@ -43,8 +56,9 @@ const orderMock = {
   receiver: '0x0000000000000000000000000000000000000000',
   sellAmount: '1',
   buyAmount: '2',
-  appData: '0x001',
-  validTo: 34245345432,
+  feeAmount: '1',
+  appData: pad('0x001'),
+  validTo: 3424534543,
 } as Order
 
 const mockUseWalletInfo = useWalletInfo as jest.MockedFunction<typeof useWalletInfo>
@@ -60,15 +74,19 @@ const mockUseRequestOrderCancellation = useRequestOrderCancellation as jest.Mock
 const transactionAdder = jest.fn()
 const mockUseTransactionAdder = useTransactionAdder as jest.MockedFunction<typeof useTransactionAdder>
 
-const mockUseEthFlowContract = useEthFlowContract as jest.MockedFunction<typeof useEthFlowContract>
-const mockUseGP2SettlementContract = useGP2SettlementContract as jest.MockedFunction<typeof useGP2SettlementContract>
+const mockWriteContract = writeContract as jest.MockedFunction<typeof writeContract>
 
-const ethFlowInvalidationMock = jest.fn()
-const settlementInvalidationMock = jest.fn()
-
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 const WithProviders = ({ children }: PropsWithChildren) => {
-  return <WithMockedWeb3>{children}</WithMockedWeb3>
+  return (
+    <WithMockedWeb3>
+      <LinguiWrapper>{children}</LinguiWrapper>
+    </WithMockedWeb3>
+  )
 }
+
+// TODO: Break down this large function into smaller functions
 
 describe('useSendOnChainCancellation() + useGetOnChainCancellation()', () => {
   beforeEach(() => {
@@ -78,61 +96,36 @@ describe('useSendOnChainCancellation() + useGetOnChainCancellation()', () => {
     mockUseSetOrderCancellationHash.mockReturnValue(setOrderCancellationHash)
     mockUseRequestOrderCancellation.mockReturnValue(requestOrderCancellation)
     mockUseTransactionAdder.mockReturnValue(transactionAdder)
-
-    ethFlowInvalidationMock.mockResolvedValue({ hash: ethFlowCancellationTxHash })
-
-    mockUseEthFlowContract.mockReturnValue({
-      result: {
-        contract: {
-          estimateGas: {
-            invalidateOrder: () => Promise.resolve(BigNumber.from(100)),
-          },
-          invalidateOrder: ethFlowInvalidationMock,
-        } as any,
-        chainId,
-        error: null,
-        loading: false,
-      },
-      useNewEthFlowContracts: false,
-    })
-
-    settlementInvalidationMock.mockResolvedValue({ hash: settlementCancellationTxHash })
-
-    mockUseGP2SettlementContract.mockReturnValue({
-      contract: {
-        estimateGas: {
-          invalidateOrder: () => Promise.resolve(BigNumber.from(200)),
-        },
-        invalidateOrder: settlementInvalidationMock,
-      } as any,
-      chainId,
-      error: null,
-      loading: false,
-    })
-  })
-
-  afterEach(() => {
-    settlementInvalidationMock.mockClear()
-    ethFlowInvalidationMock.mockClear()
   })
 
   it('When is ETH-flow order, then should call eth-flow contract', async () => {
-    const { result } = renderHook(() => useSendOnChainCancellation(), { wrapper: WithProviders })
+    const { result } = renderHook(
+      () => {
+        return useSendOnChainCancellation()
+      },
+      { wrapper: WithProviders },
+    )
 
-    await result.current({ ...orderMock, inputToken: NATIVE_CURRENCIES[chainId] })
+    mockWriteContract.mockResolvedValueOnce(ethFlowCancellationTxHash)
 
-    expect(ethFlowInvalidationMock).toHaveBeenCalledTimes(1)
-    expect(ethFlowInvalidationMock.mock.calls[0]).toMatchSnapshot()
+    await act(async () => {
+      await result.current({ ...orderMock, inputToken: NATIVE_CURRENCIES[chainId] })
+    })
+
+    expect(mockWriteContract).toHaveBeenCalledTimes(1)
     expect(transactionAdder.mock.calls[0][0].hash).toBe(ethFlowCancellationTxHash)
   })
 
   it('When is NOT ETH-flow order, then should call settlement contract', async () => {
     const { result } = renderHook(() => useSendOnChainCancellation(), { wrapper: WithProviders })
 
-    await result.current({ ...orderMock, inputToken: COW[chainId] })
+    mockWriteContract.mockResolvedValueOnce(settlementCancellationTxHash)
 
-    expect(settlementInvalidationMock).toHaveBeenCalledTimes(1)
-    expect(settlementInvalidationMock.mock.calls[0]).toMatchSnapshot()
+    await act(async () => {
+      await result.current({ ...orderMock, inputToken: COW_TOKEN_TO_CHAIN[chainId]! })
+    })
+
+    expect(mockWriteContract).toHaveBeenCalledTimes(1)
     expect(transactionAdder.mock.calls[0][0].hash).toBe(settlementCancellationTxHash)
   })
 
@@ -140,7 +133,11 @@ describe('useSendOnChainCancellation() + useGetOnChainCancellation()', () => {
     it('Then should change an order status, set a tx hash to order and add the transaction to store', async () => {
       const { result } = renderHook(() => useSendOnChainCancellation(), { wrapper: WithProviders })
 
-      await result.current({ ...orderMock, inputToken: COW[chainId] })
+      mockWriteContract.mockResolvedValueOnce(settlementCancellationTxHash)
+
+      await act(async () => {
+        await result.current({ ...orderMock, inputToken: COW_TOKEN_TO_CHAIN[chainId]! })
+      })
 
       expect(transactionAdder).toHaveBeenCalledTimes(1)
       expect(transactionAdder.mock.calls[0]).toMatchSnapshot()

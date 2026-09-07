@@ -1,30 +1,30 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 
-import { FractionUtils, getIntOrFloat, tryParseCurrencyAmount } from '@cowprotocol/common-utils'
+import { FractionUtils, getIntOrFloat, isFractionFalsy, tryParseCurrencyAmount } from '@cowprotocol/common-utils'
 import { OrderKind } from '@cowprotocol/cow-sdk'
 
-import { useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router'
 import { Writeable } from 'types'
 
+import { useNavigate } from 'common/hooks/useNavigate'
+import { useSafeEffect } from 'common/hooks/useSafeMemo'
 import {
   TRADE_URL_BUY_AMOUNT_KEY,
   TRADE_URL_ORDER_KIND_KEY,
   TRADE_URL_SELL_AMOUNT_KEY,
-} from 'modules/trade/const/tradeUrl'
-
-import { useNavigate } from 'common/hooks/useNavigate'
-import { useSafeEffect } from 'common/hooks/useSafeMemo'
+} from 'common/modules/tradeNavigation'
 import { TradeAmounts } from 'common/types'
 
 import { useDerivedTradeState } from './useDerivedTradeState'
 import { useTradeState } from './useTradeState'
 
-import { ExtendedTradeRawState } from '../types/TradeRawState'
+import { ExtendedTradeRawState } from '../types'
 
 interface SetupTradeAmountsParams {
   onlySell?: boolean
   onAmountsUpdate?: (amounts: TradeAmounts) => void
 }
+
 /**
  * Parse sell/buy amount from URL and apply to Limit orders widget
  * Example:
@@ -32,62 +32,97 @@ interface SetupTradeAmountsParams {
  *
  * In case when both sellAmount and buyAmount specified, the price will be automatically calculated
  */
-export function useSetupTradeAmountsFromUrl({ onAmountsUpdate, onlySell }: SetupTradeAmountsParams) {
+export function useSetupTradeAmountsFromUrl({ onAmountsUpdate, onlySell }: SetupTradeAmountsParams): void {
   const navigate = useNavigate()
-  const { search, pathname } = useLocation()
+  const { search } = useLocation()
   const params = useMemo(() => new URLSearchParams(search), [search])
   const { updateState } = useTradeState()
   const state = useDerivedTradeState()
   const { inputCurrency, outputCurrency, inputCurrencyAmount, outputCurrencyAmount } = state || {}
-  const isAtLeastOneAmountIsSet = Boolean(inputCurrencyAmount || outputCurrencyAmount)
+
+  const isAtLeastOneAmountIsSetRef = useRef(false)
+
+  /**
+   * Sticky (never flips back to false) rather than a plain snapshot of the current render — a
+   * currency change (e.g. `selectTokens` picking a new input/output token) can transiently read
+   * `inputCurrencyAmount`/`outputCurrencyAmount` as falsy for one render, before the previously
+   * typed raw amount is reparsed against the newly-selected currency. A plain overwrite would read
+   * that transient render as "no amount was ever set" and, below, stomp a real typed amount (e.g.
+   * "1000") back to the "1 unit" default — observed as [CS-59]'s flaky
+   * `enterSellAmount('1000')` not sticking when it races `selectTokens`.
+   */
+
+  isAtLeastOneAmountIsSetRef.current ||= Boolean(inputCurrencyAmount || outputCurrencyAmount)
 
   const cleanParams = useCallback(() => {
+    // Using browser API to have synchronous value of URL
+    // Because cleanParams is called in setTimeout() which is not in sync with React rendering cycle
+    const [pathname, search] = location.hash.split('?')
+
     if (!search) return
 
     const queryParams = new URLSearchParams(search)
+
+    // Do nothing if queryParams are already clear
+    if (
+      !queryParams.has(TRADE_URL_BUY_AMOUNT_KEY) &&
+      !queryParams.has(TRADE_URL_SELL_AMOUNT_KEY) &&
+      !queryParams.has(TRADE_URL_ORDER_KIND_KEY)
+    ) {
+      return
+    }
 
     queryParams.delete(TRADE_URL_BUY_AMOUNT_KEY)
     queryParams.delete(TRADE_URL_SELL_AMOUNT_KEY)
     queryParams.delete(TRADE_URL_ORDER_KIND_KEY)
 
-    navigate({ pathname, search: queryParams.toString() }, { replace: true })
-  }, [navigate, pathname, search])
+    navigate({ pathname: pathname.slice(1), search: queryParams.toString() }, { replace: true })
+  }, [navigate])
 
+  // TODO: Reduce function complexity by extracting logic
+  // eslint-disable-next-line complexity
   useSafeEffect(() => {
     const orderKind = params.get(TRADE_URL_ORDER_KIND_KEY) as OrderKind | null
     const sellAmount = getIntOrFloat(params.get(TRADE_URL_SELL_AMOUNT_KEY))
     const buyAmount = getIntOrFloat(params.get(TRADE_URL_BUY_AMOUNT_KEY))
     const update: Partial<Writeable<ExtendedTradeRawState>> = {}
 
-    const isSellAmountValid = inputCurrency && sellAmount && +sellAmount >= 0
-    const isBuyAmountValid = outputCurrency && buyAmount && +buyAmount >= 0
+    const isSellAmountValid = inputCurrency && sellAmount && +sellAmount > 0
+    const isBuyAmountValid = outputCurrency && buyAmount && +buyAmount > 0
 
     const sellCurrencyAmount = isSellAmountValid ? tryParseCurrencyAmount(sellAmount, inputCurrency) : null
     const buyCurrencyAmount = isBuyAmountValid ? tryParseCurrencyAmount(buyAmount, outputCurrency) : null
 
-    if (buyCurrencyAmount) {
+    const hasSellAmount = !isFractionFalsy(sellCurrencyAmount)
+    const hasBuyAmount = !isFractionFalsy(buyCurrencyAmount)
+
+    if (hasBuyAmount) {
       update.outputCurrencyAmount = FractionUtils.serializeFractionToJSON(buyCurrencyAmount)
     }
 
-    if (sellCurrencyAmount) {
+    if (hasSellAmount) {
       update.inputCurrencyAmount = FractionUtils.serializeFractionToJSON(sellCurrencyAmount)
     }
 
     if (onlySell) {
-      update.outputCurrencyAmount = null
+      delete update.outputCurrencyAmount
 
       update.orderKind = OrderKind.SELL
     } else {
-      update.orderKind = orderKind || (!buyCurrencyAmount ? OrderKind.SELL : OrderKind.BUY)
+      if (orderKind) {
+        update.orderKind = orderKind
+      } else if (hasSellAmount || hasBuyAmount) {
+        update.orderKind = !hasSellAmount && hasBuyAmount ? OrderKind.BUY : OrderKind.SELL
+      }
     }
-
-    const hasUpdates = Object.keys(update).length > 0
 
     // When both sell and buy amount are not set
     // Then set 1 unit to sell by default
-    if (!isAtLeastOneAmountIsSet && !update.inputCurrencyAmount && inputCurrency) {
+    if (!isAtLeastOneAmountIsSetRef.current && !update.inputCurrencyAmount && inputCurrency) {
       update.inputCurrencyAmount = FractionUtils.serializeFractionToJSON(tryParseCurrencyAmount('1', inputCurrency))
     }
+
+    const hasUpdates = Object.keys(update).length > 0
 
     if (hasUpdates) {
       // Clean params only when an update was applied or currencies are loaded
@@ -102,5 +137,5 @@ export function useSetupTradeAmountsFromUrl({ onAmountsUpdate, onlySell }: Setup
       }
     }
     // Trigger only when URL or assets are changed
-  }, [params, inputCurrency, outputCurrency, onlySell, isAtLeastOneAmountIsSet])
+  }, [params, inputCurrency, outputCurrency, cleanParams, onlySell])
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { ALL_SUPPORTED_CHAIN_IDS } from '@cowprotocol/cow-sdk'
+import { CHAIN_INFO } from '@cowprotocol/common-const'
+import { ALL_SUPPORTED_CHAIN_IDS, getAddressKey } from '@cowprotocol/cow-sdk'
 
 import { Props as ExplorerLinkProps } from 'components/common/BlockExplorerLink'
 import { useMultipleErc20 } from 'hooks/useErc20'
@@ -21,41 +22,18 @@ import { updateWeb3Provider } from 'api/web3'
 import { web3 } from '../explorer/api'
 import { ORDERS_QUERY_INTERVAL } from '../explorer/const'
 
-function isObjectEmpty(object: Record<string, unknown>): boolean {
-
-  for (const key in object) {
-    if (key) return false
-  }
-
-  return true
-}
-
-function filterDuplicateErc20Addresses(ordersFetched: RawOrder[]): string[] {
-  return ordersFetched.reduce((accumulator: string[], element) => {
-    const updateAccumulator = (tokenAddress: string): void => {
-      if (accumulator.indexOf(tokenAddress) === -1) {
-        accumulator.push(tokenAddress)
-      }
-    }
-    updateAccumulator(element.buyToken)
-    updateAccumulator(element.sellToken)
-
-    return accumulator
-  }, [])
-}
-
-type Result = {
-  orders: Order[] | undefined
-  error?: UiError
-  isLoading: boolean
-}
-
 type GetAccountOrdersResult = Result & {
   isThereNext: boolean
 }
 
 type GetTxOrdersResult = Result & {
   errorTxPresentInNetworkId: Network | null
+}
+
+type Result = {
+  orders: Order[] | undefined
+  error?: UiError
+  isLoading: boolean
 }
 
 interface UseOrdersWithTokenInfo {
@@ -68,7 +46,7 @@ interface UseOrdersWithTokenInfo {
 
 export function getTxOrderOnEveryNetworkAndEnvironment(
   networkId: Network,
-  txHash: string
+  txHash: string,
 ): Promise<GetOrderResult<MultipleOrders>> {
   const defaultParams: GetTxOrdersParams = { networkId, txHash }
   const getOrderApi: GetOrderApi<GetTxOrdersParams, MultipleOrders> = {
@@ -79,35 +57,62 @@ export function getTxOrderOnEveryNetworkAndEnvironment(
   return tryGetOrderOnAllNetworksAndEnvironments(networkId, getOrderApi)
 }
 
-function useOrdersWithTokenInfo(networkId: Network | undefined): UseOrdersWithTokenInfo {
-  const [orders, setOrders] = useState<Order[] | undefined>()
-  const [erc20Addresses, setErc20Addresses] = useState<string[]>([])
-  const { value: valueErc20s, isLoading: areErc20Loading } = useMultipleErc20({ networkId, addresses: erc20Addresses })
-  const [mountNewOrders, setMountNewOrders] = useState(false)
+export function useGetAccountOrders(
+  ownerAddress: string,
+  limit = 1000,
+  offset = 0,
+  pageIndex?: number,
+): GetAccountOrdersResult {
+  const networkId = useNetworkId() || undefined
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<UiError>()
+  const { orders, setOrders, setMountNewOrders, setErc20Addresses } = useOrdersWithTokenInfo(networkId)
+  const [isThereNext, setIsThereNext] = useState(false)
+
+  const fetchOrders = useCallback(
+    async (network: Network, owner: string): Promise<void> => {
+      setIsLoading(true)
+
+      try {
+        const { orders, hasNextPage } = await getAccountOrders({ networkId: network, owner, offset, limit })
+        setIsThereNext(hasNextPage)
+        const newErc20Addresses = filterDuplicateErc20Addresses(orders)
+        setErc20Addresses(newErc20Addresses)
+
+        setOrders(orders.map((order) => transformOrder(order)))
+        setMountNewOrders(true)
+        setError(undefined)
+      } catch (e) {
+        const msg = `Failed to fetch orders`
+        console.error(msg, e)
+        setError({ message: msg, type: 'error' })
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [limit, offset, setErc20Addresses, setMountNewOrders, setOrders],
+  )
 
   useEffect(() => {
-    setOrders(undefined)
-    setMountNewOrders(false)
-  }, [networkId])
-
-  useEffect(() => {
-    if (!orders || areErc20Loading || isObjectEmpty(valueErc20s) || !mountNewOrders) {
+    if (!networkId) {
       return
     }
 
-    const newOrders = orders.map((order) => {
-      order.buyToken = valueErc20s[order.buyTokenAddress.toLowerCase()] || order.buyToken
-      order.sellToken = valueErc20s[order.sellTokenAddress.toLowerCase()] || order.sellToken
+    setIsThereNext(false)
+    fetchOrders(networkId, ownerAddress)
 
-      return order
-    })
+    if (pageIndex && pageIndex > 1) return
 
-    setOrders(newOrders)
-    setMountNewOrders(false)
-    setErc20Addresses([])
-  }, [valueErc20s, networkId, areErc20Loading, mountNewOrders, orders])
+    const intervalId: NodeJS.Timeout = setInterval(() => {
+      fetchOrders(networkId, ownerAddress)
+    }, ORDERS_QUERY_INTERVAL)
 
-  return useMemo(() => ({ orders, areErc20Loading, setOrders, setMountNewOrders, setErc20Addresses }), [orders, areErc20Loading, setOrders, setMountNewOrders, setErc20Addresses])
+    return (): void => {
+      clearInterval(intervalId)
+    }
+  }, [fetchOrders, networkId, ownerAddress, pageIndex])
+
+  return useMemo(() => ({ orders, error, isLoading, isThereNext }), [orders, error, isLoading, isThereNext])
 }
 
 export function useGetTxOrders(txHash: string): GetTxOrdersResult {
@@ -145,7 +150,7 @@ export function useGetTxOrders(txHash: string): GetTxOrdersResult {
         setIsLoading(false)
       }
     },
-    [setErc20Addresses, setMountNewOrders, setOrders]
+    [setErc20Addresses, setMountNewOrders, setOrders],
   )
 
   useEffect(() => {
@@ -156,12 +161,15 @@ export function useGetTxOrders(txHash: string): GetTxOrdersResult {
     fetchOrders(networkId, txHash)
   }, [fetchOrders, networkId, txHash])
 
-  return useMemo(() => ({ orders, error, isLoading: isLoading || areErc20Loading, errorTxPresentInNetworkId }), [orders, error, isLoading, areErc20Loading, errorTxPresentInNetworkId])
+  return useMemo(
+    () => ({ orders, error, isLoading: isLoading || areErc20Loading, errorTxPresentInNetworkId }),
+    [orders, error, isLoading, areErc20Loading, errorTxPresentInNetworkId],
+  )
 }
 
 export function useTxOrderExplorerLink(
   txHash: string,
-  isZeroOrders: boolean
+  isZeroOrders: boolean,
 ): ExplorerLinkProps | Record<string, unknown> | undefined {
   const networkId = useNetworkId() || undefined
   const [explorerLink, setExplorerLink] = useState<ExplorerLinkProps | Record<string, unknown> | undefined>()
@@ -179,7 +187,7 @@ export function useTxOrderExplorerLink(
             networkId: network,
             identifier: txHash,
             showLogo: true,
-            label: network === Network.GNOSIS_CHAIN ? 'Gnosisscan' : 'Etherscan',
+            label: CHAIN_INFO[network]?.explorerTitle || 'Etherscan',
           })
         }
       })
@@ -192,60 +200,58 @@ export function useTxOrderExplorerLink(
   return explorerLink
 }
 
-export function useGetAccountOrders(
-  ownerAddress: string,
-  limit = 1000,
-  offset = 0,
-  pageIndex?: number
-): GetAccountOrdersResult {
-  const networkId = useNetworkId() || undefined
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<UiError>()
-  const { orders, setOrders, setMountNewOrders, setErc20Addresses } = useOrdersWithTokenInfo(networkId)
-  const [isThereNext, setIsThereNext] = useState(false)
-
-  const fetchOrders = useCallback(
-    async (network: Network, owner: string): Promise<void> => {
-      setIsLoading(true)
-
-      try {
-        const { orders, hasNextPage } = await getAccountOrders({ networkId: network, owner, offset, limit })
-        setIsThereNext(hasNextPage)
-        const newErc20Addresses = filterDuplicateErc20Addresses(orders)
-        setErc20Addresses(newErc20Addresses)
-
-        setOrders(orders.map((order) => transformOrder(order)))
-        setMountNewOrders(true)
-        setError(undefined)
-      } catch (e) {
-        const msg = `Failed to fetch orders`
-        console.error(msg, e)
-        setError({ message: msg, type: 'error' })
-      } finally {
-        setIsLoading(false)
+function filterDuplicateErc20Addresses(ordersFetched: RawOrder[]): string[] {
+  return ordersFetched.reduce((accumulator: string[], element) => {
+    const updateAccumulator = (tokenAddress: string): void => {
+      if (accumulator.indexOf(tokenAddress) === -1) {
+        accumulator.push(tokenAddress)
       }
-    },
-    [limit, offset, setErc20Addresses, setMountNewOrders, setOrders]
-  )
+    }
+    updateAccumulator(element.buyToken)
+    updateAccumulator(element.sellToken)
+
+    return accumulator
+  }, [])
+}
+
+function isObjectEmpty(object: Record<string, unknown>): boolean {
+  for (const key in object) {
+    if (key) return false
+  }
+
+  return true
+}
+
+function useOrdersWithTokenInfo(networkId: Network | undefined): UseOrdersWithTokenInfo {
+  const [orders, setOrders] = useState<Order[] | undefined>()
+  const [erc20Addresses, setErc20Addresses] = useState<string[]>([])
+  const { value: valueErc20s, isLoading: areErc20Loading } = useMultipleErc20({ networkId, addresses: erc20Addresses })
+  const [mountNewOrders, setMountNewOrders] = useState(false)
 
   useEffect(() => {
-    if (!networkId) {
+    setOrders(undefined)
+    setMountNewOrders(false)
+  }, [networkId])
+
+  useEffect(() => {
+    if (!orders || areErc20Loading || isObjectEmpty(valueErc20s) || !mountNewOrders) {
       return
     }
 
-    setIsThereNext(false)
-    fetchOrders(networkId, ownerAddress)
+    const newOrders = orders.map((order) => {
+      order.buyToken = valueErc20s[getAddressKey(order.buyTokenAddress)] || order.buyToken
+      order.sellToken = valueErc20s[getAddressKey(order.sellTokenAddress)] || order.sellToken
 
-    if (pageIndex && pageIndex > 1) return
+      return order
+    })
 
-    const intervalId: NodeJS.Timeout = setInterval(() => {
-      fetchOrders(networkId, ownerAddress)
-    }, ORDERS_QUERY_INTERVAL)
+    setOrders(newOrders)
+    setMountNewOrders(false)
+    setErc20Addresses([])
+  }, [valueErc20s, networkId, areErc20Loading, mountNewOrders, orders])
 
-    return (): void => {
-      clearInterval(intervalId)
-    }
-  }, [fetchOrders, networkId, ownerAddress, pageIndex])
-
-  return useMemo(() => ({ orders, error, isLoading, isThereNext }), [orders, error, isLoading, isThereNext])
+  return useMemo(
+    () => ({ orders, areErc20Loading, setOrders, setMountNewOrders, setErc20Addresses }),
+    [orders, areErc20Loading, setOrders, setMountNewOrders, setErc20Addresses],
+  )
 }

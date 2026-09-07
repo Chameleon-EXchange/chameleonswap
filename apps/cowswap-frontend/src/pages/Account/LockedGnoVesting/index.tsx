@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 
-import ArrowIcon from '@cowprotocol/assets/cow-swap/arrow.svg'
-import cowImage from '@cowprotocol/assets/cow-swap/cow_token.svg'
+import { useCowAnalytics } from '@cowprotocol/analytics'
+import svgArrowSrc from '@cowprotocol/assets/cow-swap/arrow.svg'
+import svgCowTokenSrc from '@cowprotocol/assets/cow-swap/cow_token.svg'
 import {
   LOCKED_GNO_VESTING_START_DATE,
   MERKLE_DROP_CONTRACT_ADDRESSES,
@@ -15,30 +16,23 @@ import {
   isRejectRequestProviderError,
 } from '@cowprotocol/common-utils'
 import { SupportedChainId as ChainId } from '@cowprotocol/cow-sdk'
+import { Currency, CurrencyAmount } from '@cowprotocol/currency'
 import { Command } from '@cowprotocol/types'
 import { ButtonPrimary, ButtonSize, HoverTooltip, TokenAmount } from '@cowprotocol/ui'
 import { useWalletInfo } from '@cowprotocol/wallet'
-import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
 
-import { Trans } from '@lingui/macro'
+import { t } from '@lingui/core/macro'
+import { Trans } from '@lingui/react/macro'
 import SVG from 'react-inlinesvg'
 
 import CopyHelper from 'legacy/components/Copy'
 import { useErrorModal } from 'legacy/hooks/useErrorMessageAndModal'
 
-import { claimAnalytics } from 'modules/analytics'
-
+import { CowSwapAnalyticsCategory } from 'common/analytics/types'
 import { HelpCircle } from 'common/pure/HelpCircle'
 import { BalanceDisplay, Card, CardActions, ConvertWrapper, ExtLink, VestingBreakdown } from 'pages/Account/styled'
 
 import { useClaimCowFromLockedGnoCallback } from './hooks'
-
-enum ClaimStatus {
-  INITIAL,
-  ATTEMPTING,
-  SUBMITTED,
-  CONFIRMED,
-}
 
 interface Props {
   openModal: (message: string) => void
@@ -49,15 +43,25 @@ interface Props {
   loading: boolean
 }
 
+enum ClaimStatus {
+  INITIAL,
+  ATTEMPTING,
+  SUBMITTED,
+  CONFIRMED,
+}
+
+// TODO: Break down this large function into smaller functions
+// eslint-disable-next-line max-lines-per-function
 const LockedGnoVesting: React.FC<Props> = ({ openModal, closeModal, vested, allocated, claimed, loading }: Props) => {
   const { chainId = ChainId.MAINNET, account } = useWalletInfo()
   const [status, setStatus] = useState<ClaimStatus>(ClaimStatus.INITIAL)
   const unvested = allocated.subtract(vested)
   const previousAccount = usePrevious(account)
+  const claimableAmount = vested.subtract(claimed)
 
   const canClaim =
     !loading &&
-    unvested.greaterThan(0) &&
+    claimableAmount.greaterThan(0) &&
     status === ClaimStatus.INITIAL &&
     MERKLE_DROP_CONTRACT_ADDRESSES[chainId] &&
     TOKEN_DISTRO_CONTRACT_ADDRESSES[chainId]
@@ -77,6 +81,18 @@ const LockedGnoVesting: React.FC<Props> = ({ openModal, closeModal, vested, allo
     ? MERKLE_DROP_CONTRACT_ADDRESSES[chainId]
     : TOKEN_DISTRO_CONTRACT_ADDRESSES[chainId]
 
+  const cowAnalytics = useCowAnalytics()
+  const claimAnalytics = useCallback(
+    (action: string) => {
+      cowAnalytics.sendEvent({
+        category: CowSwapAnalyticsCategory.CLAIM_COW_FOR_LOCKED_GNO,
+        action,
+        label: 'GNO',
+      })
+    },
+    [cowAnalytics],
+  )
+
   const handleClaim = useCallback(async () => {
     handleCloseError()
     if (!claimCallback) {
@@ -85,15 +101,15 @@ const LockedGnoVesting: React.FC<Props> = ({ openModal, closeModal, vested, allo
 
     setStatus(ClaimStatus.ATTEMPTING)
 
-    claimAnalytics('Send')
+    claimAnalytics('Claim')
     claimCallback()
       .then((tx) => {
         claimAnalytics('Sign')
         setStatus(ClaimStatus.SUBMITTED)
-        return tx.wait()
+        return tx
       })
       .then((tx) => {
-        const success = tx.status === 1
+        const success = !!tx?.hash
         setStatus(success ? ClaimStatus.CONFIRMED : ClaimStatus.INITIAL)
 
         setTimeout(() => {
@@ -101,24 +117,20 @@ const LockedGnoVesting: React.FC<Props> = ({ openModal, closeModal, vested, allo
         }, 5000)
       })
       .catch((error) => {
-        let errorMessage, errorCode
+        let errorMessage
         const isRejected = isRejectRequestProviderError(error)
         if (isRejected) {
-          errorMessage = 'User rejected signing COW claim transaction'
+          errorMessage = t`User rejected signing COW claim transaction`
         } else {
           errorMessage = getProviderErrorMessage(error)
-
-          if (error?.code && typeof error.code === 'number') {
-            errorCode = error.code
-          }
           console.error('Error Signing locked GNO COW claiming', error)
         }
         console.error('[Profile::LockedGnoVesting::index::claimCallback]::error', errorMessage)
         setStatus(ClaimStatus.INITIAL)
-        claimAnalytics(isRejected ? 'Reject' : 'Error', errorCode)
+        claimAnalytics(isRejected ? 'Reject' : 'Error')
         handleSetError(errorMessage)
       })
-  }, [handleCloseError, handleSetError, claimCallback])
+  }, [handleCloseError, handleSetError, claimCallback, claimAnalytics])
 
   // Fix for enabling claim button after user changes account
   useEffect(() => {
@@ -136,9 +148,11 @@ const LockedGnoVesting: React.FC<Props> = ({ openModal, closeModal, vested, allo
     <>
       <Card showLoader={loading || isClaimPending}>
         <BalanceDisplay hAlign="left">
-          <img src={cowImage} alt="COW token" width="56" height="56" />
+          <img src={svgCowTokenSrc} alt={t`COW token`} width="56" height="56" />
           <span>
-            <i>COW vesting from locked GNO</i>
+            <i>
+              <Trans>COW vesting from locked GNO</Trans>
+            </i>
             <b>
               <TokenAmount amount={allocated} defaultValue="0" tokenSymbol={allocated.currency} />
               <HoverTooltip
@@ -146,13 +160,17 @@ const LockedGnoVesting: React.FC<Props> = ({ openModal, closeModal, vested, allo
                 content={
                   <VestingBreakdown>
                     <span>
-                      <i>Unvested</i>{' '}
+                      <i>
+                        <Trans>Unvested</Trans>
+                      </i>{' '}
                       <p>
                         <TokenAmount amount={unvested} defaultValue="0" tokenSymbol={unvested.currency} />
                       </p>
                     </span>
                     <span>
-                      <i>Vested</i>{' '}
+                      <i>
+                        <Trans>Vested</Trans>
+                      </i>{' '}
                       <p>
                         <TokenAmount amount={vested} defaultValue="0" tokenSymbol={vested.currency} />
                       </p>
@@ -168,16 +186,20 @@ const LockedGnoVesting: React.FC<Props> = ({ openModal, closeModal, vested, allo
         <ConvertWrapper>
           <BalanceDisplay titleSize={18} altColor={true}>
             <i>
-              Claimable{' '}
+              <Trans>Claimable</Trans>{' '}
               <HoverTooltip
                 wrapInContainer
                 content={
                   <div>
                     <p>
-                      <strong>COW vesting from the GNO lock</strong> is vested linearly over four years, starting on{' '}
+                      <Trans>
+                        <strong>COW vesting from the GNO lock</strong> is vested linearly over four years, starting on
+                      </Trans>{' '}
                       {formatDateWithTimezone(LOCKED_GNO_VESTING_START_DATE)}.
                     </p>
-                    <p>Each time you claim, you will receive the entire claimable amount.</p>
+                    <p>
+                      <Trans>Each time you claim, you will receive the entire claimable amount.</Trans>
+                    </p>
                   </div>
                 }
               >
@@ -185,7 +207,7 @@ const LockedGnoVesting: React.FC<Props> = ({ openModal, closeModal, vested, allo
               </HoverTooltip>
             </i>
             <b>
-              <TokenAmount amount={vested.subtract(claimed)} defaultValue="0" />
+              <TokenAmount amount={claimableAmount} defaultValue="0" />
             </b>
           </BalanceDisplay>
           {status === ClaimStatus.CONFIRMED ? (
@@ -195,20 +217,24 @@ const LockedGnoVesting: React.FC<Props> = ({ openModal, closeModal, vested, allo
           ) : (
             <ButtonPrimary buttonSize={ButtonSize.SMALL} onClick={handleClaim} disabled={!canClaim}>
               {isClaimPending ? (
-                'Claiming COW...'
+                <Trans>Claiming COW...</Trans>
               ) : (
-                <>
-                  Claim COW <SVG src={ArrowIcon} />
-                </>
+                <Trans>
+                  Claim COW <SVG src={svgArrowSrc} />
+                </Trans>
               )}
             </ButtonPrimary>
           )}
         </ConvertWrapper>
 
         <CardActions>
-          <ExtLink href={getBlockExplorerUrl(chainId, 'address', contractAddress)}>View contract ↗</ExtLink>
+          <ExtLink href={getBlockExplorerUrl(chainId, 'address', contractAddress)}>
+            <Trans>View contract</Trans> ↗
+          </ExtLink>
           <CopyHelper toCopy={contractAddress}>
-            <div title="Click to copy contract address">Copy contract</div>
+            <div title={t`Click to copy contract address`}>
+              <Trans>Copy contract</Trans>
+            </div>
           </CopyHelper>
         </CardActions>
       </Card>

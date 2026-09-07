@@ -1,7 +1,18 @@
 'use client'
 
-import { useLazyLoadImages } from '../hooks/useLazyLoadImages'
+import type { ReactNode } from 'react'
+
+import { useCowAnalytics } from '@cowprotocol/analytics'
+import iconBulbCowSrc from '@cowprotocol/assets/images/icon-bulb-cow.svg'
+import { Media, UI } from '@cowprotocol/ui'
+
+import { CowFiCategory } from 'src/common/analytics/types'
+import styled from 'styled-components/macro'
+
+import { ArrowButton } from '@/components/ArrowButton'
 import { CategoryLinks } from '@/components/CategoryLinks'
+import { LazyImage } from '@/components/LazyImage'
+import LazySVG from '@/components/LazySVG'
 import { SearchBar } from '@/components/SearchBar'
 import {
   ArticleCard,
@@ -27,13 +38,6 @@ import {
   TopicList,
   TopicTitle,
 } from '@/styles/styled'
-import { ArrowButton } from '@/components/ArrowButton'
-import { clickOnKnowledgeBase } from '../modules/analytics'
-import { Color, Font, Media } from '@cowprotocol/ui'
-import LazySVG from '@/components/LazySVG'
-import IMG_ICON_BULB_COW from '@cowprotocol/assets/images/icon-bulb-cow.svg'
-import { ArticleListResponse } from '../services/cms'
-import styled from 'styled-components/macro'
 
 const PODCASTS = [
   {
@@ -49,14 +53,14 @@ const PODCASTS = [
     link: 'https://strangewater.xyz/episode/sw48',
   },
   {
-    title: 'Chameleon swap - The Only DEX You Need In DeFi? (Leviathan News)',
+    title: 'CoW Swap - The Only DEX You Need In DeFi? (Leviathan News)',
     link: 'https://open.spotify.com/episode/4M7CNfjg0C2BD6SpyPFuaI?si=niArWe7EQDyqiXt610MDzg',
   },
 ]
 
 const SPACES = [
   {
-    title: 'Chameleon swap is one of the most exciting projects in the DEX space',
+    title: 'CoW Swap is one of the most exciting projects in the DEX space',
     link: 'https://x.com/cryptotesters/status/1501505365833248774',
   },
   {
@@ -64,7 +68,7 @@ const SPACES = [
     link: 'https://x.com/CoWSwap/status/1605593667682476032',
   },
   {
-    title: 'Chameleon swap & ENS: Pushing Decentralized Trading to its limits',
+    title: 'CoW Swap & ENS: Pushing Decentralized Trading to its limits',
     link: 'https://x.com/CoWSwap/status/1625932839936983055',
   },
   { title: 'CoW AMM is the 1st MEV-Capturing AMM', link: 'https://x.com/CoWSwap/status/1759633529279791584' },
@@ -86,14 +90,14 @@ const MEDIA_COVERAGE = [
     linkExternal: true,
   },
   {
-    title: "Chameleon swap: A Beginner's Guide to This New Decentralized Exchange",
+    title: "CoW Swap: A Beginner's Guide to This New Decentralized Exchange",
     publisher: 'BeInCrypto',
     image: '/images/media-coverage/learn_CoW_Swap-covers_logo.webp',
     link: 'https://beincrypto.com/learn/cow-swap-guide/',
     linkExternal: true,
   },
   {
-    title: 'Chameleon swap: Intents, MEV, and Batch Auctions',
+    title: 'CoW Swap: Intents, MEV, and Batch Auctions',
     publisher: 'Shoal Research',
     image: '/images/media-coverage/shoal-research-intents.webp',
     link: 'https://www.shoal.gg/p/cow-swap-intents-mev-and-batch-auctions',
@@ -109,10 +113,8 @@ interface PageProps {
     bgColor: string
     textColor: string
     link: string
-    iconColor: string
     imageUrl: string
   }[]
-  articles: ArticleListResponse['data']
   featuredArticles: {
     title: string
     description: string
@@ -133,8 +135,8 @@ const Wrapper = styled.div`
 
   h1 {
     font-size: 28px;
-    font-weight: ${Font.weight.medium};
-    color: ${Color.neutral50};
+    font-weight: var(${UI.FONT_WEIGHT_MEDIUM});
+    color: var(${UI.COLOR_NEUTRAL_50});
     text-align: center;
     padding: 0 10px;
 
@@ -145,6 +147,7 @@ const Wrapper = styled.div`
 
   h2 {
     font-size: 67px;
+    color: var(${UI.COLOR_BLACK});
     text-align: center;
     padding: 0 10px 16px;
 
@@ -154,8 +157,8 @@ const Wrapper = styled.div`
   }
 `
 
-export function LearnPageComponent({ categories, articles, featuredArticles }: PageProps) {
-  const { LazyImage } = useLazyLoadImages()
+export function LearnPageComponent({ categories, featuredArticles }: PageProps): ReactNode {
+  const analytics = useCowAnalytics()
 
   return (
     <Wrapper>
@@ -164,7 +167,7 @@ export function LearnPageComponent({ categories, articles, featuredArticles }: P
 
       <CategoryLinks allCategories={categories} noDivider />
 
-      <SearchBar articles={articles} />
+      <SearchBar />
 
       <ContainerCard marginMobile="0 auto 24px">
         <ContainerCardInner maxWidth={1350}>
@@ -175,8 +178,19 @@ export function LearnPageComponent({ categories, articles, featuredArticles }: P
             </ContainerCardSectionTop>
             <ArticleList columnsTablet={2}>
               {featuredArticles.map(({ title, description, cover, link }, index) => (
-                <ArticleCard key={index} href={link} onClick={() => clickOnKnowledgeBase(`click-article-${title}`)}>
-                  <ArticleImage color="#000">
+                <ArticleCard
+                  key={index}
+                  href={link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() =>
+                    analytics.sendEvent({
+                      category: CowFiCategory.KNOWLEDGEBASE,
+                      action: `Click Article ${title}`,
+                    })
+                  }
+                >
+                  <ArticleImage color={`var(${UI.COLOR_NEUTRAL_0})`}>
                     {cover && <LazyImage src={cover} alt={title} width={700} height={200} />}
                   </ArticleImage>
                   <ArticleTitle>{title}</ArticleTitle>
@@ -191,16 +205,25 @@ export function LearnPageComponent({ categories, articles, featuredArticles }: P
               <ContainerCardSectionTopTitle>Topics</ContainerCardSectionTopTitle>
             </ContainerCardSectionTop>
             <TopicList columns={3}>
-              {categories.map(({ name, bgColor, textColor, iconColor, link, imageUrl }, index) => {
+              {categories.map(({ name, bgColor, textColor, link, imageUrl }, index) => {
+                const finalBgColor = bgColor || `var(${UI.COLOR_NEUTRAL_100})`
+                const finalTextColor = textColor || `var(${UI.COLOR_NEUTRAL_0})`
+                const iconColor = `var(${UI.COLOR_NEUTRAL_100})`
+
                 return (
                   <TopicCard
                     key={index}
-                    bgColor={bgColor}
-                    textColor={textColor}
+                    bgColor={finalBgColor}
+                    textColor={finalTextColor}
                     href={link}
-                    onClick={() => clickOnKnowledgeBase(`click-topic-${name}`)}
+                    onClick={() =>
+                      analytics.sendEvent({
+                        category: CowFiCategory.KNOWLEDGEBASE,
+                        action: `Click Topic ${name}`,
+                      })
+                    }
                   >
-                    <TopicImage iconColor={iconColor} bgColor={bgColor} borderRadius={90} widthMobile={'auto'}>
+                    <TopicImage iconColor={iconColor} bgColor={finalBgColor} borderRadius={90} widthMobile={'auto'}>
                       {imageUrl ? (
                         <LazyImage
                           src={imageUrl}
@@ -233,10 +256,15 @@ export function LearnPageComponent({ categories, articles, featuredArticles }: P
                 {PODCASTS.map((podcast, index) => (
                   <LinkItem
                     key={index}
-                    href={`${podcast.link}?utm_source=cow.fi&utm_medium=web&utm_content=podcast-${podcast.title}`}
+                    href={podcast.link}
                     rel="noopener noreferrer nofollow"
                     target="_blank"
-                    onClick={() => clickOnKnowledgeBase(`click-podcast-${podcast.title}`)}
+                    onClick={() =>
+                      analytics.sendEvent({
+                        category: CowFiCategory.KNOWLEDGEBASE,
+                        action: `Click Podcast ${podcast.title}`,
+                      })
+                    }
                   >
                     {podcast.title}
                     <span>→</span>
@@ -249,10 +277,15 @@ export function LearnPageComponent({ categories, articles, featuredArticles }: P
                 {SPACES.map((space, index) => (
                   <LinkItem
                     key={index}
-                    href={`${space.link}?utm_source=cow.fi&utm_medium=web&utm_content=space-${space.title}`}
+                    href={space.link}
                     rel="noopener noreferrer nofollow"
                     target="_blank"
-                    onClick={() => clickOnKnowledgeBase(`click-space-${space.title}`)}
+                    onClick={() =>
+                      analytics.sendEvent({
+                        category: CowFiCategory.KNOWLEDGEBASE,
+                        action: `Click Space ${space.title}`,
+                      })
+                    }
                   >
                     {space.title}
                     <span>→</span>
@@ -270,10 +303,15 @@ export function LearnPageComponent({ categories, articles, featuredArticles }: P
               {MEDIA_COVERAGE.map(({ image, title, publisher, link, linkExternal }, index) => (
                 <ArticleCard
                   key={index}
-                  href={`${link}?utm_source=cow.fi&utm_medium=web&utm_content=media-${title}`}
+                  href={link}
                   target={linkExternal ? '_blank' : '_self'}
                   rel={linkExternal ? 'noopener' : ''}
-                  onClick={() => clickOnKnowledgeBase(`click-media-${title}`)}
+                  onClick={() =>
+                    analytics.sendEvent({
+                      category: CowFiCategory.KNOWLEDGEBASE,
+                      action: `Click Media ${title}`,
+                    })
+                  }
                 >
                   <ArticleImage>{image && <LazyImage src={image} alt={title} />}</ArticleImage>
                   <ArticleTitle fontSize={21}>{title}</ArticleTitle>
@@ -285,18 +323,23 @@ export function LearnPageComponent({ categories, articles, featuredArticles }: P
         </ContainerCardInner>
       </ContainerCard>
 
-      <ContainerCard bgColor={Color.neutral98} padding="0" touchFooter>
+      <ContainerCard bgColor={`var(${UI.COLOR_NEUTRAL_98})`} padding="0" touchFooter>
         <CTASectionWrapper>
-          <CTAImage color={'#00A1FF'}>
-            <LazySVG src={IMG_ICON_BULB_COW} />
+          <CTAImage color={`var(${UI.COLOR_BLUE_500_PRIMARY})`}>
+            <LazySVG src={iconBulbCowSrc} />
           </CTAImage>
           <CTASubtitle>Explore, learn, integrate</CTASubtitle>
           <CTATitle>CoW DAO documentation</CTATitle>
           <CTAButton
-            href="https://docs.cow.fi/?utm_source=cow.fi&utm_medium=web&utm_content=cta-read-docs"
+            href="https://docs.cow.fi/"
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() => clickOnKnowledgeBase('click-read-docs')}
+            onClick={() =>
+              analytics.sendEvent({
+                category: CowFiCategory.KNOWLEDGEBASE,
+                action: 'Click Read Docs',
+              })
+            }
           >
             Read the docs
           </CTAButton>

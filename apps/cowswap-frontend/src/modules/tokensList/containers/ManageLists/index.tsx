@@ -1,21 +1,28 @@
-import { useMemo } from 'react'
+import { ReactNode, useMemo } from 'react'
 
-import { ListSearchResponse, ListState, useListsEnabledState, useRemoveList, useToggleList } from '@cowprotocol/tokens'
+import { useCowAnalytics } from '@cowprotocol/analytics'
+import {
+  ListSearchResponse,
+  ListState,
+  useFilterBlockedLists,
+  useIsListBlocked,
+  useListsEnabledState,
+  useRemoveList,
+} from '@cowprotocol/tokens'
 import { Loader } from '@cowprotocol/ui'
 
-import { removeListAnalytics, toggleListAnalytics } from 'modules/analytics'
+import { Trans } from '@lingui/react/macro'
+
+import { useGeoCountry } from 'modules/rwa'
+
+import { CowSwapAnalyticsCategory, toCowSwapGtmEvent } from 'common/analytics/types'
 
 import * as styledEl from './styled'
 
 import { useAddListImport } from '../../hooks/useAddListImport'
+import { useConsentAwareToggleList } from '../../hooks/useConsentAwareToggleList'
 import { ImportTokenListItem } from '../../pure/ImportTokenListItem'
 import { ListItem } from '../../pure/ListItem'
-
-interface ListSearchState {
-  source: 'existing' | 'external'
-  loading: boolean
-  listToImport: ListState | null
-}
 
 export interface ManageListsProps {
   lists: ListState[]
@@ -23,20 +30,43 @@ export interface ManageListsProps {
   isListUrlValid?: boolean
 }
 
-export function ManageLists(props: ManageListsProps) {
+interface ListSearchState {
+  source: 'existing' | 'external'
+  loading: boolean
+  listToImport: ListState | null
+}
+
+export function ManageLists(props: ManageListsProps): ReactNode {
   const { lists, listSearchResponse, isListUrlValid } = props
+
+  const country = useGeoCountry()
+
+  // only filter by country (blocked), NOT by consent requirement
+  // lists requiring consent should be visible so users can give consent
+  const filteredLists = useFilterBlockedLists(lists, country)
 
   const activeTokenListsIds = useListsEnabledState()
   const addListImport = useAddListImport()
-  const removeList = useRemoveList((source) => removeListAnalytics('Confirm', source))
-  const toggleList = useToggleList((enabled, source) => toggleListAnalytics(enabled, source))
+  const cowAnalytics = useCowAnalytics()
+  const toggleList = useConsentAwareToggleList()
+
+  const removeList = useRemoveList((source) => {
+    cowAnalytics.sendEvent({
+      category: CowSwapAnalyticsCategory.LIST,
+      action: 'Remove List',
+      label: source,
+    })
+  })
 
   const { source, listToImport, loading } = useListSearchResponse(listSearchResponse)
+  const { isBlocked } = useIsListBlocked(listToImport?.source, country)
 
   return (
     <styledEl.Wrapper>
       {isListUrlValid && !listToImport?.list && !loading && (
-        <styledEl.InputError>Error importing token list</styledEl.InputError>
+        <styledEl.InputError>
+          <Trans>Error importing token list</Trans>
+        </styledEl.InputError>
       )}
       {loading && (
         <styledEl.LoaderWrapper>
@@ -48,12 +78,22 @@ export function ManageLists(props: ManageListsProps) {
           <ImportTokenListItem
             source={source}
             list={listToImport}
-            importList={() => listToImport && addListImport(listToImport)}
+            isBlocked={isBlocked}
+            data-click-event={toCowSwapGtmEvent({
+              category: CowSwapAnalyticsCategory.LIST,
+              action: 'Import List',
+              label: listToImport.source,
+            })}
+            importList={() => {
+              if (listToImport) {
+                addListImport(listToImport)
+              }
+            }}
           />
         </styledEl.ImportListsContainer>
       )}
       <styledEl.ListsContainer id="tokens-lists-table">
-        {lists
+        {filteredLists
           .sort((a, b) => (a.priority || 0) - (b.priority || 0))
           .map((list) => (
             <ListItem

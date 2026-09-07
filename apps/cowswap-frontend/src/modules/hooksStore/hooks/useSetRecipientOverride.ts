@@ -1,12 +1,14 @@
 import { useLayoutEffect } from 'react'
 
-import { useSwapActionHandlers } from 'modules/swap/hooks/useSwapState'
+import { usePostHooksRecipientOverride } from 'entities/orderHooks/usePostHooksRecipientOverride'
+
+import { useSwapWidgetActions } from 'modules/swap/hooks/useSwapWidgetActions'
 import { useIsHooksTradeType, useIsNativeIn } from 'modules/trade'
 
-import { usePostHooksRecipientOverride } from './usePostHooksRecipientOverride'
-
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function useSetRecipientOverride() {
-  const { onChangeRecipient } = useSwapActionHandlers()
+  const { onChangeRecipient } = useSwapWidgetActions(true)
   const hookRecipientOverride = usePostHooksRecipientOverride()
   const isHooksTradeType = useIsHooksTradeType()
   const isNativeIn = useIsNativeIn()

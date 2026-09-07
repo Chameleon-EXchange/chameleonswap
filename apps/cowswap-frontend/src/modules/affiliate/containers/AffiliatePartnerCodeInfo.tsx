@@ -1,0 +1,120 @@
+import { ReactNode, useMemo } from 'react'
+
+import iconLocked2Src from '@cowprotocol/assets/images/icon-locked-2.svg'
+import iconQrCodeV2Src from '@cowprotocol/assets/images/icon-qr-code-v2.svg'
+import iconSocialXSrc from '@cowprotocol/assets/images/icon-social-x.svg'
+import { formatShortDate } from '@cowprotocol/common-utils'
+import { CopyButton } from '@cowprotocol/ui'
+import { useWalletInfo } from '@cowprotocol/wallet'
+
+import { Trans } from '@lingui/react/macro'
+import SVG from 'react-inlinesvg'
+
+import { useModalState } from 'common/hooks/useModalState'
+
+import { AffiliatePartnerQrModal } from './AffiliatePartnerQrModal'
+
+import { useAffiliatePartnerInfo } from '../hooks/useAffiliatePartnerInfo'
+import { getReferralLink, toValidDate } from '../lib/affiliateProgramUtils'
+import {
+  CardTitle,
+  LinkedActionButton,
+  LinkedActionIcon,
+  LinkedActions,
+  LinkedBadge,
+  LinkedCard,
+  LinkedCardGroup,
+  LinkedCodeRow,
+  LinkedCodeText,
+  LinkedCopy,
+  LinkedFooter,
+  LinkedFooterNote,
+  LinkedLinkRow,
+  LinkedLinkText,
+  LinkedMetaList,
+  MetricItem,
+  MetricValue,
+} from '../pure/shared'
+
+export function AffiliatePartnerCodeInfo(): ReactNode {
+  const { account } = useWalletInfo()
+  const { data: partnerInfo } = useAffiliatePartnerInfo(account)
+
+  const refCode = partnerInfo?.code
+  const referralLink = useMemo(() => getReferralLink(refCode || ''), [refCode])
+  const shareUrl = useMemo(
+    () =>
+      `https://x.com/intent/tweet?text=${encodeURIComponent(`Trade on CoW Swap with my referral link! @CoWSwap`)}&url=${encodeURIComponent(referralLink)}`,
+    [referralLink],
+  )
+
+  const { isModalOpen, openModal, closeModal } = useModalState()
+
+  if (!refCode) {
+    return null
+  }
+
+  return (
+    <>
+      <CardTitle>
+        <Trans>Your referral code</Trans>
+      </CardTitle>
+      <LinkedCardGroup>
+        <LinkedCard>
+          <LinkedCodeRow>
+            <LinkedCopy>
+              <CopyButton value={refCode} iconSize={16} iconOnly />
+              <LinkedCodeText>{refCode}</LinkedCodeText>
+            </LinkedCopy>
+            <LinkedBadge>
+              <SVG src={iconLocked2Src} width={16} height={16} />
+              <Trans>Created</Trans>
+            </LinkedBadge>
+          </LinkedCodeRow>
+          <LinkedLinkRow>
+            <LinkedCopy>
+              <CopyButton value={referralLink} iconSize={16} iconOnly />
+              <LinkedLinkText>
+                {referralLink
+                  .split(/(ref=)/)
+                  .map((part, i) => (part === 'ref=' ? part : i > 1 ? <strong key={i}>{part}</strong> : part))}
+              </LinkedLinkText>
+            </LinkedCopy>
+          </LinkedLinkRow>
+        </LinkedCard>
+
+        <LinkedMetaList>
+          <MetricItem>
+            <span>
+              <Trans>Created on</Trans>
+            </span>
+            <MetricValue>
+              {partnerInfo && toValidDate(partnerInfo.createdAt) ? formatShortDate(partnerInfo.createdAt) : '-'}
+            </MetricValue>
+          </MetricItem>
+        </LinkedMetaList>
+      </LinkedCardGroup>
+
+      <LinkedFooter>
+        <LinkedFooterNote>
+          <Trans>Links/codes don't reveal your wallet.</Trans>
+        </LinkedFooterNote>
+        <LinkedActions>
+          <LinkedActionButton as="a" href={shareUrl} target="_blank" rel="noopener noreferrer">
+            <LinkedActionIcon>
+              <SVG src={iconSocialXSrc} width={14} height={14} />
+            </LinkedActionIcon>
+            <Trans>Share on X</Trans>
+          </LinkedActionButton>
+          <LinkedActionButton onClick={openModal}>
+            <LinkedActionIcon>
+              <SVG src={iconQrCodeV2Src} width={14} height={14} />
+            </LinkedActionIcon>
+            <Trans>Download QR</Trans>
+          </LinkedActionButton>
+        </LinkedActions>
+      </LinkedFooter>
+      <AffiliatePartnerQrModal isOpen={isModalOpen} refCode={refCode} onDismiss={closeModal} />
+    </>
+  )
+}

@@ -1,4 +1,4 @@
-import { PropsWithChildren } from 'react'
+import { PropsWithChildren, ReactPortal } from 'react'
 
 import { createPortal } from 'react-dom'
 
@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom'
 // which isolates them from the overall App styles
 // imported for inherited styles
 // usual use cases -- tooltips, popups, modals
-const Portal = ({ children }: PropsWithChildren) => {
+const Portal = ({ children }: PropsWithChildren): ReactPortal => {
   return createPortal(children, document.body)
 }
 

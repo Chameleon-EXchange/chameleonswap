@@ -1,5 +1,4 @@
-import { LinkWithUtmComponent } from 'modules/utm'
-import { CONFIG, IMAGE_PATH } from '@/const/meta'
+import { IMAGE_PATH } from '@/const/meta'
 
 const DAO_LOGOS_PATH = IMAGE_PATH + '/dao-logos/'
 
@@ -9,37 +8,37 @@ export const DAO_CONTENT = {
       image: `${IMAGE_PATH}/dao-enjoy-surplus.svg`,
       title: 'Enjoy more price surplus than anywhere else',
       description:
-        'Every DEX aggregator will tell you they have the best prices, but at the end of the day, Chameleon swap does everything they do and then some. With peer-to-peer order matching, gas optimization, and MEV protection, Chameleon swap improves your quoted price and forwards the surplus back to you.',
+        'Every DEX aggregator will tell you they have the best prices, but at the end of the day, CoW Swap does everything they do and then some. With peer-to-peer order matching, gas optimization, and MEV protection, CoW Swap improves your quoted price and forwards the surplus back to you',
     },
     {
       image: `${IMAGE_PATH}/dao-custom-tailor-orders.svg`,
       title: 'Stop scrambling for signatures',
       description:
-        "Tired of rushing to sign the multi-sig? Eyes glazed over from staring at candlesticks? Chameleon swap automatically adjusts your trade's execution path to fill your order at the best possible price, every time.",
+        "Tired of rushing to sign the multi-sig? Eyes glazed over from staring at candlesticks? CoW Swap automatically adjusts your trade's execution path to fill your order at the best possible price, every time",
     },
     {
       image: `${IMAGE_PATH}/dao-vote-once.svg`,
       title: 'Forget about voting twice ',
       description:
-        "Milkman orders from Chameleon swap let your DAO approve trades based on dynamic price feeds rather than fixed prices, so you don't have to re-vote if the market moves significantly.",
+        "Milkman orders from CoW Swap let your DAO approve trades based on dynamic price feeds rather than fixed prices, so you don't have to re-vote if the market moves significantly",
     },
     {
       image: `${IMAGE_PATH}/dao-outsmart-bots.svg`,
       title: 'Outsmart the bots',
       description:
-        "Chameleon swap offers MEV protection that is one order of magnitude better than any other exchange. Solvers execute trades on your behalf so you're never exposed to on-chain attacks – and even when trade details are announced weeks in advance, Chameleon swap stands between you and the MEV bots.",
+        "CoW Swap offers MEV protection that is one order of magnitude better than any other exchange. Solvers execute trades on your behalf so you're never exposed to on-chain attacks – and even when trade details are announced weeks in advance, CoW Swap stands between you and the MEV bots",
     },
     {
       image: `${IMAGE_PATH}/dao-manage-price-impact.svg`,
       title: 'Manage price impact',
       description:
-        "Your trades move markets… but being the biggest isn't always the best. Chameleon swap spreads your order across multiple liquidity pools so you make as little of a splash as possible.",
+        "Your trades move markets… but being the biggest isn't always the best. CoW Swap spreads your order across multiple liquidity pools so you make as little of a splash as possible",
     },
     {
       image: `${IMAGE_PATH}/dao-do-more.svg`,
       title: 'Do anything you can imagine',
       description:
-        'With Chameleon swap you can customize rules for your orders above and beyond traditional settings. Want to trigger a trade only when a wallet has n funds in it? Want to schedule recurring trades? Chameleon swap lets you do all that and more in just a few clicks.',
+        'With CoW Swap you can customize rules for your orders above and beyond traditional settings. Want to trigger a trade only when a wallet has n funds in it? Want to schedule recurring trades? CoW Swap lets you do all that and more in just a few clicks',
     },
   ],
 
@@ -50,13 +49,9 @@ export const DAO_CONTENT = {
       description: (
         <>
           Ensure your trades are always close to the real-time market price thanks to the{' '}
-          <LinkWithUtmComponent
-            href="https://github.com/charlesndalton/milkman"
-            defaultUtm={{ ...CONFIG.utm, utmContent: 'daos-page' }}
-            passHref
-          >
+          <a href="https://github.com/charlesndalton/milkman" target="_blank" rel="noopener noreferrer nofollow">
             Milkman bot
-          </LinkWithUtmComponent>
+          </a>
           . Set the maximum deviation you&apos;ll accept, and Milkman will do the rest.
         </>
       ),
@@ -71,28 +66,24 @@ export const DAO_CONTENT = {
       icon: `${IMAGE_PATH}/icon-limit-orders.svg`,
       title: 'Limit Orders',
       description:
-        "Chameleon swap's surplus-capturing limit orders allow you to set a price and sit back while your order gets filled over time - perfect for token buybacks and other large trades.",
+        "CoW Swap's surplus-capturing limit orders allow you to set a price and sit back while your order gets filled over time - perfect for token buybacks and other large trades.",
     },
     {
       icon: `${IMAGE_PATH}/icon-price-walls.svg`,
       title: 'Price Walls',
       description:
-        'Pick an asset, define a threshold price, and Chameleon swap will automatically sell above the threshold, and buy below it.',
+        'Pick an asset, define a threshold price, and CoW Swap will automatically sell above the threshold, and buy below it.',
     },
     {
       icon: `${IMAGE_PATH}/icon-basket-sells.svg`,
       title: 'Basket Sells',
       description: (
         <>
-          <LinkWithUtmComponent
-            href="https://dump.services/"
-            defaultUtm={{ ...CONFIG.utm, utmContent: 'daos-page' }}
-            passHref
-          >
+          <a href="https://dump.services/" target="_blank" rel="noopener noreferrer nofollow">
             Dump.services
-          </LinkWithUtmComponent>
-          , a collaboration between Chameleon swap and Yearn, allows DAOs and traders to sell multiple tokens in a
-          single transaction.
+          </a>
+          , a collaboration between CoW Swap and Yearn, allows DAOs and traders to sell multiple tokens in a single
+          transaction.
         </>
       ),
     },
@@ -107,23 +98,23 @@ export const DAO_CONTENT = {
     {
       icon: `${DAO_LOGOS_PATH}aave-icon.svg`,
       title: 'Aave',
-      description: 'Aave DAO used Chameleon swap to swap over $4 million directly into Balancer liquidity pool',
-      link: 'https://medium.com/@cow-protocol/aave-trade-breakdown-e17a7563d7ba',
+      description: 'Aave DAO used CoW Swap to swap over $4 million directly into Balancer liquidity pool',
+      link: '/learn/aave-trade-breakdown',
       volume: '$4 million',
     },
     {
       icon: `${DAO_LOGOS_PATH}nexus-icon.svg`,
       title: 'Nexus Mutual',
       description:
-        'In the largest DAO trade ever, Nexus Mutual relied on Chameleon swap to trade 14,400 ETH for the rETH liquid staking token',
-      link: 'https://medium.com/@cow-protocol/nexus-mutual-trade-breakdown-4aacc6a94be8',
+        'In the largest DAO trade ever, Nexus Mutual relied on CoW Swap to trade 14,400 ETH for the rETH liquid staking token',
+      link: '/learn/nexus-mutual-trade-breakdown',
       volume: '14,400 ETH',
     },
     {
       icon: `${DAO_LOGOS_PATH}ens-icon.svg`,
       title: 'ENS',
-      description: 'ENS DAO traded a whopping 10,000 of ETH ($16.5 million dollars) for USDC through Chameleon swap',
-      link: 'https://medium.com/@cow-protocol/ens-trade-breakdown-a8eb00ddd8c0',
+      description: 'ENS DAO traded a whopping 10,000 of ETH ($16.5 million dollars) for USDC through CoW Swap',
+      link: '/learn/ens-trade-breakdown',
       volume: '10,000 ETH',
     },
     { icon: `${DAO_LOGOS_PATH}karpatkey.svg`, title: 'Karpatkey', link: 'https://www.karpatkey.com/' },

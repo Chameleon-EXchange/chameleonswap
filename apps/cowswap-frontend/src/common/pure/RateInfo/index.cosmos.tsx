@@ -1,7 +1,14 @@
-import { COW, GNO_SEPOLIA, USDC_SEPOLIA, WETH_GNOSIS_CHAIN, WETH_SEPOLIA, WXDAI } from '@cowprotocol/common-const'
+import {
+  COW_TOKEN_TO_CHAIN,
+  GNO_SEPOLIA,
+  USDC_SEPOLIA,
+  WETH_GNOSIS_CHAIN,
+  WETH_SEPOLIA,
+  WXDAI,
+} from '@cowprotocol/common-const'
 import { SupportedChainId } from '@cowprotocol/cow-sdk'
+import { CurrencyAmount, Token } from '@cowprotocol/currency'
 import { TokenSymbol } from '@cowprotocol/ui'
-import { CurrencyAmount, Token } from '@uniswap/sdk-core'
 
 import styled from 'styled-components/macro'
 
@@ -10,7 +17,7 @@ import { RateInfo, RateInfoParams } from './index'
 const inputCurrency = WETH_GNOSIS_CHAIN
 const outputCurrency = WXDAI
 
-const COW_SEPOLIA = COW[SupportedChainId.GNOSIS_CHAIN]
+const COW_SEPOLIA = COW_TOKEN_TO_CHAIN[SupportedChainId.SEPOLIA]
 
 const rateInfoParams = {
   chainId: 5,
@@ -24,7 +31,7 @@ function buildRateInfoParams(
   inputToken: Token,
   outputToken: Token,
   inputAmount: number,
-  outputAmount: number
+  outputAmount: number,
 ): RateInfoParams {
   const inputCurrencyAmount = CurrencyAmount.fromRawAmount(inputToken, inputAmount * 10 ** inputToken.decimals)
   const outputCurrencyAmount = CurrencyAmount.fromRawAmount(outputToken, outputAmount * 10 ** outputToken.decimals)
@@ -50,6 +57,8 @@ const Box = styled.div`
   }
 `
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 function SmartQuoteSelection() {
   const rates = [
     {
@@ -64,8 +73,8 @@ function SmartQuoteSelection() {
     {
       title: 'For other cases the quote is a token that has the smallest amount',
       examples: [
-        buildRateInfoParams(COW_SEPOLIA, GNO_SEPOLIA, 12, 652),
-        buildRateInfoParams(GNO_SEPOLIA, COW_SEPOLIA, 2, 4220),
+        COW_SEPOLIA ? buildRateInfoParams(COW_SEPOLIA, GNO_SEPOLIA, 12, 652) : undefined,
+        COW_SEPOLIA ? buildRateInfoParams(GNO_SEPOLIA, COW_SEPOLIA, 2, 4220) : undefined,
       ],
     },
   ]
@@ -80,7 +89,7 @@ function SmartQuoteSelection() {
           <div key={j}>
             <p>{title}</p>
             {examples.map((rate, i) => {
-              const { inputCurrencyAmount, outputCurrencyAmount } = rate
+              const { inputCurrencyAmount, outputCurrencyAmount } = rate || {}
 
               return (
                 <Box key={i}>
@@ -89,7 +98,7 @@ function SmartQuoteSelection() {
                     {' -> '}
                     {outputCurrencyAmount?.toExact()} {<TokenSymbol token={outputCurrencyAmount?.currency} />}{' '}
                   </p>
-                  <RateInfo noLabel={true} rateInfoParams={rate} />
+                  {rate && <RateInfo noLabel={true} rateInfoParams={rate} />}
                 </Box>
               )
             })}
@@ -101,8 +110,8 @@ function SmartQuoteSelection() {
 }
 
 const Fixtures = {
-  default: <RateInfo rateInfoParams={rateInfoParams} />,
-  SmartQuoteSelection: <SmartQuoteSelection />,
+  default: () => <RateInfo rateInfoParams={rateInfoParams} />,
+  SmartQuoteSelection: () => <SmartQuoteSelection />,
 }
 
 export default Fixtures

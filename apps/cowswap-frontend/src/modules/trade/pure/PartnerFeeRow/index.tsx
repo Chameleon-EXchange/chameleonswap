@@ -1,12 +1,15 @@
-import { bpsToPercent, formatPercent, FractionUtils } from '@cowprotocol/common-utils'
-import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
+import { ReactNode } from 'react'
 
+import { bpsToPercent, formatPercent, FractionUtils } from '@cowprotocol/common-utils'
+import { Currency, CurrencyAmount } from '@cowprotocol/currency'
+
+import { Trans, useLingui } from '@lingui/react/macro'
 import { Nullish } from 'types'
 
 import { WidgetMarkdownContent } from 'modules/injectedWidget'
 import { VolumeFeeTooltip } from 'modules/volumeFee'
 
-import * as styledEl from '../../containers/TradeBasicConfirmDetails/styled'
+import { FreeFeeRow } from '../FreeFeeRow'
 import { ReviewOrderModalAmountRow } from '../ReviewOrderModalAmountRow'
 
 interface PartnerFeeRowProps {
@@ -15,6 +18,8 @@ interface PartnerFeeRowProps {
   partnerFeeBps: number | undefined
   withTimelineDot: boolean
   volumeFeeTooltip: VolumeFeeTooltip
+  isLast?: boolean
+  loading?: boolean
 }
 
 export function PartnerFeeRow({
@@ -23,36 +28,43 @@ export function PartnerFeeRow({
   partnerFeeBps,
   withTimelineDot,
   volumeFeeTooltip,
-}: PartnerFeeRowProps) {
+  isLast = false,
+  loading = false,
+}: PartnerFeeRowProps): ReactNode {
   const feeAsPercent = partnerFeeBps ? formatPercent(bpsToPercent(partnerFeeBps)) : null
   const minPartnerFeeAmount = FractionUtils.amountToAtLeastOneWei(partnerFeeAmount)
+  const { t } = useLingui()
+
+  if (!partnerFeeAmount || !partnerFeeBps || partnerFeeAmount.equalTo(0)) {
+    return <FreeFeeRow withTimelineDot={false} loading={loading} />
+  }
+
+  const label = volumeFeeTooltip.label
 
   return (
-    <>
-      {partnerFeeAmount && partnerFeeBps ? (
-        <ReviewOrderModalAmountRow
-          withTimelineDot={withTimelineDot}
-          amount={minPartnerFeeAmount}
-          fiatAmount={partnerFeeUsd}
-          tooltip={
-            volumeFeeTooltip.content ? (
-              <WidgetMarkdownContent>{volumeFeeTooltip.content}</WidgetMarkdownContent>
-            ) : (
-              <>
-                This fee helps pay for maintenance & improvements to the trade experience.
-                <br />
-                <br />
-                The fee is {partnerFeeBps} BPS ({feeAsPercent}%), applied only if the trade is executed.
-              </>
-            )
-          }
-          label={`${volumeFeeTooltip.label} (${feeAsPercent}%)`}
-        />
-      ) : (
-        <ReviewOrderModalAmountRow withTimelineDot={withTimelineDot} tooltip="No fee for order placement!" label="Fee">
-          <styledEl.GreenText>FREE</styledEl.GreenText>
-        </ReviewOrderModalAmountRow>
-      )}
-    </>
+    <ReviewOrderModalAmountRow
+      withTimelineDot={withTimelineDot}
+      amount={minPartnerFeeAmount}
+      fiatAmount={partnerFeeUsd}
+      tooltip={
+        volumeFeeTooltip.content ? (
+          <WidgetMarkdownContent>{volumeFeeTooltip.content}</WidgetMarkdownContent>
+        ) : (
+          <Trans>
+            This fee helps pay for maintenance & improvements to the trade experience.
+            <br />
+            <br />
+            The fee is {partnerFeeBps} BPS ({feeAsPercent}%), applied only if the trade is executed.
+          </Trans>
+        )
+      }
+      label={
+        <>
+          {t`${label}`} {!loading && ` (${feeAsPercent}%)`}
+        </>
+      }
+      isLast={isLast}
+      loading={loading}
+    />
   )
 }

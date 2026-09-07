@@ -1,7 +1,10 @@
+import { ReactNode } from 'react'
+
+import { Currency } from '@cowprotocol/currency'
 import { TokenLogo } from '@cowprotocol/tokens'
 import { UI } from '@cowprotocol/ui'
-import { Currency } from '@uniswap/sdk-core'
 
+import { t } from '@lingui/core/macro'
 import styled from 'styled-components/macro'
 
 interface IconSpinnerProps {
@@ -11,9 +14,10 @@ interface IconSpinnerProps {
   children?: React.ReactNode
   bgColor?: UI
   spinnerWidth?: number
+  margin?: string
 }
 
-const Wrapper = styled.div<{ size: number; spinnerWidth: number; bgColor: UI }>`
+const Wrapper = styled.div<{ size: number; spinnerWidth: number; bgColor: UI; margin?: string }>`
   --bgColor: ${({ bgColor }) => `var(${bgColor})`};
   display: flex;
   position: relative;
@@ -24,6 +28,7 @@ const Wrapper = styled.div<{ size: number; spinnerWidth: number; bgColor: UI }>`
   min-width: ${({ size }) => size}px;
   min-height: ${({ size }) => size}px;
   border-radius: ${({ size }) => size}px;
+  margin: ${({ margin }) => margin || '0'};
 
   &:before {
     content: '';
@@ -71,14 +76,15 @@ export function IconSpinner({
   children,
   bgColor = UI.COLOR_PAPER,
   spinnerWidth = 2,
-}: IconSpinnerProps) {
+  margin,
+}: IconSpinnerProps): ReactNode {
   return (
-    <Wrapper size={size} spinnerWidth={spinnerWidth} bgColor={bgColor}>
+    <Wrapper size={size} spinnerWidth={spinnerWidth} bgColor={bgColor} margin={margin}>
       {(() => {
         if (currency) {
           return <TokenLogo token={currency} size={size} />
         } else if (image) {
-          return <img src={image} alt="Spinning icon" width={size} height={size} />
+          return <img src={image} alt={t`Spinning icon`} width={size} height={size} />
         } else if (children) {
           return <span>{children}</span>
         }

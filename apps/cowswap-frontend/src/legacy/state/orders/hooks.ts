@@ -2,15 +2,12 @@ import { useCallback, useMemo } from 'react'
 
 import { SWR_NO_REFRESH_OPTIONS } from '@cowprotocol/common-const'
 import { isTruthy } from '@cowprotocol/common-utils'
-import { SupportedChainId } from '@cowprotocol/cow-sdk'
-import { UiOrderType } from '@cowprotocol/types'
+import { areAddressesEqual, SupportedChainId } from '@cowprotocol/cow-sdk'
 
 import { useDispatch, useSelector } from 'react-redux'
 import useSWR from 'swr'
 
 import { addPendingOrderStep } from 'modules/trade/utils/addPendingOrderStep'
-
-import { getUiOrderType } from 'utils/orderUtils/getUiOrderType'
 
 import {
   addOrUpdateOrders,
@@ -34,15 +31,7 @@ import {
   UpdatePresignGnosisSafeTxParams,
 } from './actions'
 import { flatOrdersStateNetwork } from './flatOrdersStateNetwork'
-import {
-  getDefaultNetworkState,
-  ORDER_LIST_KEYS,
-  ORDERS_LIST,
-  OrdersState,
-  OrdersStateNetwork,
-  OrderTypeKeys,
-  PartialOrdersMap,
-} from './reducer'
+import { ORDERS_LIST, OrdersState, OrdersStateNetwork, OrderTypeKeys, PartialOrdersMap, OrderObject } from './reducer'
 import { deserializeOrder } from './utils/deserializeOrder'
 
 import { AppDispatch, AppState } from '../index'
@@ -53,54 +42,54 @@ type OrderID = string
 const EMPTY_ORDERS_ARRAY = [] as Order[]
 const EMPTY_ORDERS_MAP = {} as PartialOrdersMap
 
+export type AddOrderCallback = (addOrderParams: AddUnserialisedPendingOrderParams) => void
+
+export type AddOrUpdateOrdersCallback = (params: AddOrUpdateUnserialisedOrdersParams) => void
+
 export interface AddOrUpdateUnserialisedOrdersParams extends Omit<AddOrUpdateOrdersParams, 'orders'> {
   orders: Order[]
 }
-
 export interface AddUnserialisedPendingOrderParams extends GetRemoveOrderParams {
   order: Order
   isSafeWallet: boolean
 }
 
-interface GetRemoveOrderParams {
-  id: OrderID
-  chainId: SupportedChainId
-}
+export type CancelOrderCallback = (cancelOrderParams: CancelOrderParams) => void
+export type CancelOrdersBatchCallback = (cancelOrdersBatchParams: CancelOrdersBatchParams) => void
+export type ExpireOrdersBatchCallback = (expireOrdersBatchParams: ExpireOrdersBatchParams) => void
+
+export type FulfillOrdersBatchCallback = (fulfillOrdersBatchParams: FulfillOrdersBatchParams) => void
+
+export type InvalidateOrdersBatchCallback = (params: InvalidateOrdersBatchParams) => void
+export type PresignOrdersCallback = (fulfillOrderParams: PresignOrdersParams) => void
+export type SetIsOrderRefundedBatchCallback = (params: SetIsOrderRefundedBatch) => void
+
+export type SetIsOrderUnfillable = (params: SetIsOrderUnfillableParams) => void
+export type SetOrderCancellationHashCallback = (setOrderCancellationHashParams: SetOrderCancellationHashParams) => void
+export type UpdatePresignGnosisSafeTxCallback = (
+  updatePresignGnosisSafeTxParams: UpdatePresignGnosisSafeTxParams,
+) => void
+type CancelOrderParams = GetRemoveOrderParams
+type CancelOrdersBatchParams = UpdateOrdersBatchParams
+type ExpireOrdersBatchParams = UpdateOrdersBatchParams
 type GetOrdersByIdParams = {
   ids: OrderID[]
   chainId?: SupportedChainId
 }
-
 type GetOrdersParams = Partial<Pick<GetRemoveOrderParams, 'chainId'>>
-type CancelOrderParams = GetRemoveOrderParams
+interface GetRemoveOrderParams {
+  id: OrderID
+  chainId: SupportedChainId
+}
+type PresignOrdersParams = UpdateOrdersBatchParams
 type SetOrderCancellationHashParams = CancelOrderParams & { hash: string }
-
 interface UpdateOrdersBatchParams {
   ids: OrderID[]
   chainId: SupportedChainId
   isSafeWallet: boolean
 }
 
-type ExpireOrdersBatchParams = UpdateOrdersBatchParams
-type CancelOrdersBatchParams = UpdateOrdersBatchParams
-type PresignOrdersParams = UpdateOrdersBatchParams
-
-export type AddOrUpdateOrdersCallback = (params: AddOrUpdateUnserialisedOrdersParams) => void
-export type AddOrderCallback = (addOrderParams: AddUnserialisedPendingOrderParams) => void
-export type FulfillOrdersBatchCallback = (fulfillOrdersBatchParams: FulfillOrdersBatchParams) => void
-export type ExpireOrdersBatchCallback = (expireOrdersBatchParams: ExpireOrdersBatchParams) => void
-export type CancelOrderCallback = (cancelOrderParams: CancelOrderParams) => void
-export type SetOrderCancellationHashCallback = (setOrderCancellationHashParams: SetOrderCancellationHashParams) => void
-export type CancelOrdersBatchCallback = (cancelOrdersBatchParams: CancelOrdersBatchParams) => void
-export type InvalidateOrdersBatchCallback = (params: InvalidateOrdersBatchParams) => void
-export type PresignOrdersCallback = (fulfillOrderParams: PresignOrdersParams) => void
-export type UpdatePresignGnosisSafeTxCallback = (
-  updatePresignGnosisSafeTxParams: UpdatePresignGnosisSafeTxParams,
-) => void
-export type SetIsOrderUnfillable = (params: SetIsOrderUnfillableParams) => void
-export type SetIsOrderRefundedBatchCallback = (params: SetIsOrderRefundedBatch) => void
-
-function _concatOrdersState(state: OrdersStateNetwork, keys: OrderTypeKeys[]) {
+export function _concatOrdersState(state: OrdersStateNetwork, keys: OrderTypeKeys[]): (OrderObject | undefined)[] {
   if (!state) return []
 
   const firstState = state[keys[0]] || {}
@@ -113,6 +102,8 @@ function _concatOrdersState(state: OrdersStateNetwork, keys: OrderTypeKeys[]) {
 }
 
 export const useOrder = ({ id, chainId }: Partial<GetRemoveOrderParams>): Order | undefined => {
+  // TODO: Reduce function complexity by extracting logic
+  // eslint-disable-next-line complexity
   return useSelector<AppState, Order | undefined>((state) => {
     if (!id || !chainId) return undefined
 
@@ -134,54 +125,15 @@ export const useOrder = ({ id, chainId }: Partial<GetRemoveOrderParams>): Order 
 }
 
 function useOrdersStateNetwork(chainId: SupportedChainId | undefined): OrdersStateNetwork | undefined {
-  const ordersState = useSelector<AppState, OrdersState[SupportedChainId] | undefined>((state) => {
+  return useSelector<AppState, OrdersState[SupportedChainId] | undefined>((state) => {
     if (!chainId) {
       return undefined
     }
     return state.orders?.[chainId]
   })
-
-  // Additional memoization to avoid excessive re-renders
-  // ordersState is a plain object that contains serialized data, so we can stringify it safely
-  return useMemo(() => {
-    if (!chainId) return undefined
-    return { ...getDefaultNetworkState(chainId), ...(ordersState || {}) }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(ordersState), chainId])
 }
 
-export const useOrders = (
-  chainId: SupportedChainId,
-  account: string | undefined,
-  uiOrderType: UiOrderType,
-): Order[] => {
-  const state = useOrdersStateNetwork(chainId)
-  const accountLowerCase = account?.toLowerCase()
-
-  return useMemo(() => {
-    if (!state) return EMPTY_ORDERS_ARRAY
-
-    return _concatOrdersState(state, ORDER_LIST_KEYS).reduce<Order[]>((acc, order) => {
-      if (!order) return acc
-
-      const doesBelongToAccount = order.order.owner.toLowerCase() === accountLowerCase
-      const orderType = getUiOrderType(order.order)
-      const doesMatchClass = orderType === uiOrderType
-
-      if (doesBelongToAccount && doesMatchClass) {
-        const mappedOrder = deserializeOrder(order)
-
-        if (mappedOrder && !mappedOrder.isHidden) {
-          acc.push(mappedOrder)
-        }
-      }
-
-      return acc
-    }, [])
-  }, [state, accountLowerCase, uiOrderType])
-}
-
-const useAllOrdersMap = ({ chainId }: GetOrdersParams): PartialOrdersMap => {
+export const useAllOrdersMap = ({ chainId }: GetOrdersParams): PartialOrdersMap => {
   const state = useOrdersStateNetwork(chainId)
 
   return useMemo(() => {
@@ -240,7 +192,7 @@ export const useCombinedPendingOrders = ({
       const allPending = Object.values({ ...pending, ...presignaturePending, ...creating })
 
       return allPending.map(deserializeOrder).filter((order) => {
-        return order?.owner.toLowerCase() === account.toLowerCase()
+        return areAddressesEqual(order?.owner, account)
       }) as Order[]
     },
     { ...SWR_NO_REFRESH_OPTIONS, fallbackData: EMPTY_ORDERS_ARRAY },
@@ -255,16 +207,23 @@ export const useCombinedPendingOrders = ({
  * The difference is that this hook returns only orders that have the status PENDING
  * while usePendingOrders aggregates all pending states
  */
-export const useOnlyPendingOrders = (chainId: SupportedChainId): Order[] => {
-  const state = useSelector<AppState, PartialOrdersMap | undefined>(
-    (state) => chainId && state.orders?.[chainId]?.pending,
-  )
+// TODO: Can be replaced by onlyPendingOrdersAtom
+export const useOnlyPendingOrders = (chainId: SupportedChainId, account: string | undefined): Order[] => {
+  const state = useSelector<AppState, PartialOrdersMap | undefined>((state) => state.orders?.[chainId]?.pending)
 
   return useMemo(() => {
-    if (!state) return EMPTY_ORDERS_ARRAY
+    if (!state || !account) return EMPTY_ORDERS_ARRAY
 
-    return Object.values(state).map(deserializeOrder).filter(isTruthy)
-  }, [state])
+    return Object.values(state).reduce((acc, val) => {
+      if (val && areAddressesEqual(account, val.order.owner)) {
+        const deserialized = deserializeOrder(val)
+
+        if (deserialized) acc.push(deserialized)
+      }
+
+      return acc
+    }, [] as Order[])
+  }, [state, account])
 }
 
 export const useCancelledOrders = ({ chainId }: GetOrdersParams): Order[] => {
@@ -393,6 +352,8 @@ export const useSetIsOrderRefundedBatch = (): SetIsOrderRefundedBatchCallback =>
  * Related issue https://github.com/cowprotocol/cowswap/issues/2690
  *
  */
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export const useClearOrdersStorage = () => {
   const dispatch = useDispatch<AppDispatch>()
   return useCallback(() => dispatch(clearOrdersStorage()), [dispatch])

@@ -6,9 +6,15 @@ declare module '@metamask/jazzicon' {
   export default function (diameter: number, seed: number): HTMLElement
 }
 
+interface Console extends Node.Console {
+  force: Node.Console
+}
+
 interface Window {
   console: Console & { force: Console }
   // walletLinkExtension is injected by the Coinbase Wallet extension
+  // TODO: Replace any with proper type definitions
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   walletLinkExtension?: any
   ethereum?: {
     // value that is populated and returns true by the Coinbase Wallet mobile dapp browser
@@ -18,6 +24,8 @@ interface Window {
     autoRefreshOnNetworkChange?: boolean
     autoConnect?: boolean
     setSelectedProvider: (any) => void
+    // TODO: Replace any with proper type definitions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     providers: [any]
     isTrust?: boolean
     isTrustWallet?: boolean
@@ -25,16 +33,18 @@ interface Window {
   web3?: Record<string, unknown>
 }
 
-interface Console extends Node.Console {
-  force: Node.Console
-}
-
 declare module 'content-hash' {
   declare function decode(x: string): string
+
   declare function getCodec(x: string): string
 }
 
 declare module 'multihashes' {
   declare function decode(buff: Uint8Array): { code: number; name: string; length: number; digest: Uint8Array }
+
   declare function toB58String(hash: Uint8Array): string
+}
+
+declare module '*.po' {
+  export const messages: typeof import('@lingui/core').Messages
 }

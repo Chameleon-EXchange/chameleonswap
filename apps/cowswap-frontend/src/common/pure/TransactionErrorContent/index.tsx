@@ -1,7 +1,8 @@
-import { BackButton, ButtonPrimary } from '@cowprotocol/ui'
-import { UI } from '@cowprotocol/ui'
+import { ReactElement } from 'react'
 
-import { Trans } from '@lingui/macro'
+import { BackButton, ButtonPrimary, UI } from '@cowprotocol/ui'
+
+import { Trans } from '@lingui/react/macro'
 import { AlertTriangle } from 'react-feather'
 import styled from 'styled-components/macro'
 import { CloseIcon } from 'theme'
@@ -45,11 +46,15 @@ const BackButtonStyled = styled(BackButton)`
 `
 
 export interface TransactionErrorContentProps {
-  message: JSX.Element | string
+  message: ReactElement | string
+
   onDismiss(): void
+
   modalMode?: boolean
 }
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function TransactionErrorContent(props: TransactionErrorContentProps) {
   const { message, onDismiss, modalMode } = props
 

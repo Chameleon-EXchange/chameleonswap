@@ -1,35 +1,38 @@
-import { Media } from '@cowprotocol/ui'
+import { Color, Media, UI } from '@cowprotocol/ui'
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { ArrowIconCSS } from 'components/icons/cssIcons'
-import { NavLink } from 'react-router-dom'
+import { readableColor } from 'polished'
+import { NavLink } from 'react-router'
 import styled from 'styled-components/macro'
 
 export const SelectorContainer = styled.div`
   display: flex;
   align-items: center;
   cursor: pointer;
+
   ${Media.upToExtraSmall()} {
     padding-right: 2rem;
   }
 
-  ${ArrowIconCSS}
+  ${ArrowIconCSS};
+  color: ${Color.explorer_orange1};
 `
 
-export const OptionsContainer = styled.div<{ width: number }>`
+export const OptionsContainer = styled.div<{ $width: number }>`
   position: absolute;
   z-index: 1;
   margin: 0 auto;
-  width: ${(props: { width: number }): string => `${184 + props.width}px`};
+  width: ${({ $width }) => `${184 + $width}px`};
   left: 15px;
   top: 54px;
-  background: ${({ theme }): string => theme.paper};
+  background: var(${UI.COLOR_NEUTRAL_0});
   border: 1px solid rgba(141, 141, 169, 0.3);
   box-sizing: border-box;
   border-radius: 6px;
 `
 
-export const Option = styled(NavLink)<{ color: string }>`
+export const Option = styled(NavLink)<{ $color: string }>`
   display: flex;
   flex: 1;
   font-weight: 800;
@@ -41,19 +44,19 @@ export const Option = styled(NavLink)<{ color: string }>`
   text-decoration: none;
 
   &:hover {
-    backdrop-filter: contrast(0.9);
+    background: ${Color.explorer_bg};
     text-decoration: none;
 
     .name {
-      color: ${({ theme }): string => theme.white};
+      color: ${Color.explorer_textSecondary1};
     }
   }
 
   .name {
-    color: ${({ theme }): string => theme.grey};
+    color: ${Color.explorer_textSecondary2};
 
     &.selected {
-      color: ${({ theme }): string => theme.white};
+      color: ${Color.explorer_textSecondary1};
     }
   }
 
@@ -62,11 +65,11 @@ export const Option = styled(NavLink)<{ color: string }>`
     height: 8px;
     border-radius: 100%;
     margin-right: 9px;
-    background: ${({ color }) => color};
+    background: ${({ $color }) => $color};
   }
 `
 
-export const NetworkLabel = styled.span<{ color: string }>`
+export const NetworkLabel = styled.span<{ $color: string }>`
   border-radius: 0.6rem;
   display: flex;
   margin: 0 0.5rem;
@@ -76,13 +79,12 @@ export const NetworkLabel = styled.span<{ color: string }>`
   text-transform: uppercase;
   font-weight: ${({ theme }): string => theme.fontBold};
   letter-spacing: 0.1rem;
-
-  background: ${({ color }) => color};
-  color: ${({ theme }): string => theme.textSecondary1};
+  background: ${({ $color }) => $color};
+  color: ${({ $color }) => readableColor($color)};
 `
 
 export const StyledFAIcon = styled(FontAwesomeIcon)`
-  color: ${({ theme }): string => theme.orange};
+  color: ${Color.explorer_orange1};
   position: absolute;
   right: 10px;
   font-size: 14px;

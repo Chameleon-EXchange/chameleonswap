@@ -1,6 +1,6 @@
+import { Trans } from '@lingui/react/macro'
+import { WidgetParamsErrors } from 'entities/injectedWidget'
 import styled from 'styled-components/macro'
-
-import { WidgetParamsErrors } from '../../state/injectedWidgetParamsAtom'
 
 const Container = styled.div`
   position: fixed;
@@ -16,6 +16,8 @@ const Code = styled.textarea`
   min-height: 300px;
 `
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function WidgetParamsErrorsScreen({ errors }: { errors: WidgetParamsErrors }) {
   const paramsWithErrors = Object.keys(errors)
 
@@ -23,7 +25,9 @@ export function WidgetParamsErrorsScreen({ errors }: { errors: WidgetParamsError
 
   return (
     <Container>
-      <h3>The are some errors with Chameleon swap widget configuration</h3>
+      <h3>
+        <Trans>The are some errors with CoW Swap widget configuration</Trans>
+      </h3>
       <Code value={JSON.stringify(errors, null, 4)}></Code>
     </Container>
   )

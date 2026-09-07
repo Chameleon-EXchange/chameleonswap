@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-restricted-imports */ // TODO: Don't use 'modules' import
 import { useMemo } from 'react'
 
-import { useTradeTypeInfo } from 'modules/trade'
-import { useDerivedTradeState } from 'modules/trade/hooks/useDerivedTradeState'
-import { TradeType } from 'modules/trade/types'
+import { useDerivedTradeState, useTradeTypeInfo } from 'modules/trade'
+
+import { TradeType } from 'common/modules/tradeNavigation'
 
 const widgetTypeMap: Record<TradeType, string> = {
   [TradeType.SWAP]: 'SWAP',
@@ -18,6 +19,8 @@ const widgetTypeMap: Record<TradeType, string> = {
  * ${sellSymbol},${buySymbol}::${widgetType} or null
  *
  **/
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function useGetMarketDimension() {
   const tradeTypeInfo = useTradeTypeInfo()
   const derivedTradeState = useDerivedTradeState()

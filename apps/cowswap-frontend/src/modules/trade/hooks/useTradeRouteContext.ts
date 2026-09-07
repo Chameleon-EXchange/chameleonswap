@@ -5,19 +5,21 @@ import { useWalletInfo } from '@cowprotocol/wallet'
 import { useDerivedTradeState } from './useDerivedTradeState'
 import { useTradeState } from './useTradeState'
 
-import { getDefaultTradeRawState, TradeUrlParams } from '../types/TradeRawState'
+import { TradeUrlParams } from '../../../common/modules/tradeNavigation'
+import { getDefaultTradeRawState } from '../types'
 
 export function useTradeRouteContext(): TradeUrlParams {
   const { chainId: walletChainId } = useWalletInfo()
   const { state } = useTradeState()
   const derivedState = useDerivedTradeState()
-  const prevContextRef = useRef<TradeUrlParams>()
+  const prevContextRef = useRef<TradeUrlParams>(undefined)
 
   const { orderKind, inputCurrencyAmount, outputCurrencyAmount } = derivedState || {}
   const hasState = !!state
-  const targetChainId = state?.chainId || walletChainId
-  const { inputCurrencyId, outputCurrencyId } = state || getDefaultTradeRawState(targetChainId)
+  const sourceChainId = state?.chainId || walletChainId
+  const { inputCurrencyId, outputCurrencyId, targetChainId } = state || getDefaultTradeRawState(sourceChainId)
 
+  // eslint-disable-next-line react-hooks/refs
   const prevContext = prevContextRef.current
 
   const inputCurrencyAmountStr = inputCurrencyAmount?.toExact()
@@ -29,10 +31,19 @@ export function useTradeRouteContext(): TradeUrlParams {
       outputCurrencyId: outputCurrencyId || undefined,
       inputCurrencyAmount: inputCurrencyAmountStr,
       outputCurrencyAmount: outputCurrencyAmountStr,
-      chainId: targetChainId.toString(),
+      chainId: sourceChainId.toString(),
+      targetChainId: targetChainId?.toString(),
       orderKind,
     }),
-    [orderKind, inputCurrencyId, outputCurrencyId, targetChainId, inputCurrencyAmountStr, outputCurrencyAmountStr],
+    [
+      orderKind,
+      inputCurrencyId,
+      outputCurrencyId,
+      sourceChainId,
+      targetChainId,
+      inputCurrencyAmountStr,
+      outputCurrencyAmountStr,
+    ],
   )
 
   useEffect(() => {

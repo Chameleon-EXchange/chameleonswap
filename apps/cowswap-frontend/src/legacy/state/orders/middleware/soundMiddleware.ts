@@ -19,7 +19,7 @@ const isBatchOrderAction = isAnyOf(
   OrderActions.fulfillOrdersBatch,
   OrderActions.expireOrdersBatch,
   OrderActions.cancelOrdersBatch,
-  OrderActions.preSignOrders
+  OrderActions.preSignOrders,
 )
 const isBatchFulfillOrderAction = isAnyOf(OrderActions.fulfillOrdersBatch)
 const isBatchExpireOrderAction = isAnyOf(OrderActions.expireOrdersBatch)
@@ -27,18 +27,25 @@ const isBatchCancelOrderAction = isAnyOf(OrderActions.cancelOrdersBatch)
 // const isBatchPresignOrders = isAnyOf(OrderActions.preSignOrders)
 const isFulfillOrderAction = isAnyOf(OrderActions.addPendingOrder, OrderActions.fulfillOrdersBatch)
 
+// TODO: Reduce function complexity by extracting logic
+// eslint-disable-next-line complexity
 export const soundMiddleware: Middleware<Record<string, unknown>, AppState> = () => (next) => (action) => {
   return next(action)
 }
 
-function _shouldPlayPendingOrderSound(payload: AddPendingOrderParams): boolean {
-  // Only play COW sound if added pending order is not hidden
-  return !payload.order.isHidden
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+function _getUpdatedOrderSound(payload: UpdateOrderParams) {
+  if (!payload.order.isHidden) {
+    // Trigger COW sound when an order is being updated to a non-hidden state
+    return getCowSoundSend()
+  }
+  return undefined
 }
 
 function _shouldPlayExpiredOrderSound(
   payload: BatchOrdersUpdateParams,
-  store: MiddlewareAPI<Dispatch<AnyAction>, { orders: OrdersState }>
+  store: MiddlewareAPI<Dispatch<AnyAction>, { orders: OrdersState }>,
 ): boolean {
   const { chainId, ids } = payload
   const orders = store.getState().orders[chainId]
@@ -50,10 +57,7 @@ function _shouldPlayExpiredOrderSound(
   })
 }
 
-function _getUpdatedOrderSound(payload: UpdateOrderParams) {
-  if (!payload.order.isHidden) {
-    // Trigger COW sound when an order is being updated to a non-hidden state
-    return getCowSoundSend()
-  }
-  return undefined
+function _shouldPlayPendingOrderSound(payload: AddPendingOrderParams): boolean {
+  // Only play COW sound if added pending order is not hidden
+  return !payload.order.isHidden
 }

@@ -1,18 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
+import { encodeFunctionData, formatUnits } from 'viem'
+import { Config, useConfig } from 'wagmi'
+import { readContract, estimateGas } from 'wagmi/actions'
+
 import { SupportedChainId } from '@cowprotocol/cow-sdk'
+import { SBCDepositContractAbi } from '@cowprotocol/cowswap-abis'
 import { ButtonPrimary, UI } from '@cowprotocol/ui'
-import { useWalletProvider } from '@cowprotocol/wallet-provider'
-import { BigNumber } from '@ethersproject/bignumber'
 
-import { formatUnits } from 'ethers/lib/utils'
+import { Trans } from '@lingui/react/macro'
 
-import { SBC_DEPOSIT_CONTRACT_ADDRESS, SBCDepositContract } from './const'
+import { SBC_DEPOSIT_CONTRACT_ADDRESS } from './const'
 
 import { HookDappProps } from '../../types/hooks'
 import { ContentWrapper, LoadingLabel, Text, Wrapper } from '../styled'
-
-const SbcDepositContractInterface = SBCDepositContract.interface
 
 /**
  * Dapp that creates the hook to the connected wallet GNO Rewards.
@@ -21,10 +22,13 @@ const SbcDepositContractInterface = SBCDepositContract.interface
  *    - Proxy: 0x0B98057eA310F4d31F2a452B414647007d1645d9 (https://gnosisscan.io/address/0x0B98057eA310F4d31F2a452B414647007d1645d9#readProxyContract)
  *    - Master: 0x4fef25519256e24a1fc536f7677152da742fe3ef
  */
+// TODO: Break down this large function into smaller functions
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function ClaimGnoHookApp({ context }: HookDappProps) {
-  const provider = useWalletProvider()
-  const [claimable, setClaimable] = useState<BigNumber | undefined>(undefined)
-  const [gasLimit, setGasLimit] = useState<BigNumber | undefined>(undefined)
+  const config = useConfig()
+  const [claimable, setClaimable] = useState<bigint | undefined>(undefined)
+  const [gasLimit, setGasLimit] = useState<bigint | undefined>(undefined)
   const [error, setError] = useState<boolean>(false)
 
   const loading = (!gasLimit || !claimable) && !error
@@ -36,30 +40,34 @@ export function ClaimGnoHookApp({ context }: HookDappProps) {
       return null
     }
 
-    return SbcDepositContractInterface.encodeFunctionData('claimWithdrawal', [account])
+    return encodeFunctionData({
+      abi: SBCDepositContractAbi,
+      functionName: 'claimWithdrawal',
+      args: [account as `0x${string}`],
+    })
   }, [account])
 
   useEffect(() => {
-    if (!account || !provider) {
+    if (!account) {
       return
     }
 
-    const handleError = (e: any) => {
-      console.error('[ClaimGnoHookApp] Error getting balance/gasEstimation', e)
-      setError(true)
-    }
-
-    // Get balance
-    SBCDepositContract.connect(provider)
-      .withdrawableAmount(account)
-      .then((claimable) => {
+    const updateValues = async (): Promise<void> => {
+      try {
+        const [claimable, gasLimit] = await Promise.all([
+          fetchClaimableAmount({ account, config }),
+          fetchGasPrice({ account, config }),
+        ])
         console.log('[ClaimGnoHookApp] get claimable', claimable)
         setClaimable(claimable)
-      })
-      .catch(handleError)
-
-    SBCDepositContract.connect(provider).estimateGas.claimWithdrawal(account).then(setGasLimit).catch(handleError)
-  }, [setClaimable, account, provider])
+        setGasLimit(gasLimit)
+      } catch (error) {
+        console.error('[ClaimGnoHookApp] Error getting balance/gasEstimation', error)
+        setError(true)
+      }
+    }
+    updateValues()
+  }, [account, config, setClaimable])
 
   const clickOnAddHook = useCallback(() => {
     if (!callData || !gasLimit || !context || !claimable) {
@@ -90,9 +98,9 @@ export function ClaimGnoHookApp({ context }: HookDappProps) {
     <Wrapper>
       <ContentWrapper minHeight={150}>
         {context.chainId !== SupportedChainId.GNOSIS_CHAIN ? (
-          'Unsupported network. Please change to Gnosis Chain'
+          <Trans>Unsupported network. Please change to Gnosis Chain</Trans>
         ) : !account ? (
-          'Connect your wallet first'
+          <Trans>Connect your wallet first</Trans>
         ) : (
           <>
             <ClaimableAmount loading={loading} claimable={claimable} error={error} />
@@ -101,29 +109,61 @@ export function ClaimGnoHookApp({ context }: HookDappProps) {
       </ContentWrapper>
       {claimable && !error && (
         <ButtonPrimary onClick={clickOnAddHook}>
-          {context.hookToEdit ? 'Update Pre-hook' : 'Add Pre-hook'}
+          {context.hookToEdit ? <Trans>Update Pre-hook</Trans> : <Trans>Add Pre-hook</Trans>}
         </ButtonPrimary>
       )}
     </Wrapper>
   )
 }
 
-function ClaimableAmount(props: { loading: boolean; error: boolean; claimable: BigNumber | undefined }) {
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+function ClaimableAmount(props: { loading: boolean; error: boolean; claimable?: bigint }) {
   const { loading, error, claimable } = props
   if (error) {
-    return <Text color={`var(${UI.COLOR_DANGER})`}>Error loading the claimable amount</Text>
+    return (
+      <Text color={`var(${UI.COLOR_DANGER})`}>
+        <Trans>Error loading the claimable amount</Trans>
+      </Text>
+    )
   }
 
   if (loading || !claimable) {
-    return <LoadingLabel>Loading...</LoadingLabel>
+    return (
+      <LoadingLabel>
+        <Trans>Loading...</Trans>
+      </LoadingLabel>
+    )
   }
 
   return (
     <>
-      <Text color={`var(${UI.COLOR_TEXT_OPACITY_70})`}>Total claimable rewards:</Text>
+      <Text color={`var(${UI.COLOR_TEXT_OPACITY_70})`}>
+        <Trans>Total claimable rewards:</Trans>
+      </Text>
       <Text fontSize="36px" fontWeight="bold">
         {formatUnits(claimable, 18)} GNO
       </Text>
     </>
   )
+}
+
+function fetchClaimableAmount({ config, account }: { config: Config; account: string }): Promise<bigint> {
+  return readContract(config, {
+    abi: SBCDepositContractAbi,
+    address: SBC_DEPOSIT_CONTRACT_ADDRESS,
+    functionName: 'withdrawableAmount',
+    args: [account as `0x${string}`],
+  })
+}
+
+function fetchGasPrice({ config, account }: { config: Config; account: string }): Promise<bigint> {
+  return estimateGas(config, {
+    to: SBC_DEPOSIT_CONTRACT_ADDRESS,
+    data: encodeFunctionData({
+      abi: SBCDepositContractAbi,
+      functionName: 'claimWithdrawal',
+      args: [account as `0x${string}`],
+    }),
+  })
 }

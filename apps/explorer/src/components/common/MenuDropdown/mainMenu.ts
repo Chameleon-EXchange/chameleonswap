@@ -1,66 +1,96 @@
-import IMAGE_APPDATA from 'assets/img/code.svg'
-import IMAGE_COW from 'assets/img/CowProtocol-logo.svg'
-import IMAGE_DISCORD from 'assets/img/discord.svg'
-import IMAGE_DOC from 'assets/img/doc.svg'
-import IMAGE_ANALYTICS from 'assets/img/pie.svg'
+import svgCodeSrc from 'assets/img/code.svg'
+import svgCowProtocolSrc from 'assets/img/CowProtocol-logo.svg'
+import svgDiscordSrc from 'assets/img/discord.svg'
+import svgDocSrc from 'assets/img/doc.svg'
+import svgPieSrc from 'assets/img/pie.svg'
+import { PiMathOperationsFill } from 'react-icons/pi'
 
-import { MenuItemKind, MenuTreeItem } from './types'
+import { MenuItemKind, MenuLink, MenuTreeItem } from './types'
 
-import { DOCS_LINK, DISCORD_LINK, PROTOCOL_LINK, DUNE_DASHBOARD_LINK, Routes } from '../../../explorer/const'
+import {
+  DOCS_LINK,
+  DISCORD_LINK,
+  PROTOCOL_LINK,
+  COWSWAP_LINK,
+  DUNE_DASHBOARD_LINK,
+  Routes,
+} from '../../../explorer/const'
 
-export const MAIN_MENU: MenuTreeItem[] = [
-  {
-    title: 'Home',
-    url: Routes.HOME,
-  },
-  {
-    kind: MenuItemKind.DROP_DOWN,
-    title: 'More',
-    items: [
-      {
-        sectionTitle: 'OVERVIEW',
-        links: [
+export function getMainMenu(isSolversEnabled = true): MenuTreeItem[] {
+  const otherLinks: MenuLink[] = [
+    ...(isSolversEnabled
+      ? [
           {
-            title: 'CoW Protocol',
-            url: PROTOCOL_LINK,
-            kind: MenuItemKind.EXTERNAL_LINK,
-            iconSVG: IMAGE_COW,
-          },
-          {
-            title: 'Documentation',
-            url: DOCS_LINK,
-            kind: MenuItemKind.EXTERNAL_LINK,
-            iconSVG: IMAGE_DOC,
-          },
-          {
-            title: 'Analytics',
-            url: DUNE_DASHBOARD_LINK,
-            kind: MenuItemKind.EXTERNAL_LINK,
-            iconSVG: IMAGE_ANALYTICS,
-          },
-        ],
-      },
-      {
-        sectionTitle: 'COMMUNITY',
-        links: [
-          {
-            title: 'Discord',
-            url: DISCORD_LINK,
-            iconSVG: IMAGE_DISCORD, // If icon is a <SVG> inline component
-            kind: MenuItemKind.EXTERNAL_LINK,
-          },
-        ],
-      },
-      {
-        sectionTitle: 'OTHER',
-        links: [
-          {
-            title: 'AppData',
-            url: Routes.APPDATA,
-            iconSVG: IMAGE_APPDATA,
-          },
-        ],
-      },
-    ],
-  },
-]
+            title: 'Solvers',
+            url: Routes.SOLVERS,
+            iconComponent: PiMathOperationsFill,
+            noPrefix: true,
+          } satisfies MenuLink,
+        ]
+      : []),
+    {
+      title: 'AppData',
+      url: Routes.APPDATA,
+      iconSVG: svgCodeSrc,
+    },
+  ]
+
+  return [
+    {
+      title: 'Home',
+      url: Routes.HOME,
+    },
+    {
+      kind: MenuItemKind.DROP_DOWN,
+      title: 'More',
+      items: [
+        {
+          sectionTitle: 'OVERVIEW',
+          links: [
+            {
+              title: 'CoW Swap',
+              url: COWSWAP_LINK,
+              kind: MenuItemKind.EXTERNAL_LINK,
+              iconSVG: svgCowProtocolSrc,
+            },
+            {
+              title: 'CoW Protocol',
+              url: PROTOCOL_LINK,
+              kind: MenuItemKind.EXTERNAL_LINK,
+              iconSVG: svgCowProtocolSrc,
+            },
+            {
+              title: 'Documentation',
+              url: DOCS_LINK,
+              kind: MenuItemKind.EXTERNAL_LINK,
+              iconSVG: svgDocSrc,
+            },
+            {
+              title: 'Analytics',
+              url: DUNE_DASHBOARD_LINK,
+              kind: MenuItemKind.EXTERNAL_LINK,
+              iconSVG: svgPieSrc,
+            },
+          ],
+        },
+        {
+          sectionTitle: 'COMMUNITY',
+          links: [
+            {
+              title: 'Discord',
+              url: DISCORD_LINK,
+              iconSVG: svgDiscordSrc, // If icon is a <SVG> inline component
+              kind: MenuItemKind.EXTERNAL_LINK,
+            },
+          ],
+        },
+        {
+          sectionTitle: 'OTHER',
+          links: otherLinks,
+        },
+      ],
+    },
+  ]
+}
+
+export const MAIN_MENU = getMainMenu()

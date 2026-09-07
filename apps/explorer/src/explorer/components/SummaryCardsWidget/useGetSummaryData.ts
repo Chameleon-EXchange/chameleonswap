@@ -11,9 +11,19 @@ export interface BatchInfo {
   batchId: string
 }
 
+export type TotalSummaryResponse = TotalSummary & {
+  isLoading: boolean
+}
+
 interface PastAndPresentValue {
   now: number
   before: number
+}
+
+type SummaryQuery = {
+  settlements: Array<{ firstTradeTimestamp: string; txHash: string }>
+  hourlyTotals: Array<{ orders: string; feesUsd: string }>
+  totals: Array<{ tokens: string; volumeUsd: string }>
 }
 
 interface TotalSummary {
@@ -24,10 +34,9 @@ interface TotalSummary {
   volumeUsd?: number
 }
 
-type SummaryQuery = {
-  settlements: Array<{ firstTradeTimestamp: string; txHash: string }>
-  hourlyTotals: Array<{ orders: string; feesUsd: string }>
-  totals: Array<{ tokens: string; volumeUsd: string }>
+type TransactionsAndFees = {
+  transactions: number
+  fees: number
 }
 
 function buildSummary(data: SummaryQuery): TotalSummary {
@@ -68,17 +77,8 @@ function getTransactionsAndFees(data: Array<{ orders: string; feesUsd: string }>
       acc.fees += Number(curr.feesUsd)
       return acc
     },
-    { fees: 0, transactions: 0 }
+    { fees: 0, transactions: 0 },
   )
-}
-
-type TransactionsAndFees = {
-  transactions: number
-  fees: number
-}
-
-export type TotalSummaryResponse = TotalSummary & {
-  isLoading: boolean
 }
 
 const FETCH_INTERVAL = 1000 * 10 // 10 seconds

@@ -1,42 +1,40 @@
 import { isSellOrder } from '@cowprotocol/common-utils'
-import { CurrencyAmount, Token } from '@uniswap/sdk-core'
+import { CurrencyAmount, Token } from '@cowprotocol/currency'
+import { Nullish } from '@cowprotocol/types'
 
-import { Order } from 'legacy/state/orders/actions'
+import { BigNumber } from 'bignumber.js'
 
+import { GenericOrder } from 'common/types'
 import { getFilledAmounts } from 'utils/orderUtils/getFilledAmounts'
 
-import { isParsedOrder, ParsedOrder, parseOrder } from './orderUtils/parseOrder'
+import { isParsedOrder, parseOrder } from './orderUtils/parseOrder'
 
-export function getExecutedSummaryData(order: Order | ParsedOrder) {
+export interface ExecutedSummaryData {
+  surplusAmount: CurrencyAmount<Token>
+  surplusPercent: string | undefined
+  surplusToken: Token
+  formattedFilledAmount: CurrencyAmount<Token>
+  formattedSwappedAmount: CurrencyAmount<Token>
+  swappedAmountWithFee: BigNumber
+}
+
+export function getExecutedSummaryData(order: GenericOrder, intermediateToken: Nullish<Token>): ExecutedSummaryData {
+  const surplusToken = isSellOrder(order.kind) ? intermediateToken || order.outputToken : order.inputToken
+
   const parsedOrder = isParsedOrder(order) ? order : parseOrder(order)
 
-  const { inputToken, outputToken } = parsedOrder
   const { surplusAmount: amount, surplusPercentage: percentage } = parsedOrder.executionData
 
-  const parsedInputToken = new Token(
-    inputToken.chainId,
-    inputToken.address,
-    inputToken.decimals,
-    inputToken.symbol,
-    inputToken.name
-  )
-  const parsedOutputToken = new Token(
-    outputToken.chainId,
-    outputToken.address,
-    outputToken.decimals,
-    outputToken.symbol,
-    outputToken.name
-  )
-
-  const surplusToken = isSellOrder(order.kind) ? parsedOutputToken : parsedInputToken
-
-  const surplusAmount = CurrencyAmount.fromRawAmount(surplusToken, amount?.decimalPlaces(0).toFixed())
+  // Guard against missing surplus by falling back to '0' raw amount
+  const rawSurplus = amount ? amount.decimalPlaces(0, BigNumber.ROUND_DOWN).toFixed(0) : '0'
   const surplusPercent = percentage?.multipliedBy(100)?.toFixed(2)
 
-  const { formattedFilledAmount, formattedSwappedAmount } = getFilledAmounts({
+  const surplusAmount = CurrencyAmount.fromRawAmount(surplusToken, rawSurplus)
+
+  const { formattedFilledAmount, formattedSwappedAmount, swappedAmountWithFee } = getFilledAmounts({
     ...parsedOrder,
-    inputToken: parsedInputToken,
-    outputToken: parsedOutputToken,
+    inputToken: order.inputToken,
+    outputToken: surplusToken,
   })
 
   return {
@@ -45,5 +43,6 @@ export function getExecutedSummaryData(order: Order | ParsedOrder) {
     surplusToken,
     formattedFilledAmount,
     formattedSwappedAmount,
+    swappedAmountWithFee,
   }
 }

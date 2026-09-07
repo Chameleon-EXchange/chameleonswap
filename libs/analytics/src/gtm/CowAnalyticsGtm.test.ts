@@ -1,0 +1,176 @@
+import { logAnalytics } from '@cowprotocol/common-utils'
+
+import { CowAnalyticsGtm } from './CowAnalyticsGtm'
+
+import { AnalyticsContext } from '../CowAnalytics'
+
+import type { GtmEvent } from '../types'
+
+type DataLayerEntry = Record<string, unknown>
+
+function getLastEvent(eventName: string): DataLayerEntry | undefined {
+  const dataLayer = window.dataLayer as DataLayerEntry[]
+
+  return [...dataLayer].reverse().find((entry) => entry.event === eventName)
+}
+
+describe('CowAnalyticsGtm wallet lifecycle events', () => {
+  let analytics: CowAnalyticsGtm
+
+  beforeEach(() => {
+    window.dataLayer = []
+    window.cowAnalyticsInstance = undefined
+    analytics = new CowAnalyticsGtm()
+    analytics.setContext(AnalyticsContext.chainId, '1')
+  })
+
+  afterEach(() => {
+    analytics.destroy()
+    window.cowAnalyticsInstance = undefined
+    window.dataLayer = []
+  })
+
+  it('tracks wallet_connected with current wallet dimensions', () => {
+    analytics.setUserAccount('0x1111111111111111111111111111111111111111', 'Rainbow')
+
+    expect(getLastEvent('wallet_connected')).toMatchObject({
+      event: 'wallet_connected',
+      walletAddress: '0x1111111111111111111111111111111111111111',
+      walletName: 'Rainbow',
+      dimension_chainId: '1',
+      dimension_userAddress: '0x1111111111111111111111111111111111111111',
+      dimension_walletName: 'Rainbow',
+    })
+  })
+
+  it('tracks wallet_switched with previous and current wallet names', () => {
+    analytics.setUserAccount('0x1111111111111111111111111111111111111111', 'Rainbow')
+    analytics.setUserAccount('0x2222222222222222222222222222222222222222', 'MetaMask')
+
+    expect(getLastEvent('wallet_switched')).toMatchObject({
+      event: 'wallet_switched',
+      previousWalletAddress: '0x1111111111111111111111111111111111111111',
+      previousWalletName: 'Rainbow',
+      walletAddress: '0x2222222222222222222222222222222222222222',
+      walletName: 'MetaMask',
+      dimension_chainId: '1',
+      dimension_userAddress: '0x2222222222222222222222222222222222222222',
+      dimension_walletName: 'MetaMask',
+    })
+  })
+
+  it('tracks wallet_disconnected with previous wallet context before clearing it', () => {
+    analytics.setUserAccount('0x1111111111111111111111111111111111111111', 'Rainbow')
+    analytics.setUserAccount(undefined)
+
+    expect(getLastEvent('wallet_disconnected')).toMatchObject({
+      event: 'wallet_disconnected',
+      previousWalletAddress: '0x1111111111111111111111111111111111111111',
+      previousWalletName: 'Rainbow',
+      dimension_chainId: '1',
+      dimension_userAddress: 'disconnected',
+      dimension_walletName: 'Rainbow',
+    })
+  })
+
+  it('does not leak previous wallet name into a new connection after disconnect', () => {
+    analytics.setUserAccount('0x1111111111111111111111111111111111111111', 'Rainbow')
+    analytics.setUserAccount(undefined)
+    analytics.setUserAccount('0x3333333333333333333333333333333333333333', 'Rabby')
+
+    expect(getLastEvent('wallet_connected')).toMatchObject({
+      event: 'wallet_connected',
+      walletAddress: '0x3333333333333333333333333333333333333333',
+      walletName: 'Rabby',
+      dimension_walletName: 'Rabby',
+      dimension_userAddress: '0x3333333333333333333333333333333333333333',
+    })
+  })
+
+  it('keeps false bridge flags on trade events', () => {
+    const bridgeRejectEvent: GtmEvent<string> = {
+      category: 'Trade',
+      action: 'Reject',
+      label: 'SWAP|COW',
+      isBridgeOrder: true,
+    }
+
+    const regularRejectEvent: GtmEvent<string> = {
+      category: 'Trade',
+      action: 'Reject',
+      label: 'SWAP|COW',
+      isBridgeOrder: false,
+    }
+
+    analytics.sendEvent(bridgeRejectEvent)
+    analytics.sendEvent(regularRejectEvent)
+
+    expect(getLastEvent('Reject')).toMatchObject({
+      event: 'Reject',
+      category: 'Trade',
+      action: 'Reject',
+      label: 'SWAP|COW',
+      isBridgeOrder: false,
+    })
+  })
+
+  it.each([
+    ['swap_executed', 'SWAP'],
+    ['swap_cancelled', 'LIMIT'],
+    ['swap_expired', 'TWAP'],
+  ])('preserves %s orderType fields on string event payloads', (event, orderType) => {
+    const orderId = `0x${orderType.toLowerCase()}`
+
+    analytics.sendEvent(event, {
+      orderId,
+      orderType,
+      walletAddress: '0x1111111111111111111111111111111111111111',
+    })
+
+    expect(getLastEvent(event)).toMatchObject({
+      event,
+      dimension_chainId: '1',
+      orderId,
+      orderType,
+      walletAddress: '0x1111111111111111111111111111111111111111',
+    })
+  })
+
+  it('omits undefined custom event params', () => {
+    analytics.sendEvent({
+      category: 'Captcha',
+      action: 'captcha_challenge_solved',
+      reason: undefined,
+    } as GtmEvent<string> & { reason?: string })
+
+    expect(getLastEvent('captcha_challenge_solved')).toEqual(
+      expect.not.objectContaining({
+        reason: expect.anything(),
+      }),
+    )
+  })
+
+  it('logs and suppresses data layer push failures', () => {
+    const warnSpy = jest.spyOn(logAnalytics, 'warn')
+
+    analytics.destroy()
+    window.cowAnalyticsInstance = undefined
+    window.dataLayer = {
+      push() {
+        throw new Error('data layer failed')
+      },
+    } as unknown as unknown[]
+    analytics = new CowAnalyticsGtm()
+
+    expect(() => analytics.sendEvent({ category: 'Trade', action: 'Quote', label: undefined })).not.toThrow()
+    expect(warnSpy).toHaveBeenCalledWith('Data layer push failed', {
+      data: {
+        event: 'Quote',
+        category: 'Trade',
+        action: 'Quote',
+        label: undefined,
+      },
+      error: expect.any(Error),
+    })
+  })
+})

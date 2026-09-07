@@ -1,17 +1,14 @@
 import { isSellOrder } from '@cowprotocol/common-utils'
-import { CurrencyAmount, Token } from '@uniswap/sdk-core'
+import { CurrencyAmount, Token } from '@cowprotocol/currency'
 
+import { t } from '@lingui/core/macro'
 import { BigNumber } from 'bignumber.js'
 import JSBI from 'jsbi'
 
 import { ParsedOrder } from './parseOrder'
 
-// TODO: using .toNumber() we potentially lose accuracy
-// TODO: if we do migrations to etherjs v6, we should use native ES6 bignumber
-function legacyBigNumberToCurrencyAmount(currency: Token, value: BigNumber | undefined): CurrencyAmount<Token> {
-  return CurrencyAmount.fromRawAmount(currency, Math.ceil((value?.toNumber() || 0) * 10 ** currency.decimals))
-}
-
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function getFilledAmounts(order: ParsedOrder) {
   const { inputToken, outputToken, kind, feeAmount, sellAmount, buyAmount } = order
   const { executedBuyAmount, executedSellAmount, executedFeeAmount, filledAmount } = order.executionData
@@ -26,9 +23,10 @@ export function getFilledAmounts(order: ParsedOrder) {
   const buyAmountCurrency = CurrencyAmount.fromRawAmount(outputToken, buyAmount.toString())
 
   // TODO: set types, move calculations logic to a function
-  let filledAmountWithFee, swappedAmountWithFee
+  let filledAmountWithFee: BigNumber
+  let swappedAmountWithFee: BigNumber
   if (isSellOrder(kind)) {
-    action = 'sold'
+    action = t`sold`
 
     mainToken = inputToken
     mainAmount = sellAmountCurrency.add(CurrencyAmount.fromRawAmount(mainToken, feeAmount.toString()))
@@ -40,7 +38,7 @@ export function getFilledAmounts(order: ParsedOrder) {
     filledAmountWithFee = filledAmount?.plus(executedFeeAmount || '0')
     swappedAmountWithFee = new BigNumber(swappedAmount?.toString() || '0')
   } else {
-    action = 'bought'
+    action = t`bought`
 
     mainToken = outputToken
     mainAmount = buyAmountCurrency
@@ -65,5 +63,13 @@ export function getFilledAmounts(order: ParsedOrder) {
     formattedSwappedAmount,
     mainAmount,
     action,
+    swappedAmountWithFee,
+    filledAmountWithFee,
   }
+}
+
+// TODO: using .toNumber() we potentially lose accuracy
+// TODO: if we do migrations to etherjs v6, we should use native ES6 bignumber
+function legacyBigNumberToCurrencyAmount(currency: Token, value: BigNumber | undefined): CurrencyAmount<Token> {
+  return CurrencyAmount.fromRawAmount(currency, Math.ceil((value?.toNumber() || 0) * 10 ** currency.decimals))
 }

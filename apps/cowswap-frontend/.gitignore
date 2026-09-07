@@ -1,19 +1,19 @@
 # See https://help.github.com/ignore-files/ for more about ignoring files.
 
-# generated contract types
+# generated language types
 /src/lib/locales/**/*.js
 /src/lib/locales/**/en-US.po
 /src/lib/locales/**/pseudo.po
 /src/locales/**/*.js
 /src/locales/**/*.ts
 /src/locales/**/*.json
+/src/locales/**/pseudo.po
 
 # dependencies
 node_modules
 
 # testing
 /coverage
-cypress.env.json
 
 # builds
 /build
@@ -28,7 +28,6 @@ cypress.env.json
 .env.development.local
 .env.test.local
 .env.production.local
-.env
 
 /.netlify
 
@@ -43,12 +42,6 @@ notes.txt
 
 package-lock.json
 
-cypress/videos
-cypress/screenshots
-cypress/fixtures/example.json
-cypress-custom/videos
-cypress-custom/screenshots
-cypress-custom/fixtures/example.json
-
 # public
 public/version.json
+.vercel

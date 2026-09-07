@@ -1,18 +1,20 @@
 import { TokenInfo } from '@cowprotocol/types'
-import type { TokenList } from '@uniswap/token-lists'
 
-import type Ajv from 'ajv'
-import type { ValidateFunction } from 'ajv'
+import type { TokenList } from '@uniswap/token-lists'
+import type { Ajv, ValidateFunction } from 'ajv'
 
 const SYMBOL_AND_NAME_VALIDATION = [
   {
-    const: ''
+    const: '',
   },
   {
-    pattern: '^[^<>]+$'
-  }
+    pattern: '^[^<>]+$',
+  },
 ]
 
+// TODO: Replace any with proper type definitions
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-function-return-type
 const patchValidationSchema = (schema: any) => ({
   ...schema,
   definitions: {
@@ -24,24 +26,29 @@ const patchValidationSchema = (schema: any) => ({
         symbol: {
           ...schema.definitions.TokenInfo.properties.symbol,
           maxLength: 80,
-          anyOf: SYMBOL_AND_NAME_VALIDATION
+          anyOf: SYMBOL_AND_NAME_VALIDATION,
         },
         name: {
           ...schema.definitions.TokenInfo.properties.name,
           maxLength: 100,
-          anyOf: SYMBOL_AND_NAME_VALIDATION
-        }
-      }
+          anyOf: SYMBOL_AND_NAME_VALIDATION,
+        },
+      },
     },
     ExtensionPrimitiveValue: {
-      'anyOf': [{
-        'type': 'string',
-        'minLength': 1,
-        'maxLength': 420,
-        'examples': ['#00000']
-      }, { 'type': 'boolean', 'examples': [true] }, { 'type': 'number', 'examples': [15] }, { 'type': 'null' }]
-    }
-  }
+      anyOf: [
+        {
+          type: 'string',
+          minLength: 1,
+          maxLength: 420,
+          examples: ['#00000'],
+        },
+        { type: 'boolean', examples: [true] },
+        { type: 'number', examples: [15] },
+        { type: 'null' },
+      ],
+    },
+  },
 })
 
 enum ValidationSchema {
@@ -50,29 +57,35 @@ enum ValidationSchema {
 }
 
 const validator = new Promise<Ajv>((resolve) => {
-  Promise.all([import('ajv'), import('ajv-formats'), import('@uniswap/token-lists/src/tokenlist.schema.json')]).then(([ajv, ajvFormats, schema]) => {
-    const validator = new ajv.default({ allErrors: true })
-    ajvFormats.default(validator)
-    validator
-      .addSchema(patchValidationSchema(schema), ValidationSchema.LIST)
-      // Adds a meta scheme of Pick<TokenList, 'tokens'>
-      .addSchema(
-        {
-          ...patchValidationSchema(schema),
-          $id: schema.$id + '#tokens',
-          required: ['tokens']
-        },
-        ValidationSchema.TOKENS
-      )
-    resolve(validator)
-  })
+  Promise.all([import('ajv'), import('ajv-formats'), import('@uniswap/token-lists/src/tokenlist.schema.json')]).then(
+    ([ajv, ajvFormats, schema]) => {
+      const validator = ajvFormats
+        .default(new ajv.default({ allErrors: true }))
+        .addSchema(patchValidationSchema(schema), ValidationSchema.LIST)
+        // Adds a meta scheme of Pick<TokenList, 'tokens'>
+        .addSchema(
+          {
+            ...patchValidationSchema(schema),
+            $id: schema.$id + '#tokens',
+            required: ['tokens'],
+          },
+          ValidationSchema.TOKENS,
+        )
+      resolve(validator)
+    },
+  )
 })
 
-function getValidationErrors(validate: ValidateFunction | undefined): string {
-  return (
-    validate?.errors?.map((error) => [error.instancePath, error.message].filter(Boolean).join(' ')).join('; ') ??
-    'unknown error'
-  )
+/**
+ * Validates a token list.
+ * @param json the TokenList to validate
+ */
+export async function validateTokenList(json: TokenList): Promise<TokenList> {
+  const validate = (await validator).getSchema(ValidationSchema.LIST)
+  if (validate?.(json)) {
+    return json
+  }
+  throw new Error(`Token list failed validation: ${getValidationErrors(validate)}`)
 }
 
 /**
@@ -87,14 +100,9 @@ export async function validateTokens(json: TokenInfo[]): Promise<TokenInfo[]> {
   throw new Error(`Token list failed validation: ${getValidationErrors(validate)}`)
 }
 
-/**
- * Validates a token list.
- * @param json the TokenList to validate
- */
-export async function validateTokenList(json: TokenList): Promise<TokenList> {
-  const validate = (await validator).getSchema(ValidationSchema.LIST)
-  if (validate?.(json)) {
-    return json
-  }
-  throw new Error(`Token list failed validation: ${getValidationErrors(validate)}`)
+function getValidationErrors(validate: ValidateFunction | undefined): string {
+  return (
+    validate?.errors?.map((error) => [error.instancePath, error.message].filter(Boolean).join(' ')).join('; ') ??
+    'unknown error'
+  )
 }

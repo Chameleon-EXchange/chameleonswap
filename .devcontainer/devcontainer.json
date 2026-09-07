@@ -16,7 +16,7 @@
 
   "portsAttributes": {
     "3000": {
-      "label": "Chameleon swap",
+      "label": "CoW Swap",
       "onAutoForward": "notify"
     },
     "5000": {
@@ -34,7 +34,7 @@
   },
 
   // Use 'postCreateCommand' to run commands after the container is created.
-  "postCreateCommand": "yarn install",
+  "postCreateCommand": "pnpm install",
 
   // Configure tool-specific properties.
   "customizations": {

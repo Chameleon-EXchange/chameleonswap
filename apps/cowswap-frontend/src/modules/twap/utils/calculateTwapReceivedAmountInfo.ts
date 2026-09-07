@@ -1,4 +1,4 @@
-import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
+import { Currency, CurrencyAmount } from '@cowprotocol/currency'
 
 import { Nullish } from 'types'
 
@@ -6,13 +6,23 @@ import { ReceiveAmountInfo } from 'modules/trade'
 
 export function calculateTwapReceivedAmountInfo(
   info: ReceiveAmountInfo | null,
-  numOfParts: Nullish<number>
+  numOfParts: Nullish<number>,
 ): typeof info {
   if (!info || !numOfParts) return null
 
-  const { isSell, quotePrice, costs, beforeNetworkCosts, afterNetworkCosts, afterPartnerFees, afterSlippage } = info
+  const {
+    isSell,
+    quotePrice,
+    costs,
+    beforeNetworkCosts,
+    afterNetworkCosts,
+    afterPartnerFees,
+    afterSlippage,
+    beforeAllFees,
+    amountsToSign,
+  } = info
 
-  const scaleAmount = (amount: CurrencyAmount<Currency>) => amount.multiply(numOfParts)
+  const scaleAmount = (amount: CurrencyAmount<Currency>): CurrencyAmount<Currency> => amount.multiply(numOfParts)
 
   return {
     isSell,
@@ -26,6 +36,16 @@ export function calculateTwapReceivedAmountInfo(
         amount: scaleAmount(costs.partnerFee.amount),
         bps: costs.partnerFee.bps,
       },
+      protocolFee: costs.protocolFee
+        ? {
+            amount: scaleAmount(costs.protocolFee.amount),
+            bps: costs.protocolFee.bps,
+          }
+        : undefined,
+    },
+    beforeAllFees: {
+      sellAmount: scaleAmount(beforeAllFees.sellAmount),
+      buyAmount: scaleAmount(beforeAllFees.buyAmount),
     },
     beforeNetworkCosts: {
       sellAmount: scaleAmount(beforeNetworkCosts.sellAmount),
@@ -42,6 +62,10 @@ export function calculateTwapReceivedAmountInfo(
     afterSlippage: {
       sellAmount: scaleAmount(afterSlippage.sellAmount),
       buyAmount: scaleAmount(afterSlippage.buyAmount),
+    },
+    amountsToSign: {
+      sellAmount: scaleAmount(amountsToSign.sellAmount),
+      buyAmount: scaleAmount(amountsToSign.buyAmount),
     },
   }
 }

@@ -1,5 +1,7 @@
-import { ProductLogo, ProductVariant } from '@cowprotocol/ui'
+import { useTheme } from '@cowprotocol/common-hooks'
+import { CowLoadingIcon } from '@cowprotocol/ui'
 
+import { Trans } from '@lingui/react/macro'
 import { transparentize } from 'color2k'
 import styled from 'styled-components/macro'
 
@@ -17,53 +19,26 @@ export const LoadingWrapper = styled.div`
   height: 100vh;
   backdrop-filter: blur(3px);
 
-  > svg {
-    animation: pulse 1s infinite ease-in-out;
-    transform-style: preserve-3d;
-    backface-visibility: visible;
-  }
-
-  > svg > g {
-    fill: currentColor;
-  }
-
   > span {
     display: block;
     text-transform: uppercase;
     font-size: 10px;
     font-weight: 500;
     letter-spacing: 2px;
-    margin: 5px auto 0;
+    margin: 20px auto 0;
     color: inherit;
-  }
-
-  @keyframes pulse {
-    0% {
-      transform: scale(1);
-    }
-    20% {
-      transform: scale(1.05);
-    }
-    30% {
-      transform: scale(1);
-    }
-    40% {
-      transform: scale(1.05);
-    }
-    50% {
-      transform: scale(1);
-    }
-    100% {
-      transform: scale(1);
-    }
   }
 `
 
 export const Loading: React.FC = () => {
+  const { darkMode } = useTheme()
+
   return (
     <LoadingWrapper>
-      <ProductLogo variant={ProductVariant.ChameleonSwap} height={100} logoIconOnly />
-      <span>Loading...</span>
+      <CowLoadingIcon size={120} isDarkMode={darkMode} />
+      <span>
+        <Trans>Loading...</Trans>
+      </span>
     </LoadingWrapper>
   )
 }

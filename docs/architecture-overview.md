@@ -1,6 +1,14 @@
-# Chameleon swap Architecture
+---
+author: human
+status: reference
+last_reviewed: 2026-03-05
+source_of_truth_scope: visual architecture diagram and module map
+normative_rules: docs/ARCHITECTURE.md
+---
 
-> This documetation is part of the broader https://github.com/cowprotocol/cowswap-diagrams
+# CoW Swap Architecture
+
+> This documentation is part of the broader https://github.com/cowprotocol/cowswap-diagrams
 
 Overall architecture of the project
 

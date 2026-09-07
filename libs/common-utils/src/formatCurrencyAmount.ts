@@ -1,8 +1,5 @@
 import { DEFAULT_LOCALE, SupportedLocale } from '@cowprotocol/common-const'
-import { Currency, CurrencyAmount, Fraction, Price } from '@uniswap/sdk-core'
-
-import JSBI from 'jsbi'
-
+import { Currency, CurrencyAmount, Fraction, Price } from '@cowprotocol/currency'
 
 import formatLocaleNumber from './formatLocaleNumber'
 
@@ -10,13 +7,13 @@ export function formatCurrencyAmount(
   amount: CurrencyAmount<Currency> | undefined,
   sigFigs: number,
   locale: SupportedLocale = DEFAULT_LOCALE,
-  fixedDecimals?: number
+  fixedDecimals?: number,
 ): string {
   if (!amount) {
     return '-'
   }
 
-  if (JSBI.equal(amount.quotient, JSBI.BigInt(0))) {
+  if (amount.quotient === 0n) {
     return '0'
   }
 
@@ -30,7 +27,7 @@ export function formatCurrencyAmount(
 export function formatPrice(
   price: Price<Currency, Currency> | undefined,
   sigFigs: number,
-  locale: SupportedLocale = DEFAULT_LOCALE
+  locale: SupportedLocale = DEFAULT_LOCALE,
 ): string {
   if (!price) {
     return '-'

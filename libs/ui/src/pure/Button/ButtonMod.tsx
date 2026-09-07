@@ -14,6 +14,7 @@ export const BaseButton = styled(RebassButton)<
   {
     padding?: string
     width?: string
+    $gap?: string
     $borderRadius?: string
     altDisabledStyle?: boolean
     buttonSize?: ButtonSize // mod
@@ -33,13 +34,14 @@ export const BaseButton = styled(RebassButton)<
   justify-content: center;
   flex-wrap: nowrap;
   align-items: center;
+  gap: ${({ $gap }) => $gap ?? '0'};
   cursor: pointer;
   position: relative;
   z-index: 1;
+
   &:disabled {
     opacity: 50%;
-    cursor: auto;
-    pointer-events: none;
+    cursor: not-allowed;
   }
 
   will-change: transform;
@@ -57,48 +59,21 @@ export const BaseButton = styled(RebassButton)<
 
 export const ButtonPrimary = styled(BaseButton)`
   font-size: 16px;
+
   &:focus,
   &:hover,
   &:active {
     color: ${({ theme }) => theme.text1};
   }
+
   &:disabled {
     background-color: ${({ theme, altDisabledStyle, disabled }) =>
       altDisabledStyle ? (disabled ? theme.bg2 : theme.bg2) : theme.background};
     color: ${({ theme, altDisabledStyle }) => (altDisabledStyle ? 'white' : theme.info)};
-    cursor: auto;
     box-shadow: none;
     border: 1px solid transparent;
     outline: none;
     opacity: ${({ altDisabledStyle }) => (altDisabledStyle ? '0.7' : '1')};
-  }
-`
-
-export const ButtonLight = styled(BaseButton)`
-  background-color: ${({ theme }) => theme.bg2};
-  color: ${({ theme }) => theme.text1};
-  font-size: 16px;
-  // font-weight: 500;
-  &:focus {
-    box-shadow: 0 0 0 1pt ${({ theme, disabled }) => !disabled && darken(theme.bg2, 0.03)};
-    background-color: ${({ theme, disabled }) => !disabled && darken(theme.bg2, 0.03)};
-  }
-  &:hover {
-    background-color: ${({ theme, disabled }) => !disabled && darken(theme.bg2, 0.03)};
-  }
-  &:active {
-    box-shadow: 0 0 0 1pt ${({ theme, disabled }) => !disabled && darken(theme.bg2, 0.05)};
-    background-color: ${({ theme, disabled }) => !disabled && darken(theme.bg2, 0.05)};
-  }
-  :disabled {
-    opacity: 0.4;
-    :hover {
-      cursor: auto;
-      background-color: ${({ theme }) => theme.bg2};
-      box-shadow: none;
-      border: 1px solid transparent;
-      outline: none;
-    }
   }
 `
 
@@ -247,6 +222,8 @@ export const ButtonErrorStyle = styled(BaseButton)`
   }
 `
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function ButtonConfirmed({
   confirmed,
   altDisabledStyle,
@@ -259,14 +236,8 @@ export function ButtonConfirmed({
   }
 }
 
-export function ButtonError({ error, ...rest }: { error?: boolean } & ButtonProps) {
-  if (error) {
-    return <ButtonErrorStyle {...rest} />
-  } else {
-    return <ButtonPrimary {...rest} />
-  }
-}
-
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function ButtonDropdown({ disabled = false, children, ...rest }: { disabled?: boolean } & ButtonProps) {
   return (
     <ButtonPrimary {...rest} disabled={disabled}>
@@ -276,4 +247,14 @@ export function ButtonDropdown({ disabled = false, children, ...rest }: { disabl
       </RowBetween>
     </ButtonPrimary>
   )
+}
+
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export function ButtonError({ error, ...rest }: { error?: boolean } & ButtonProps) {
+  if (error) {
+    return <ButtonErrorStyle {...rest} />
+  } else {
+    return <ButtonPrimary {...rest} />
+  }
 }

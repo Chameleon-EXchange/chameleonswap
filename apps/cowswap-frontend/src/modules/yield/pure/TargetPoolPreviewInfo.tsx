@@ -2,9 +2,10 @@ import { ReactNode } from 'react'
 
 import { LpToken, TokenWithLogo } from '@cowprotocol/common-const'
 import { SupportedChainId } from '@cowprotocol/cow-sdk'
+import { Currency } from '@cowprotocol/currency'
 import { ExternalLink, InfoTooltip, TokenSymbol, UI } from '@cowprotocol/ui'
-import { Currency } from '@uniswap/sdk-core'
 
+import { Trans } from '@lingui/react/macro'
 import styled from 'styled-components/macro'
 
 import { LP_PAGE_LINKS } from '../lpPageLinks'
@@ -28,7 +29,6 @@ const InfoButton = styled.button`
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  outline: 0;
   border-radius: 16px;
   background: transparent;
   color: var(${UI.COLOR_TEXT_OPACITY_70});
@@ -47,8 +47,15 @@ interface TargetPoolPreviewInfoProps {
   oppositeToken?: Currency | null
 }
 
-export function TargetPoolPreviewInfo({ chainId, sellToken, oppositeToken, children }: TargetPoolPreviewInfoProps) {
+export function TargetPoolPreviewInfo({
+  chainId,
+  sellToken,
+  oppositeToken,
+  children,
+}: TargetPoolPreviewInfoProps): ReactNode | null {
   if (!(sellToken instanceof LpToken) || !sellToken.lpTokenProvider) return null
+  const pageLink = LP_PAGE_LINKS[sellToken.lpTokenProvider](chainId, sellToken.address)
+  if (!pageLink) return null
 
   return (
     <Wrapper>
@@ -56,17 +63,19 @@ export function TargetPoolPreviewInfo({ chainId, sellToken, oppositeToken, child
         {children}
         {oppositeToken && (
           <InfoButton>
-            Details{' '}
+            <Trans>Details</Trans>{' '}
             <InfoTooltip>
-              When you swap (sell) <TokenSymbol token={oppositeToken} />, solvers handle the transaction by purchasing
-              the required tokens, depositing them into the pool, and issuing LP tokens to you in return — all in a
-              gas-less operation.
+              <Trans>
+                When you swap (sell) <TokenSymbol token={oppositeToken} />, solvers handle the transaction by purchasing
+                the required tokens, depositing them into the pool, and issuing LP tokens to you in return — all in a
+                gas-less operation.
+              </Trans>
             </InfoTooltip>
           </InfoButton>
         )}
       </LeftPart>
-      <StyledExternalLink href={LP_PAGE_LINKS[sellToken.lpTokenProvider](chainId, sellToken.address)}>
-        Analytics ↗
+      <StyledExternalLink href={pageLink}>
+        <Trans>Analytics</Trans> ↗
       </StyledExternalLink>
     </Wrapper>
   )

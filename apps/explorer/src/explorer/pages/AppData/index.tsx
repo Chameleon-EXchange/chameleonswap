@@ -14,14 +14,18 @@ import { useQuery, useUpdateQueryString } from '../../../hooks/useQuery'
 import { APP_TITLE, TAB_QUERY_PARAM_KEY } from '../../const'
 import { ContentCard as Content, Title } from '../styled'
 
+export type TabData = {
+  // TODO: Replace any with proper type definitions
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  encode: { formData: FormProps; options: any }
+  // TODO: Replace any with proper type definitions
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  decode: { formData: FormProps; options: any }
+}
+
 export enum TabView {
   ENCODE = 1,
   DECODE = 2,
-}
-
-export type TabData = {
-  encode: { formData: FormProps; options: any }
-  decode: { formData: FormProps; options: any }
 }
 
 const DEFAULT_TAB = TabView[1]
@@ -34,7 +38,7 @@ function useQueryViewParams(): string {
 const tabItems = (
   tabData: TabData,
   setTabData: React.Dispatch<React.SetStateAction<TabData>>,
-  onChangeTab: (tabId: number) => void
+  onChangeTab: (tabId: number) => void,
 ): TabItemInterface[] => {
   return [
     {
@@ -50,6 +54,8 @@ const tabItems = (
   ]
 }
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 const AppDataPage = () => {
   const tab = useQueryViewParams()
   const [tabData, setTabData] = useState<TabData>({
@@ -67,7 +73,7 @@ const AppDataPage = () => {
 
   useEffect(
     () => updateQueryString(TAB_QUERY_PARAM_KEY, TabView[tabViewSelected].toLowerCase()),
-    [tabViewSelected, updateQueryString]
+    [tabViewSelected, updateQueryString],
   )
 
   return (

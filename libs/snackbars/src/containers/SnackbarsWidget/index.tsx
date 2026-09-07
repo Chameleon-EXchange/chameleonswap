@@ -1,12 +1,12 @@
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useResetAtom } from 'jotai/utils'
-import { ReactElement, useCallback, useEffect, useMemo } from 'react'
+import { ReactElement, ReactNode, useCallback, useEffect, useMemo } from 'react'
 
 import { useMediaQuery } from '@cowprotocol/common-hooks'
 import { Media, UI } from '@cowprotocol/ui'
 
 import ms from 'ms.macro'
-import { AlertCircle, CheckCircle } from 'react-feather'
+import { AlertTriangle, CheckCircle } from 'react-feather'
 import styled from 'styled-components/macro'
 
 import { useAnchorPosition } from '../../hooks/useAnchorPosition'
@@ -21,7 +21,8 @@ const Overlay = styled.div`
   width: 100%;
   height: 100%;
   z-index: 4;
-  background: var(${UI.COLOR_PAPER_DARKEST});
+  background: var(${UI.COLOR_BLACK_OPACITY_30});
+  backdrop-filter: blur(10px);
 `
 
 const List = styled.div`
@@ -36,7 +37,7 @@ const Host = styled.div<{ hidden$: boolean; top$: number }>`
   position: fixed;
   top: ${({ top$ }) => top$ + 'px'};
   right: ${({ hidden$ }) => (hidden$ ? '-9999px' : '20px')};
-  z-index: 6;
+  z-index: 10;
   min-width: 300px;
   max-width: 800px;
 
@@ -56,7 +57,7 @@ const SuccessIcon = styled(CheckCircle)`
   color: ${({ theme }) => theme.green1};
 `
 
-const AlertIcon = styled(AlertCircle)`
+const AlertIcon = styled(AlertTriangle)`
   color: ${({ theme }) => theme.danger};
 `
 
@@ -81,12 +82,12 @@ interface SnackbarsWidgetProps {
   hidden?: boolean
   /**
    * Id of a DOM element to which the snackbars should be anchored (displayed under)
-   * In Chameleon swap the element is the header menu
+   * In CoW Swap the element is the header menu
    */
   anchorElementId?: string
 }
 
-export function SnackbarsWidget({ hidden, anchorElementId }: SnackbarsWidgetProps) {
+export function SnackbarsWidget({ hidden, anchorElementId }: SnackbarsWidgetProps): ReactNode {
   const snackbarsState = useAtomValue(snackbarsAtom)
   const resetSnackbarsState = useResetAtom(snackbarsAtom)
   const removeSnackbar = useSetAtom(removeSnackbarAtom)

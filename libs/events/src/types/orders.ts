@@ -1,9 +1,31 @@
 import type { EnrichedOrder, OrderKind, SupportedChainId } from '@cowprotocol/cow-sdk'
-import type { TokenInfo, UiOrderType } from '@cowprotocol/types'
+import { CrossChainOrder } from '@cowprotocol/sdk-bridging'
+import { BridgeOrderDataSerialized, TokenInfo, UiOrderType } from '@cowprotocol/types'
 
-type BaseOrderPayload = {
+export type BaseOrderLifecyclePayload = BaseOrderPayload & {
+  orderType: UiOrderType
+}
+
+export type BaseOrderPayload = {
   chainId: SupportedChainId
-  order: EnrichedOrder
+  order: Omit<EnrichedOrder, 'settlementContract'>
+}
+
+export type BaseOrdersPayload = {
+  chainId: SupportedChainId
+  orders: Omit<EnrichedOrder, 'settlementContract'>[]
+}
+
+export type OnBridgingSuccessPayload = Omit<CrossChainOrder, 'provider'>
+
+export type OnCancelledOrderPayload = BaseOrderLifecyclePayload & {
+  transactionHash?: string
+}
+
+export type OnExpiredOrderPayload = BaseOrderLifecyclePayload
+
+export type OnFulfilledOrderPayload = BaseOrderLifecyclePayload & {
+  bridgeOrder?: BridgeOrderDataSerialized
 }
 
 export type OnPostedOrderPayload = {
@@ -12,6 +34,10 @@ export type OnPostedOrderPayload = {
   owner: string
   kind: OrderKind
   orderType: UiOrderType
+  quoteId?: string | number
+  isCrossChain?: boolean
+  destinationChainId?: number
+  partiallyFillable?: boolean
   inputAmount: bigint
   outputAmount: bigint
   inputToken: TokenInfo
@@ -21,12 +47,6 @@ export type OnPostedOrderPayload = {
   isEthFlow?: boolean
 }
 
-export type OnFulfilledOrderPayload = BaseOrderPayload
-
-export type OnCancelledOrderPayload = BaseOrderPayload & {
-  transactionHash?: string
+export type OnPresignedOrderPayload = BaseOrderPayload & {
+  bridgeOrder?: BridgeOrderDataSerialized
 }
-
-export type OnExpiredOrderPayload = BaseOrderPayload
-
-export type OnPresignedOrderPayload = BaseOrderPayload

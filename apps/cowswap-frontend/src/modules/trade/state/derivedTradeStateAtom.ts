@@ -1,13 +1,20 @@
 import { atom } from 'jotai'
 
-import { advancedOrdersDerivedStateAtom } from 'modules/advancedOrders'
-import { limitOrdersDerivedStateAtom } from 'modules/limitOrders'
-import { swapDerivedStateAtom } from 'modules/swap'
-import { yieldDerivedStateAtom } from 'modules/yield'
+/**
+ * TODO: Trade module should not depend on trading widget modules!
+ * The dependency must be inverted.
+ * For now I only changed imports to specific files to avoid circular dependencies.
+ */
+import { advancedOrdersDerivedStateAtom } from 'modules/advancedOrders/state/advancedOrdersAtom'
+import { limitOrdersDerivedStateAtom } from 'modules/limitOrders/state/limitOrdersRawStateAtom'
+import { swapDerivedStateAtom } from 'modules/swap/state/swapRawStateAtom'
+import { yieldDerivedStateAtom } from 'modules/yield/state/yieldRawStateAtom'
+
+import { TradeType } from 'common/modules/tradeNavigation'
 
 import { tradeTypeAtom } from './tradeTypeAtom'
 
-import { TradeDerivedState, TradeType } from '../types'
+import { TradeDerivedState } from '../types'
 
 export const derivedTradeStateAtom = atom<TradeDerivedState | null>((get) => {
   const tradeTypeInfo = get(tradeTypeAtom)

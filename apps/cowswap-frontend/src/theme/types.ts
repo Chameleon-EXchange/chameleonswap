@@ -1,7 +1,16 @@
+import { CowProtocolTheme } from '@cowprotocol/ui'
+
 declare module 'styled-components' {
-  export interface CowSwapDefaultTheme extends CowProtocolTheme {
-    isInjectedWidgetMode: boolean
+  /**
+   * CoWSwap-specific theme extension that adds widget functionality
+   * on top of the base CowProtocolTheme.
+   */
+  export interface CoWSwapTheme extends CowProtocolTheme {
+    /** Properties specific to CoWSwap widget functionality */
+    isWidget: boolean
+    isIframe: boolean
   }
 
-  export interface DefaultTheme extends CowSwapDefaultTheme {}
+  // Use CoWSwapTheme as the default theme for styled-components in this app
+  export interface DefaultTheme extends CoWSwapTheme {}
 }

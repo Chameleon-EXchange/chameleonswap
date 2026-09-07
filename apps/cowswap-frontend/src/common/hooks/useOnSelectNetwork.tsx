@@ -1,3 +1,4 @@
+// TODO: Don't use 'modules' import
 import { useCallback } from 'react'
 
 import { getChainInfo } from '@cowprotocol/common-const'
@@ -6,52 +7,64 @@ import { SupportedChainId } from '@cowprotocol/cow-sdk'
 import { useAddSnackbar } from '@cowprotocol/snackbars'
 import { useSwitchNetwork } from '@cowprotocol/wallet'
 
+import { Trans } from '@lingui/react/macro'
+
 import { useCloseModal } from 'legacy/state/application/hooks'
 import { ApplicationModal } from 'legacy/state/application/reducer'
 
-import { useSetWalletConnectionError } from 'modules/wallet/hooks/useSetWalletConnectionError'
-
+import { CrossChainFamilySwitchState, useCrossChainFamilySwitch } from './useCrossChainFamilySwitch'
 import { useLegacySetChainIdToUrl } from './useLegacySetChainIdToUrl'
 
 export function useOnSelectNetwork(): (chainId: SupportedChainId, skipClose?: boolean) => Promise<void> {
   const addSnackbar = useAddSnackbar()
   const closeModal = useCloseModal(ApplicationModal.NETWORK_SELECTOR)
   const setChainIdToUrl = useLegacySetChainIdToUrl()
-  const setWalletConnectionError = useSetWalletConnectionError()
   const switchNetwork = useSwitchNetwork()
+  const handleCrossChainFamilySwitch = useCrossChainFamilySwitch()
 
   return useCallback(
     async (targetChain: SupportedChainId, skipClose?: boolean) => {
+      // Switching between EVM and non-EVM networks requires a different wallet and is handled
+      // separately (confirm + disconnect + reconnect) instead of a regular network switch.
+      const switchChainState = await handleCrossChainFamilySwitch(targetChain, skipClose)
+
+      if (switchChainState === CrossChainFamilySwitchState.NOT_CONFIRMED) {
+        return
+      }
+
       try {
-        setWalletConnectionError(undefined)
         await switchNetwork(targetChain)
 
         setChainIdToUrl(targetChain)
-      } catch (error: any) {
-        console.error('Failed to switch networks', error)
+        // TODO: Replace any with proper type definitions
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } catch (_error: any) {
+        console.error('Failed to switch networks', _error)
+        const error = _error.originalError ?? _error
 
-        if (isRejectRequestProviderError(error)) {
+        const causeIsRejection = !error.cause || isRejectRequestProviderError(error.cause)
+        if (isRejectRequestProviderError(error) && causeIsRejection) {
           return
         }
+
+        const chainInfoLabel = getChainInfo(targetChain)?.label
 
         addSnackbar({
           id: 'failed-network-switch',
           icon: 'alert',
           content: (
-            <>
-              Failed to switch networks from the Chameleon swap Interface. In order to use Chameleon swap on{' '}
-              {getChainInfo(targetChain)?.label}, you must change the network in your wallet.
-            </>
+            <Trans>
+              Failed to switch networks from the CoW Swap Interface. In order to use CoW Swap on {chainInfoLabel}, you
+              must change the network in your wallet.
+            </Trans>
           ),
         })
-
-        setWalletConnectionError(error.message)
       }
 
       if (!skipClose) {
         closeModal()
       }
     },
-    [switchNetwork, setWalletConnectionError, addSnackbar, closeModal, setChainIdToUrl],
+    [handleCrossChainFamilySwitch, switchNetwork, addSnackbar, closeModal, setChainIdToUrl],
   )
 }

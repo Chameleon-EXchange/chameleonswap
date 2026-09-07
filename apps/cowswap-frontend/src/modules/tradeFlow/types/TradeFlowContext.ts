@@ -1,24 +1,58 @@
-import type { Erc20, GPv2Settlement, Weth } from '@cowprotocol/abis'
+import type { Config } from 'wagmi'
+
+import { OrderKind, QuoteAndPost, SupportedChainId } from '@cowprotocol/cow-sdk'
+import type { Currency, CurrencyAmount } from '@cowprotocol/currency'
 import type { Command } from '@cowprotocol/types'
+import { BridgeOrderData, BridgeQuoteAmounts } from '@cowprotocol/types'
 import type { SendBatchTxCallback } from '@cowprotocol/wallet'
-import type { Currency, CurrencyAmount } from '@uniswap/sdk-core'
+
+import { SigningSteps } from 'entities/trade'
 
 import type { AppDispatch } from 'legacy/state'
+import type { TransactionAdder } from 'legacy/state/enhancedTransactions/hooks'
 import type { PostOrderParams } from 'legacy/utils/trade'
 
 import type { TypedAppDataHooks } from 'modules/appData'
 import type { GeneratePermitHook, IsTokenPermittableResult, useGetCachedPermit } from 'modules/permit'
 import type { TradeConfirmActions } from 'modules/trade'
 import type { TradeFlowAnalyticsContext } from 'modules/trade/utils/tradeFlowAnalytics'
+import type { TradeQuoteState } from 'modules/tradeQuote'
 
-export enum FlowType {
-  REGULAR = 'REGULAR',
-  EOA_ETH_FLOW = 'EOA_ETH_FLOW',
-  SAFE_BUNDLE_APPROVAL = 'SAFE_BUNDLE_APPROVAL',
-  SAFE_BUNDLE_ETH = 'SAFE_BUNDLE_ETH',
+import type { WethContractData } from 'common/hooks/useContract'
+
+export interface SafeBundleFlowContext {
+  spender: string
+  sendBatchTransactions: SendBatchTxCallback
+  wrappedNativeContract: WethContractData
+  needsApproval: boolean
+  tokenAddress: string
+  amountToApprove: CurrencyAmount<Currency>
+  maximumSendSellAmount: CurrencyAmount<Currency>
+}
+
+export interface SolanaTradeFlowContext {
+  tradeQuote: QuoteAndPost
+  account: string
+  context: {
+    chainId: SupportedChainId
+    inputAmount: CurrencyAmount<Currency>
+    outputAmount: CurrencyAmount<Currency>
+    orderKind: OrderKind
+    validTo: number
+  }
+  callbacks: {
+    closeModals: Command
+    dispatch: AppDispatch
+    addTransaction: TransactionAdder
+  }
+  tradeConfirmActions: TradeConfirmActions
+  swapFlowAnalyticsContext: TradeFlowAnalyticsContext
 }
 
 export interface TradeFlowContext {
+  tradeQuote: QuoteAndPost
+  tradeQuoteState: TradeQuoteState
+  bridgeQuoteAmounts: BridgeQuoteAmounts | null
   context: {
     chainId: number
     inputAmount: CurrencyAmount<Currency>
@@ -31,21 +65,23 @@ export interface TradeFlowContext {
     closeModals: Command
     getCachedPermit: ReturnType<typeof useGetCachedPermit>
     dispatch: AppDispatch
+    addBridgeOrder: (order: BridgeOrderData) => void
+    setSigningStep(stepNumber: string, step: SigningSteps): void
   }
   tradeConfirmActions: TradeConfirmActions
   swapFlowAnalyticsContext: TradeFlowAnalyticsContext
   orderParams: PostOrderParams
-  contract: GPv2Settlement
+  config: Config
   permitInfo: IsTokenPermittableResult
   generatePermitHook: GeneratePermitHook
+  permitAmountToSign?: bigint
   typedHooks?: TypedAppDataHooks
 }
 
-export interface SafeBundleFlowContext {
-  settlementContract: GPv2Settlement
-  spender: string
-  sendBatchTransactions: SendBatchTxCallback
-  wrappedNativeContract: Weth
-  needsApproval: boolean
-  erc20Contract: Erc20
+export enum FlowType {
+  REGULAR = 'REGULAR',
+  EOA_ETH_FLOW = 'EOA_ETH_FLOW',
+  SAFE_BUNDLE_APPROVAL = 'SAFE_BUNDLE_APPROVAL',
+  SAFE_BUNDLE_ETH = 'SAFE_BUNDLE_ETH',
+  SOLANA_SWAP = 'SOLANA_SWAP',
 }

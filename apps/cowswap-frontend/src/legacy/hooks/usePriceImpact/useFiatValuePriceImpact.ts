@@ -1,21 +1,24 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { ONE_HUNDRED_PERCENT } from '@cowprotocol/common-const'
 import { useDebounce } from '@cowprotocol/common-hooks'
-import { getWrappedToken } from '@cowprotocol/common-utils'
-import { Currency, CurrencyAmount, Percent } from '@uniswap/sdk-core'
+import { FractionUtils, getWrappedToken } from '@cowprotocol/common-utils'
+import { Fraction, Percent } from '@cowprotocol/currency'
 
-import JSBI from 'jsbi'
 import ms from 'ms.macro'
 
-import { useDerivedTradeState } from 'modules/trade/hooks/useDerivedTradeState'
+import { useDerivedTradeState } from 'modules/trade'
+import { useTradeQuote } from 'modules/tradeQuote'
 import { useTradeUsdAmounts } from 'modules/usdAmount'
 
 import { useSafeMemo } from 'common/hooks/useSafeMemo'
 
-const TRADE_SET_UP_DEBOUNCE_TIME = ms`100ms`
+import { logPriceImpact } from './logger'
 
-export function useFiatValuePriceImpact() {
+const TRADE_SET_UP_DEBOUNCE_TIME = ms`100ms`
+const PRICE_IMPACT_LOADING_TIMEOUT = ms`15s`
+
+export function useFiatValuePriceImpact(): { priceImpact: Percent | undefined; isLoading: boolean } | null {
   const state = useDerivedTradeState()
   const { inputCurrencyAmount, outputCurrencyAmount, inputCurrency, outputCurrency } = state || {}
 
@@ -29,25 +32,64 @@ export function useFiatValuePriceImpact() {
     outputAmount: { value: fiatValueOutput, isLoading: outputIsLoading },
   } = useTradeUsdAmounts(inputCurrencyAmount, outputCurrencyAmount, inputToken, outputToken)
 
-  const isLoading = inputIsLoading || outputIsLoading
+  const { isLoading: isQuoteLoading, hasParamsChanged: quoteParamsChanged, fetchParams } = useTradeQuote()
+
+  // Bumps on every genuine quote request (see `doQuotePolling`). Used to re-arm the timeout below.
+  const quoteFetchStartTimestamp = fetchParams?.fetchStartTimestamp
+
+  // Trade-quote signals indicate the current output amount is stale (token just changed
+  // or a fresh quote is in flight). Compute price impact only once the quote catches up,
+  // otherwise we'd display a huge nonsense % derived from mismatched in/out amounts.
+  const isLoading = inputIsLoading || outputIsLoading || isQuoteLoading || quoteParamsChanged
+  const [hasLoadingTimedOut, setHasLoadingTimedOut] = useState(false)
+
+  // Restart the safety-valve timeout on a token-pair change OR whenever a new quote request begins
+  // (`quoteFetchStartTimestamp`, which bumps per fetch). Keying it off the `quoteParamsChanged`
+  // boolean instead left `hasLoadingTimedOut` stuck true once it had timed out: a second changed-
+  // params quote for the same pair keeps the flag `true`, so the effect never re-ran and the stale
+  // value rendered immediately. The per-fetch timestamp re-arms on every genuinely new quote, while
+  // plain loading flicker (no new fetch) still lets a stuck quote time out.
+  useEffect(() => {
+    logPriceImpact.debug(`Price impact timeout reset`)
+    setHasLoadingTimedOut(false)
+    if (!isTradeSetUp) return
+
+    const timeoutId = setTimeout(() => {
+      setHasLoadingTimedOut(true)
+      logPriceImpact.warn(`Price impact loading timed out after ${PRICE_IMPACT_LOADING_TIMEOUT / 1000}s`)
+    }, PRICE_IMPACT_LOADING_TIMEOUT)
+
+    return () => clearTimeout(timeoutId)
+  }, [isTradeSetUp, inputToken, outputToken, quoteFetchStartTimestamp])
 
   return useSafeMemo(() => {
     // Don't calculate price impact if trade is not set up (both trade assets are not set)
     if (!isTradeSetUp) return null
 
-    const priceImpact = computeFiatValuePriceImpact(fiatValueInput, fiatValueOutput)
+    const stillLoading = isLoading && !hasLoadingTimedOut
 
-    return { priceImpact, isLoading }
-  }, [isTradeSetUp, fiatValueInput, fiatValueOutput, isLoading])
+    // While a fresh quote is loading, don't expose the stale value at all — consumers
+    // hide the percentage when `priceImpact` is undefined, leaving just the spinner.
+    if (stillLoading) {
+      return { priceImpact: undefined, isLoading: true }
+    }
+
+    const priceImpact = computeFiatValuePriceImpact(
+      fiatValueInput ? FractionUtils.fractionLikeToFraction(fiatValueInput) : null,
+      fiatValueOutput ? FractionUtils.fractionLikeToFraction(fiatValueOutput) : null,
+    )
+
+    return { priceImpact, isLoading: false }
+  }, [isTradeSetUp, fiatValueInput, fiatValueOutput, isLoading, hasLoadingTimedOut])
 }
 
 function computeFiatValuePriceImpact(
-  fiatValueInput: CurrencyAmount<Currency> | undefined | null,
-  fiatValueOutput: CurrencyAmount<Currency> | undefined | null
+  fiatValueInput: Fraction | null,
+  fiatValueOutput: Fraction | null,
 ): Percent | undefined {
   if (!fiatValueOutput || !fiatValueInput) return undefined
-  if (!fiatValueInput.currency.equals(fiatValueOutput.currency)) return undefined
-  if (JSBI.equal(fiatValueInput.quotient, JSBI.BigInt(0))) return undefined
+  const fiatValueInputNum = +fiatValueInput.toFixed(6)
+  if (!fiatValueInputNum || fiatValueInputNum <= 0) return undefined
 
   const pct = ONE_HUNDRED_PERCENT.subtract(fiatValueOutput.divide(fiatValueInput))
 

@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 
-import { latest } from '@cowprotocol/app-data'
+import { getCurrencyAddress } from '@cowprotocol/common-utils'
+import { cowAppDataLatestScheme } from '@cowprotocol/cow-sdk'
 import { PermitHookData } from '@cowprotocol/permit-utils'
 import { useIsSmartContractWallet } from '@cowprotocol/wallet'
 
+import { useHooksStateWithSimulatedGas } from 'entities/orderHooks/useHooksStateWithSimulatedGas'
 import { Nullish } from 'types'
 
-import { useHooksStateWithSimulatedGas } from 'modules/hooksStore'
 import { useAccountAgnosticPermitHookData } from 'modules/permit'
 import { useDerivedTradeState, useHasTradeEnoughAllowance, useIsHooksTradeType, useIsSellNative } from 'modules/trade'
 
@@ -15,20 +16,7 @@ import { TypedAppDataHooks, TypedCowHook } from '../types'
 import { buildAppDataHooks } from '../utils/buildAppDataHooks'
 import { cowHookToTypedCowHook } from '../utils/typedHooks'
 
-type OrderInteractionHooks = latest.OrderInteractionHooks
-
-function useAgnosticPermitDataIfUserHasNoAllowance(): Nullish<PermitHookData> {
-  const hookData = useAccountAgnosticPermitHookData()
-
-  // Remove permitData if the user has enough allowance for the current trade
-  const hasTradeEnoughAllowance = useHasTradeEnoughAllowance()
-
-  if (hasTradeEnoughAllowance === undefined) return undefined
-
-  const shouldUsePermit = hasTradeEnoughAllowance === false
-
-  return shouldUsePermit ? hookData : null
-}
+type OrderInteractionHooks = cowAppDataLatestScheme.OrderInteractionHooks
 
 export function AppDataHooksUpdater(): null {
   const tradeState = useDerivedTradeState()
@@ -47,6 +35,18 @@ export function AppDataHooksUpdater(): null {
   const isNativeSell = useIsSellNative()
 
   const [permitHook, setPermitHook] = useState<TypedCowHook | undefined>(undefined)
+
+  const inputCurrencyAddress = tradeState?.inputCurrency ? getCurrencyAddress(tradeState.inputCurrency) : undefined
+
+  /**
+   * Reset appDataHooks every time sellToken changes
+   */
+  useEffect(() => {
+    if (!inputCurrencyAddress) return
+
+    updateAppDataHooks(undefined)
+    setPermitHook(undefined)
+  }, [inputCurrencyAddress, updateAppDataHooks])
 
   useEffect(() => {
     const preInteractionHooks = (preHooks || []).map<TypedCowHook>((hookDetails) =>
@@ -111,4 +111,17 @@ export function AppDataHooksUpdater(): null {
   }, [permitData, isSmartContractWallet])
 
   return null
+}
+
+function useAgnosticPermitDataIfUserHasNoAllowance(): Nullish<PermitHookData> {
+  const hookData = useAccountAgnosticPermitHookData()
+
+  // Remove permitData if the user has enough allowance for the current trade
+  const hasTradeEnoughAllowance = useHasTradeEnoughAllowance()
+
+  if (hasTradeEnoughAllowance === undefined) return undefined
+
+  const shouldUsePermit = hasTradeEnoughAllowance === false
+
+  return shouldUsePermit ? hookData : null
 }

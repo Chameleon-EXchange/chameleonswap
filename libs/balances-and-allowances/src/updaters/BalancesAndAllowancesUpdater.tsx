@@ -1,53 +1,88 @@
-import { useSetAtom } from 'jotai'
-import { useEffect, useMemo } from 'react'
+import { ReactNode, useEffect, useMemo } from 'react'
 
 import { LpToken, NATIVE_CURRENCIES } from '@cowprotocol/common-const'
 import type { SupportedChainId } from '@cowprotocol/cow-sdk'
-import { useAllActiveTokens } from '@cowprotocol/tokens'
+import { useAllActiveTokens, useTokensByAddressMapForChain } from '@cowprotocol/tokens'
 
 import ms from 'ms.macro'
 
 import { BalancesCacheUpdater } from './BalancesCacheUpdater'
+import { BalancesResetUpdater } from './BalancesResetUpdater'
+import { BalancesRpcCallUpdater } from './BalancesRpcCallUpdater'
 
+import { BASIC_BALANCES_QUERY_CONFIG } from '../consts'
 import { useNativeTokenBalance } from '../hooks/useNativeTokenBalance'
-import { usePersistBalancesAndAllowances } from '../hooks/usePersistBalancesAndAllowances'
-import { balancesAtom } from '../state/balancesAtom'
+import { useSwrConfigWithPauseForNetwork } from '../hooks/useSwrConfigWithPauseForNetwork'
+import { useUpdateTokenBalance } from '../hooks/useUpdateTokenBalance'
 
 // A small gap between balances and allowances refresh intervals is needed to avoid high load to the node at the same time
-const BALANCES_SWR_CONFIG = { refreshInterval: ms`31s` }
-const ALLOWANCES_SWR_CONFIG = { refreshInterval: ms`33s` }
+const RPC_BALANCES_QUERY_CONFIG = { ...BASIC_BALANCES_QUERY_CONFIG, refetchInterval: ms`31s` }
+
+const EMPTY_TOKENS: string[] = []
 
 export interface BalancesAndAllowancesUpdaterProps {
   account: string | undefined
   chainId: SupportedChainId
+  excludedTokens: Set<string>
+  // Increment to force an immediate refetch (e.g. after an order is filled)
+  refreshTrigger?: number
 }
-export function BalancesAndAllowancesUpdater({ account, chainId }: BalancesAndAllowancesUpdaterProps) {
-  const setBalances = useSetAtom(balancesAtom)
+
+export function BalancesAndAllowancesUpdater({
+  account,
+  chainId,
+  excludedTokens,
+  refreshTrigger,
+}: BalancesAndAllowancesUpdaterProps): ReactNode {
+  const updateTokenBalance = useUpdateTokenBalance()
 
   const allTokens = useAllActiveTokens()
-  const { data: nativeTokenBalance } = useNativeTokenBalance(account)
 
-  const tokenAddresses = useMemo(
-    () => allTokens.filter((token) => !(token instanceof LpToken)).map((token) => token.address),
-    [allTokens],
-  )
+  const targetChainTokensMap = useTokensByAddressMapForChain(chainId)
+  const nativeTokenBalanceData = useNativeTokenBalance(account, chainId)
+  const nativeTokenBalance = nativeTokenBalanceData.data?.value
 
-  usePersistBalancesAndAllowances({
-    account,
-    chainId,
-    tokenAddresses,
-    setLoadingState: true,
-    balancesSwrConfig: BALANCES_SWR_CONFIG,
-    allowancesSwrConfig: ALLOWANCES_SWR_CONFIG,
-  })
+  const tokenAddresses = useMemo(() => {
+    if (allTokens.chainId !== chainId) {
+      // Use tokens from target chain's token lists when viewing a different chain
+      const addresses = Object.keys(targetChainTokensMap)
+      if (addresses.length > 0) {
+        return addresses
+      }
+      return EMPTY_TOKENS
+    }
+
+    return allTokens.tokens.reduce<string[]>((acc, token) => {
+      if (!(token instanceof LpToken)) {
+        acc.push(token.address)
+      }
+      return acc
+    }, [])
+  }, [allTokens, chainId, targetChainTokensMap])
+
+  const rpcBalancesQueryConfig = useSwrConfigWithPauseForNetwork(chainId, account, RPC_BALANCES_QUERY_CONFIG)
 
   // Add native token balance to the store as well
   useEffect(() => {
     const nativeToken = NATIVE_CURRENCIES[chainId]
-    const nativeBalanceState = nativeTokenBalance ? { [nativeToken.address.toLowerCase()]: nativeTokenBalance } : {}
 
-    setBalances((state) => ({ ...state, values: { ...state.values, ...nativeBalanceState } }))
-  }, [nativeTokenBalance, chainId, setBalances])
+    if (nativeToken && typeof nativeTokenBalance !== 'undefined') {
+      updateTokenBalance(nativeToken.address, nativeTokenBalance)
+    }
+  }, [nativeTokenBalance, chainId, updateTokenBalance])
 
-  return account ? <BalancesCacheUpdater chainId={chainId} /> : null
+  return (
+    <>
+      <BalancesRpcCallUpdater
+        account={account}
+        chainId={chainId}
+        tokenAddresses={tokenAddresses}
+        balancesQueryConfig={rpcBalancesQueryConfig}
+        refreshTrigger={refreshTrigger}
+        setLoadingState
+      />
+      <BalancesResetUpdater chainId={chainId} account={account} />
+      <BalancesCacheUpdater chainId={chainId} account={account} excludedTokens={excludedTokens} />
+    </>
+  )
 }

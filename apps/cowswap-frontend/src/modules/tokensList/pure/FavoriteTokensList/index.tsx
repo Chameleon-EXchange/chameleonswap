@@ -1,43 +1,42 @@
-import { TokenWithLogo } from '@cowprotocol/common-const'
-import { TokenLogo } from '@cowprotocol/tokens'
-import { HelpTooltip, TokenSymbol } from '@cowprotocol/ui'
+import { ReactNode } from 'react'
 
+import { TokenWithLogo } from '@cowprotocol/common-const'
+import { getTokenId } from '@cowprotocol/cow-sdk'
+
+import { Trans } from '@lingui/react/macro'
+
+import { FavoriteTokenItem } from './FavoriteTokenItem'
+import { FavoriteTokensTooltip } from './FavoriteTokensTooltip'
 import * as styledEl from './styled'
+
+import { SelectTokenContext } from '../../types'
 
 export interface FavoriteTokensListProps {
   tokens: TokenWithLogo[]
+  selectTokenContext: SelectTokenContext
   hideTooltip?: boolean
-  selectedToken?: string
-
-  onSelectToken(token: TokenWithLogo): void
 }
 
-export function FavoriteTokensList(props: FavoriteTokensListProps) {
-  const { tokens, hideTooltip, selectedToken, onSelectToken } = props
+export function FavoriteTokensList(props: FavoriteTokensListProps): ReactNode {
+  const { tokens, selectTokenContext, hideTooltip } = props
+
+  if (!tokens.length) {
+    return null
+  }
 
   return (
-    <div>
-      <styledEl.Header>
-        <h4>Favorite tokens</h4>
-        {!hideTooltip && <HelpTooltip text="Your favorite saved tokens. Edit this list in your account page." />}
-      </styledEl.Header>
+    <styledEl.Section data-testid="favorite-tokens-section">
+      <styledEl.TitleRow>
+        <styledEl.Title>
+          <Trans>Favorite tokens</Trans>
+        </styledEl.Title>
+        {!hideTooltip && <FavoriteTokensTooltip />}
+      </styledEl.TitleRow>
       <styledEl.List>
-        {tokens.map((token) => {
-          const isTokenSelected = token.address.toLowerCase() === selectedToken?.toLowerCase()
-
-          return (
-            <styledEl.TokensItem
-              key={token.address}
-              data-address={token.address.toLowerCase()}
-              disabled={isTokenSelected}
-              onClick={() => onSelectToken(token)}
-            >
-              <TokenLogo token={token} size={24} />
-              <TokenSymbol token={token} />
-            </styledEl.TokensItem>
-          )
-        })}
+        {tokens.map((token) => (
+          <FavoriteTokenItem key={getTokenId(token)} token={token} selectTokenContext={selectTokenContext} />
+        ))}
       </styledEl.List>
-    </div>
+    </styledEl.Section>
   )
 }

@@ -1,54 +1,65 @@
+import { ReactNode } from 'react'
+
+import { isSellOrder } from '@cowprotocol/common-utils'
 import { SupportedChainId } from '@cowprotocol/cow-sdk'
 import { TokenInfo } from '@cowprotocol/types'
 
+import { Trans } from '@lingui/react/macro'
+
 import { useOrder } from 'legacy/state/orders/hooks'
 
+import { useNotifyAffiliateLinkedCode } from 'modules/affiliate'
+
+import { useGetExecutedBridgeSummary } from 'common/hooks/useGetExecutedBridgeSummary'
 import { useGetSurplusData } from 'common/hooks/useGetSurplusFiatValue'
-import { getExecutedSummaryData } from 'utils/getExecutedSummaryData'
+import { OrderSummary } from 'common/pure/OrderSummary'
+import { OrderSummaryTemplateProps } from 'common/pure/OrderSummary/summaryTemplates'
 
 import * as styledEl from './styled'
-
-import { OrderSummary } from '../../pure/OrderSummary'
-import { OrderSummaryTemplateProps } from '../../pure/OrderSummary/summaryTemplates'
-
-function FulfilledSummaryTemplate({ inputAmount, outputAmount }: OrderSummaryTemplateProps) {
-  return (
-    <>
-      Traded {inputAmount} for a total of {outputAmount}
-    </>
-  )
-}
 
 interface ExecutedSummaryProps {
   chainId: SupportedChainId
   orderUid: string
 }
 
-export function FulfilledOrderInfo({ chainId, orderUid }: ExecutedSummaryProps) {
+export function FulfilledOrderInfo({ chainId, orderUid }: ExecutedSummaryProps): ReactNode {
   const order = useOrder({ chainId, id: orderUid })
   const surplusData = useGetSurplusData(order)
+  useNotifyAffiliateLinkedCode({ order, chainId })
 
   const { surplusFiatValue, showFiatValue, surplusToken, surplusAmount } = surplusData
 
-  if (!order) return null
+  const { formattedFilledAmount, formattedSwappedAmount } = useGetExecutedBridgeSummary(order) || {}
 
-  const { formattedFilledAmount, formattedSwappedAmount } = getExecutedSummaryData(order)
+  if (!order || !formattedSwappedAmount || !formattedFilledAmount) return null
+
+  const inputToken = isSellOrder(order.kind) ? order.inputToken : formattedSwappedAmount.currency
+  const outputToken = isSellOrder(order.kind) ? formattedSwappedAmount.currency : order.outputToken
+
+  const sellAmount = isSellOrder(order.kind)
+    ? formattedFilledAmount.quotient.toString()
+    : formattedSwappedAmount.quotient.toString()
+  const buyAmount = isSellOrder(order.kind)
+    ? formattedSwappedAmount.quotient.toString()
+    : formattedFilledAmount.quotient.toString()
 
   return (
     <>
-      {formattedFilledAmount.currency && formattedSwappedAmount.currency && (
+      {formattedFilledAmount?.currency && (
         <OrderSummary
           kind={order.kind}
-          inputToken={formattedFilledAmount.currency as TokenInfo}
-          outputToken={formattedSwappedAmount.currency as TokenInfo}
-          sellAmount={formattedFilledAmount.quotient.toString()}
-          buyAmount={formattedSwappedAmount.quotient.toString()}
+          inputToken={inputToken as TokenInfo}
+          outputToken={outputToken as TokenInfo}
+          sellAmount={sellAmount}
+          buyAmount={buyAmount}
           customTemplate={FulfilledSummaryTemplate}
         />
       )}
       {!!surplusAmount && (
         <styledEl.SurplusWrapper>
-          <span>Order surplus: </span>
+          <span>
+            <Trans>Order surplus</Trans>:{' '}
+          </span>
           <styledEl.SurplusAmount>
             <styledEl.StyledTokenAmount amount={surplusAmount} tokenSymbol={surplusToken} />
             {showFiatValue && (
@@ -59,6 +70,16 @@ export function FulfilledOrderInfo({ chainId, orderUid }: ExecutedSummaryProps) 
           </styledEl.SurplusAmount>
         </styledEl.SurplusWrapper>
       )}
+    </>
+  )
+}
+
+function FulfilledSummaryTemplate({ inputAmount, outputAmount }: OrderSummaryTemplateProps): ReactNode {
+  return (
+    <>
+      <Trans>
+        Traded {inputAmount} for a total of {outputAmount}
+      </Trans>
     </>
   )
 }

@@ -1,12 +1,14 @@
 import { useCallback } from 'react'
 
 import { FractionUtils } from '@cowprotocol/common-utils'
-import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
+import { Currency, CurrencyAmount } from '@cowprotocol/currency'
 
 import { Field } from 'legacy/state/types'
 
 import { useUpdateYieldRawState } from './useUpdateYieldRawState'
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function useUpdateCurrencyAmount() {
   const updateYieldState = useUpdateYieldRawState()
 

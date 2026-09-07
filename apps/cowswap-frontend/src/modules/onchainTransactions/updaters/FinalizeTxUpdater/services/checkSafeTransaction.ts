@@ -9,6 +9,8 @@ import { CheckEthereumTransactions } from '../types'
 
 const SAFE_TX_NOT_FOUND_ERROR = 'No MultisigTransaction matches the given query'
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function checkSafeTransaction(transaction: EnhancedTransactionDetails, params: CheckEthereumTransactions) {
   const { chainId, getTxSafeInfo, dispatch, safeInfo, getReceipt, lastBlockNumber } = params
   const { hash, receipt } = transaction
@@ -21,18 +23,18 @@ export function checkSafeTransaction(transaction: EnhancedTransactionDetails, pa
       const { isExecuted, transactionHash } = safeTransaction
       const safeNonce = safeInfo?.nonce
 
-      if (typeof safeNonce === 'number' && safeNonce > safeTransaction.nonce && !isExecuted) {
+      if (typeof safeNonce === 'number' && BigInt(safeNonce) > BigInt(safeTransaction.nonce) && !isExecuted) {
         handleTransactionReplacement(transaction, params)
 
         return
       }
 
       // If the safe transaction is executed, but we don't have a tx receipt yet
-      if (isExecuted && !receipt) {
+      if (isExecuted && transactionHash && !receipt) {
         // Get the ethereum tx receipt
         console.log(
           '[FinalizeTxUpdater] Safe transaction is executed, but we have not fetched the receipt yet. Tx: ',
-          transactionHash
+          transactionHash,
         )
         // Get the transaction receipt
         const { promise: receiptPromise } = getReceipt(transactionHash)

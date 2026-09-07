@@ -18,8 +18,8 @@
     }
   ],
   "orientation": "portrait",
-  "name": "Chameleon swap",
-  "short_name": "Chameleon swap",
+  "name": "CoW Swap",
+  "short_name": "CoW Swap",
   "start_url": ".",
   "theme_color": "#ffffff"
 }

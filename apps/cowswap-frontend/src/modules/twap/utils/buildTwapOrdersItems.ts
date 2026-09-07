@@ -1,21 +1,38 @@
+import type { Hex } from 'viem'
+
 import { SupportedChainId } from '@cowprotocol/cow-sdk'
+
+import { TwapOrdersList } from 'entities/twap'
 
 import { getTwapOrderStatus } from './getTwapOrderStatus'
 import { parseTwapOrderStruct } from './parseTwapOrderStruct'
 
-import { TwapOrdersExecution, TwapOrdersExecutionMap } from '../hooks/useTwapOrdersExecutions'
-import { TwapOrdersList } from '../state/twapOrdersListAtom'
-import { TwapOrderItem, TwapOrderInfo, TwapOrdersAuthResult, TwapOrdersSafeData } from '../types'
+import { DEFAULT_TWAP_EXECUTION } from '../const'
+import { TwapOrdersExecutionMap } from '../hooks/useTwapOrdersExecutions'
+import {
+  type TwapOrderInfo,
+  type TwapOrderItem,
+  type TwapOrdersAuthResult,
+  type TwapOrdersExecution,
+  type TwapOrdersSafeData,
+} from '../types'
 
 export function buildTwapOrdersItems(
   chainId: SupportedChainId,
   safeAddress: string,
   ordersInfo: TwapOrderInfo[],
   ordersAuthResult: TwapOrdersAuthResult,
-  twapOrderExecutions: TwapOrdersExecutionMap
+  twapOrderExecutions: TwapOrdersExecutionMap,
 ): TwapOrdersList {
   return ordersInfo.reduce<TwapOrdersList>((acc, { safeData, id }) => {
-    acc[id] = getTwapOrderItem(chainId, safeAddress, safeData, id, ordersAuthResult[id], twapOrderExecutions[id])
+    acc[id] = getTwapOrderItem(
+      chainId,
+      safeAddress,
+      safeData,
+      id as `0x${string}`,
+      ordersAuthResult[id],
+      twapOrderExecutions[id] ?? DEFAULT_TWAP_EXECUTION,
+    )
     return acc
   }, {})
 }
@@ -24,22 +41,29 @@ function getTwapOrderItem(
   chainId: SupportedChainId,
   safeAddress: string,
   safeData: TwapOrdersSafeData,
-  id: string,
+  id: Hex,
   authorized: boolean | undefined,
-  executionInfo: TwapOrdersExecution
+  executionInfo: TwapOrdersExecution,
 ): TwapOrderItem {
   const { conditionalOrderParams, safeTxParams } = safeData
   const { isExecuted, submissionDate, executionDate: _executionDate } = safeTxParams
 
   const executionDate = _executionDate ? new Date(_executionDate) : null
-  const order = parseTwapOrderStruct(conditionalOrderParams.staticInput)
-  const status = getTwapOrderStatus(order, isExecuted, executionDate, authorized, executionInfo)
+  const order = parseTwapOrderStruct(conditionalOrderParams.staticInput as `0x${string}`)
+  const status = getTwapOrderStatus({
+    execution: executionInfo,
+    executionDate,
+    isCancelled: authorized === false && isExecuted,
+    isWaitingForSignature: !isExecuted && authorized !== true,
+    order,
+  })
 
   return {
     order,
     status,
     chainId,
     safeAddress,
+    resolvedOwner: safeAddress,
     id,
     submissionDate,
     executedDate: _executionDate || undefined,

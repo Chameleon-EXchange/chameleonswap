@@ -1,8 +1,10 @@
 import { atom, useAtom } from 'jotai'
 import { useCallback, useState } from 'react'
 
-import { errorToString } from '@cowprotocol/common-utils'
+import { normalizeError } from '@cowprotocol/common-utils'
 import { ButtonOutlined, ExternalLink, LinkIcon, Loader } from '@cowprotocol/ui'
+
+import { Trans } from '@lingui/react/macro'
 
 import { ErrorText, ErrorWrapper, ExternalLinkContent, LoaderWrapper } from './styled'
 
@@ -22,6 +24,9 @@ function isSimulationSuccessful(res: TenderlySimulation | SimulationError): res 
 const tenderlySimulationLinksAtom = atom<Record<string, string | undefined>>({})
 const tenderlySimulationErrorsAtom = atom<Record<string, string | undefined>>({})
 
+// TODO: Break down this large function into smaller functions
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function TenderlySimulate({ hook }: TenderlySimulateProps) {
   const hookId = [hook.target, hook.callData, hook.gasLimit].join(':')
   const [simulationLinks, setSimulationLink] = useAtom(tenderlySimulationLinksAtom)
@@ -47,8 +52,9 @@ export function TenderlySimulate({ hook }: TenderlySimulateProps) {
       } else {
         setSimulationError({ [hookId]: response.error.message })
       }
-    } catch (error: any) {
-      setSimulationError({ [hookId]: errorToString(error) })
+    } catch (err: unknown) {
+      const error = normalizeError(err)
+      setSimulationError({ [hookId]: error.message })
     } finally {
       setIsLoading(false)
     }
@@ -66,7 +72,9 @@ export function TenderlySimulate({ hook }: TenderlySimulateProps) {
     return (
       <ErrorWrapper>
         <ErrorText>{simulationError}</ErrorText>
-        <ButtonOutlined onClick={onSimulate}>Retry</ButtonOutlined>
+        <ButtonOutlined onClick={onSimulate}>
+          <Trans>Retry</Trans>
+        </ButtonOutlined>
       </ErrorWrapper>
     )
   }
@@ -75,11 +83,18 @@ export function TenderlySimulate({ hook }: TenderlySimulateProps) {
     return (
       <ExternalLink href={simulationLink}>
         <ExternalLinkContent>
-          <span>Simulation report</span> <LinkIcon />
+          <span>
+            <Trans>Simulation report</Trans>
+          </span>{' '}
+          <LinkIcon />
         </ExternalLinkContent>
       </ExternalLink>
     )
   }
 
-  return <ButtonOutlined onClick={onSimulate}>Simulate</ButtonOutlined>
+  return (
+    <ButtonOutlined onClick={onSimulate}>
+      <Trans>Simulate</Trans>
+    </ButtonOutlined>
+  )
 }

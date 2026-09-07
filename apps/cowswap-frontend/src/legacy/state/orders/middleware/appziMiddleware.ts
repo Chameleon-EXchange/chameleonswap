@@ -6,6 +6,7 @@ import { isAnyOf } from '@reduxjs/toolkit'
 import { getSurveyType, isOrderInPendingTooLong, triggerAppziSurvey } from 'appzi'
 import { AnyAction, Dispatch, Middleware, MiddlewareAPI } from 'redux'
 
+import { getIsBridgeOrder } from 'common/utils/getIsBridgeOrder'
 import { getUiOrderType } from 'utils/orderUtils/getUiOrderType'
 
 import { AppState } from '../../index'
@@ -21,12 +22,14 @@ const isBatchCancelOrderAction = isAnyOf(OrderActions.cancelOrdersBatch)
 export const appziMiddleware: Middleware<Record<string, unknown>, AppState> = (store) => (next) => (action) => {
   if (isBatchFulfillOrderAction(action)) {
     // Shows NPS feedback (or attempts to) when there's a successful trade
-    const {
-      chainId,
-      orders: [{ uid }],
-    } = action.payload
+    const { chainId } = action.payload
+    const firstOrder = action.payload.orders[0]
 
-    _triggerAppzi(store, chainId, uid, { traded: true })
+    // Do not trigger Appzi for bridge orders
+    // They are handled in PendingBridgeOrdersUpdater
+    if (!getIsBridgeOrder(firstOrder)) {
+      _triggerAppzi(store, chainId, firstOrder.uid, { traded: true })
+    }
   } else if (isBatchExpireOrderAction(action)) {
     // Shows NPS feedback (or attempts to) when the order expired
     const {
@@ -76,12 +79,15 @@ export const appziMiddleware: Middleware<Record<string, unknown>, AppState> = (s
   return next(action)
 }
 
+// TODO: Add proper return type annotation
+// TODO: Reduce function complexity by extracting logic
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type, complexity
 function _triggerAppzi(
   store: MiddlewareAPI<Dispatch<AnyAction>>,
   chainId: ChainId,
   orderId: string,
   npsParams: Parameters<typeof triggerAppziSurvey>[0],
-  _order?: OrderActions.SerializedOrder | undefined
+  _order?: OrderActions.SerializedOrder | undefined,
 ) {
   const order = _order || getOrderByIdFromState(store.getState().orders[chainId], orderId)?.order
   const openSince = order?.openSince
@@ -111,14 +117,19 @@ function _triggerAppzi(
       account: order?.owner,
       pendingOrderIds: getPendingOrderIds(store, chainId).join(','),
     },
-    getSurveyType(uiOrderType)
+    getSurveyType(uiOrderType),
   )
 }
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 function getPendingOrderIds(store: MiddlewareAPI<Dispatch<AnyAction>>, chainId: ChainId) {
   return Object.keys(store.getState().orders[chainId]?.pending || {})
 }
 
+// TODO: Add proper return type annotation
+// TODO: Replace any with proper type definitions
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type, @typescript-eslint/no-explicit-any
 function getUiOrderTypeFromStore(store: MiddlewareAPI<Dispatch<AnyAction>>, chainId: any, id: any) {
   const orders = store.getState().orders[chainId]
   const order = getOrderByIdFromState(orders, id)?.order

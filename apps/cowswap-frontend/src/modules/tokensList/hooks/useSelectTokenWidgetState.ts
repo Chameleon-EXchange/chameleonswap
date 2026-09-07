@@ -1,7 +1,7 @@
-import { useAtomValue } from 'jotai/index'
+import { useAtomValue } from 'jotai'
 
-import { selectTokenWidgetAtom } from '../state/selectTokenWidgetAtom'
+import { selectTokenWidgetAtom, SelectTokenWidgetState } from '../state/selectTokenWidgetAtom'
 
-export function useSelectTokenWidgetState() {
+export function useSelectTokenWidgetState(): SelectTokenWidgetState {
   return useAtomValue(selectTokenWidgetAtom)
 }

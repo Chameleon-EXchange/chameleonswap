@@ -1,21 +1,9 @@
 import { Badge, UI } from '@cowprotocol/ui'
 
-import { NavLink } from 'react-router-dom'
+import { NavLink } from 'react-router'
 import styled, { css } from 'styled-components/macro'
 
-export const Link = styled(NavLink)`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
-  color: inherit;
-  gap: 4px;
-  font-weight: inherit;
-  line-height: 1;
-  transition:
-    color var(${UI.ANIMATION_DURATION}) ease-in-out,
-    fill var(${UI.ANIMATION_DURATION}) ease-in-out;
-
+const ItemWithIcon = css`
   svg {
     width: 10px;
     height: 10px;
@@ -42,6 +30,36 @@ export const Link = styled(NavLink)`
   }
 `
 
+export const Link = styled(NavLink)`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  color: inherit;
+  gap: 4px;
+  font-weight: inherit;
+  line-height: 1;
+  transition:
+    color var(${UI.ANIMATION_DURATION}) ease-in-out,
+    fill var(${UI.ANIMATION_DURATION}) ease-in-out;
+
+  ${ItemWithIcon};
+`
+
+export const DropdownButton = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  color: inherit;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 5px 10px;
+
+  ${ItemWithIcon};
+`
+
 export const Wrapper = styled.div`
   background: transparent;
   border-radius: var(${UI.BORDER_RADIUS_NORMAL});
@@ -65,10 +83,10 @@ export const MenuItem = styled.div<{ isActive?: boolean; isDropdownVisible: bool
     align-items: center;
     justify-content: flex-start;
     text-align: left;
-    font-size: ${({ theme }) => (theme.isInjectedWidgetMode ? '16px' : '14px')};
-    font-weight: ${({ theme }) => (theme.isInjectedWidgetMode ? '600' : '500')};
+    font-size: ${({ theme }) => (theme.isWidget ? '16px' : '14px')};
+    font-weight: ${({ theme }) => (theme.isWidget ? '600' : '500')};
     border-radius: var(${UI.BORDER_RADIUS_NORMAL});
-    padding: ${({ theme }) => (theme.isInjectedWidgetMode ? '7px' : '5px 10px')};
+    padding: ${({ theme }) => (theme.isWidget ? '7px' : '5px 10px')};
     background: transparent;
     transition: background var(${UI.ANIMATION_DURATION}) ease-in-out;
     color: inherit;
@@ -111,9 +129,10 @@ export const SelectMenu = styled.div`
   top: 0;
   background: var(${UI.COLOR_PAPER});
   border-radius: var(${UI.BORDER_RADIUS_NORMAL});
+  overflow: hidden;
 
   > div:first-child {
-    margin-bottom: ${({ theme }) => (theme.isInjectedWidgetMode ? '16px' : '24px')};
+    margin-bottom: ${({ theme }) => (theme.isWidget ? '16px' : '24px')};
   }
 `
 

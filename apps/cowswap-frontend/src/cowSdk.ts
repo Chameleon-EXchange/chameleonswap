@@ -1,24 +1,87 @@
-import { MetadataApi } from '@cowprotocol/app-data'
-import { isBarnBackendEnv } from '@cowprotocol/common-utils'
-import { OrderBookApi } from '@cowprotocol/cow-sdk'
-import { AdapterContext, setGlobalAdapter } from '@cowprotocol/sdk-common'
-import { ethers } from 'ethers'
+import { atom, useSetAtom } from 'jotai'
+import { useEffect } from 'react'
 
-import { EthersV5Adapter } from './services/adapter/EthersV5Adapter'
+import { createPublicClient, http } from 'viem'
+import { usePublicClient, useWalletClient } from 'wagmi'
+
+import { RPC_URLS, VIEM_CHAINS } from '@cowprotocol/common-const'
+import { getCurrentChainIdFromUrl, isBarnBackendEnv } from '@cowprotocol/common-utils'
+import {
+  AbstractProviderAdapter,
+  DEFAULT_BACKOFF_OPTIONS,
+  EvmChains,
+  isEvmChain,
+  MetadataApi,
+  OrderBookApi,
+  Signer,
+  setGlobalAdapter,
+} from '@cowprotocol/cow-sdk'
+import { PERMIT_ACCOUNT } from '@cowprotocol/permit-utils'
+import { ViemAdapter } from '@cowprotocol/sdk-viem-adapter'
 
 const prodBaseUrls = process.env.REACT_APP_ORDER_BOOK_URLS
   ? JSON.parse(process.env.REACT_APP_ORDER_BOOK_URLS)
   : undefined
 
-export const metadataApiSDK = new MetadataApi()
+export const appSignerAtom = atom<Signer | undefined>(undefined)
+
+function getInitialEvmChainId(): EvmChains {
+  const urlChainId = getCurrentChainIdFromUrl()
+  // viem doesn't support non-evm chains, so set default mainnet for global adapter
+  return isEvmChain(urlChainId) ? urlChainId : EvmChains.MAINNET
+}
+
+const initialEvmChainId = getInitialEvmChainId()
+
+setGlobalAdapter(
+  new ViemAdapter({
+    provider: createPublicClient({
+      chain: VIEM_CHAINS[initialEvmChainId],
+      transport: http(RPC_URLS[initialEvmChainId]),
+    }),
+  }) as AbstractProviderAdapter,
+)
+
 export const orderBookApi = new OrderBookApi({
   env: isBarnBackendEnv ? 'staging' : 'prod',
   ...(prodBaseUrls ? { baseUrls: prodBaseUrls } : undefined),
+  backoffOpts: DEFAULT_BACKOFF_OPTIONS,
 })
 
-// Initialize and configure global provider adapter for CoW SDK
-const defaultProvider = new ethers.providers.JsonRpcProvider('https://eth.llamarpc.com')
-export const globalAdapter = new EthersV5Adapter({ provider: defaultProvider })
-setGlobalAdapter(globalAdapter)
-AdapterContext.getInstance().setAdapter(globalAdapter)
+export const prodOrderBookApi = isBarnBackendEnv
+  ? new OrderBookApi({
+      env: 'prod',
+      ...(prodBaseUrls ? { baseUrls: prodBaseUrls } : undefined),
+      backoffOpts: DEFAULT_BACKOFF_OPTIONS,
+    })
+  : orderBookApi
 
+export const metadataApiSDK = new MetadataApi()
+
+export function CowSdkUpdater(): null {
+  const publicClient = usePublicClient()
+  const { data: walletClient } = useWalletClient()
+  const setAppSigner = useSetAtom(appSignerAtom)
+
+  useEffect(() => {
+    if (!publicClient) return
+    let adapter: ViemAdapter
+    if (walletClient) {
+      adapter = new ViemAdapter({ provider: publicClient, walletClient })
+    } else {
+      adapter = new ViemAdapter({ provider: publicClient, signer: PERMIT_ACCOUNT })
+    }
+    setGlobalAdapter(adapter as AbstractProviderAdapter)
+    setAppSigner(walletClient ? adapter.signer : undefined)
+  }, [publicClient, walletClient, setAppSigner])
+
+  return null
+}
+
+export function setBearerToken(token: string | null): void {
+  if (token) {
+    orderBookApi.context.bearerToken = token
+  } else {
+    delete orderBookApi.context.bearerToken
+  }
+}

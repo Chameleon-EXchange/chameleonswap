@@ -1,15 +1,76 @@
 'use client'
 
+import FONT_STUDIO_FEIXEN_BOLD from '@cowprotocol/assets/fonts/StudioFeixenSans-Bold.woff2'
+import FONT_STUDIO_FEIXEN_MEDIUM from '@cowprotocol/assets/fonts/StudioFeixenSans-Medium.woff2'
+import FONT_STUDIO_FEIXEN_REGULAR from '@cowprotocol/assets/fonts/StudioFeixenSans-Regular.woff2'
+import FONT_STUDIO_FEIXEN_SEMIBOLD from '@cowprotocol/assets/fonts/StudioFeixenSans-Semibold.woff2'
+import FONT_STUDIO_FEIXEN_SERIF_BOLD from '@cowprotocol/assets/fonts/StudioFeixenSerif-Bold.woff2'
+import FONT_STUDIO_FEIXEN_SERIF_REGULAR from '@cowprotocol/assets/fonts/StudioFeixenSerif-Regular.woff2'
+import { baseGlobalStyles, Color, Font, Media, ThemeColorVars, UI } from '@cowprotocol/ui'
+
 import { createGlobalStyle } from 'styled-components/macro'
-import { Color, Media } from '@cowprotocol/ui'
 
 const GlobalStyles = createGlobalStyle`
+${ThemeColorVars}
+
+  :root {
+    ${UI.FONT_FAMILY_PRIMARY}: ${Font.familyStudioFeixen};
+  }
+
+${baseGlobalStyles}
+
+  @font-face {
+    font-family: 'studiofeixen';
+    src: url(${FONT_STUDIO_FEIXEN_REGULAR}) format('woff2');
+    font-weight: ${Font.weight.regular};
+    font-style: normal;
+    font-display: fallback;
+  }
+
+  @font-face {
+    font-family: 'studiofeixen';
+    src: url(${FONT_STUDIO_FEIXEN_MEDIUM}) format('woff2');
+    font-weight: ${Font.weight.medium};
+    font-style: normal;
+    font-display: fallback;
+  }
+
+  @font-face {
+    font-family: 'studiofeixen';
+    src: url(${FONT_STUDIO_FEIXEN_SEMIBOLD}) format('woff2');
+    font-weight: ${Font.weight.semibold};
+    font-style: normal;
+    font-display: fallback;
+  }
+
+  @font-face {
+    font-family: 'studiofeixen';
+    src: url(${FONT_STUDIO_FEIXEN_BOLD}) format('woff2');
+    font-weight: ${Font.weight.bold};
+    font-style: normal;
+    font-display: fallback;
+  }
+
+  @font-face {
+    font-family: 'studiofeixenserif';
+    src: url(${FONT_STUDIO_FEIXEN_SERIF_BOLD}) format('woff2');
+    font-weight: ${Font.weight.bold};
+    font-style: normal;
+    font-display: fallback;
+  }
+
+  @font-face {
+    font-family: 'studiofeixenserif';
+    src: url(${FONT_STUDIO_FEIXEN_SERIF_REGULAR}) format('woff2');
+    font-weight: ${Font.weight.regular};
+    font-style: normal;
+    font-display: fallback;
+  }
 
   html, body {
     width: 100%;
     min-height: 100vh;
     min-width: 300px;
-    margin: 0;
     font-size: 62.5%;
     line-height: 10px;
     box-sizing: border-box;
@@ -23,17 +84,30 @@ const GlobalStyles = createGlobalStyle`
       }
   }
 
+  body {
+    font-family: ${Font.familyStudioFeixen};
+    background: var(${UI.COLOR_NEUTRAL_98});
+    color: var(${UI.COLOR_TEXT});
+    font-variant: none;
+    font-variant-ligatures: none;
+    text-rendering: optimizeLegibility;
+    font-feature-settings:
+      'liga' off,
+      'kern' on;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+  }
+
   *::selection {
-    background: ${Color.neutral100};
-    color: ${Color.neutral0};
+    background: var(${UI.COLOR_NEUTRAL_100});
+    color: var(${UI.COLOR_NEUTRAL_0});
   }
 
   *::-moz-selection {
-    background: ${Color.neutral100};
+    background: var(${UI.COLOR_NEUTRAL_100});
   }
 
   *::-webkit-selection {
-    background: ${Color.neutral100};
+    background: var(${UI.COLOR_NEUTRAL_100});
   }
 
   *::-moz-placeholder {
@@ -45,6 +119,7 @@ const GlobalStyles = createGlobalStyle`
   }
 
   a {
+    color: inherit;
     text-decoration: underline;
     cursor: pointer;
   }
@@ -96,7 +171,7 @@ const GlobalStyles = createGlobalStyle`
     }
 
     &:focus {
-      border-color: ${Color.neutral0};
+      border-color: var(${UI.COLOR_NEUTRAL_0});
     }
 
     &:disabled {
@@ -158,19 +233,18 @@ span[class^='wordtag-'] {
   }
 
   .wordtag-blue {
-    color: #012f7a;
-    background: #65d9ff;
+    color: var(${UI.COLOR_BLUE_900_PRIMARY});
+    background: var(${UI.COLOR_BLUE_300_PRIMARY});
   }
 
   .wordtag-orange {
-    color: #ec4612;
-    background: #fee7cf;
+    color: ${Color.cowfi_orange_bright};
+    background: ${Color.cowfi_orange_pale};
   }
 
   .wordtag-purple {
-    color: #f996ee;
-    background: #490072;
+    color: ${Color.cowfi_purple_bright};
+    background: ${Color.cowfi_purple_dark};
   }
 `
-
 export default GlobalStyles

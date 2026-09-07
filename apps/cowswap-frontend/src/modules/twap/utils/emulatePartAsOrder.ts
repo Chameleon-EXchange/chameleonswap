@@ -1,9 +1,12 @@
-import { EnrichedOrder, OrderClass, OrderStatus, SigningScheme } from '@cowprotocol/cow-sdk'
+import { EnrichedOrder, getAddressKey, OrderClass, OrderStatus, SigningScheme } from '@cowprotocol/cow-sdk'
 
 import { TwapPartOrderItem } from '../state/twapPartOrdersAtom'
 import { TwapOrderItem, TwapOrderStatus } from '../types'
 
-export function emulatePartAsOrder(item: TwapPartOrderItem, parent: TwapOrderItem): EnrichedOrder {
+export function emulatePartAsOrder(
+  item: TwapPartOrderItem,
+  parent: TwapOrderItem,
+): Omit<EnrichedOrder, 'settlementContract'> {
   const creationDate = new Date((item.order.validTo - parent.order.t) * 1000)
   const isCancelling = parent.status === TwapOrderStatus.Cancelling
 
@@ -12,7 +15,7 @@ export function emulatePartAsOrder(item: TwapPartOrderItem, parent: TwapOrderIte
     creationDate: creationDate.toISOString(),
     class: OrderClass.LIMIT,
     status: getOrderStatus(parent),
-    owner: parent.safeAddress.toLowerCase(),
+    owner: getAddressKey(parent.safeAddress),
     uid: item.uid,
     signingScheme: SigningScheme.EIP1271,
     signature: '',

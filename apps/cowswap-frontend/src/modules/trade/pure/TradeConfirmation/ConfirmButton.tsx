@@ -1,0 +1,76 @@
+import { ReactNode, useEffect, useRef, useState } from 'react'
+
+import { useMediaQuery } from '@cowprotocol/common-hooks'
+import { ButtonPrimary, ButtonSize, CenteredDots, LongLoadText, Media } from '@cowprotocol/ui'
+
+import { t } from '@lingui/core/macro'
+import { SigningStepState } from 'entities/trade'
+
+import { getPendingText } from './getPendingText'
+
+interface ConfirmButtonProps {
+  buttonText: ReactNode
+  isButtonDisabled: boolean
+  hasPendingTrade: boolean
+  onConfirm(): Promise<void | boolean>
+  signingStep: SigningStepState | null
+  clickEvent?: string
+}
+export function ConfirmButton(props: ConfirmButtonProps): ReactNode {
+  const [isConfirmClicked, setIsConfirmClicked] = useState(false)
+  const confirmInFlightRef = useRef(false)
+  const { buttonText, onConfirm, hasPendingTrade, signingStep, clickEvent } = props
+
+  const isButtonDisabled = props.isButtonDisabled || isConfirmClicked
+
+  const isUpToMedium = useMediaQuery(Media.upToMedium(false))
+
+  const handleConfirmClick = async (): Promise<void> => {
+    if (confirmInFlightRef.current) return
+    confirmInFlightRef.current = true
+
+    if (isUpToMedium) {
+      window.scrollTo({ top: 0, left: 0 })
+    }
+
+    setIsConfirmClicked(true)
+    try {
+      const isConfirmed = await onConfirm()
+
+      if (!isConfirmed) {
+        setIsConfirmClicked(false)
+      }
+    } catch (error) {
+      setIsConfirmClicked(false)
+      throw error
+    } finally {
+      confirmInFlightRef.current = false
+    }
+  }
+
+  useEffect(() => {
+    if (!hasPendingTrade) {
+      setIsConfirmClicked(false)
+    }
+  }, [hasPendingTrade])
+
+  const pendingText = (signingStep ? getPendingText(signingStep) : null) || t`Confirm with your wallet`
+
+  return (
+    <ButtonPrimary
+      onClick={handleConfirmClick}
+      disabled={isButtonDisabled}
+      buttonSize={ButtonSize.BIG}
+      data-click-event={clickEvent}
+    >
+      {hasPendingTrade || isConfirmClicked ? (
+        <LongLoadText fontSize={15} fontWeight={500}>
+          <span>{pendingText}</span>
+          <CenteredDots smaller />
+        </LongLoadText>
+      ) : (
+        <>{buttonText}</>
+      )}
+    </ButtonPrimary>
+  )
+}

@@ -1,13 +1,32 @@
-import { SupportedChainId } from '@cowprotocol/cow-sdk'
+import { AdditionalTargetChainId, SupportedChainId, TargetChainId } from '@cowprotocol/cow-sdk'
 
-const chainIdToName: Record<SupportedChainId, string> = {
+const chainIdToName: Record<TargetChainId, string | null> = {
   [SupportedChainId.MAINNET]: 'ethereum',
   [SupportedChainId.GNOSIS_CHAIN]: 'xdai',
   [SupportedChainId.ARBITRUM_ONE]: 'arbitrum',
   [SupportedChainId.BASE]: 'base',
   [SupportedChainId.SEPOLIA]: 'ethereum',
+  [SupportedChainId.POLYGON]: 'polygon',
+  [SupportedChainId.AVALANCHE]: 'avalanche',
+  [SupportedChainId.BNB]: 'smartchain',
+  [SupportedChainId.LINEA]: 'linea',
+  [SupportedChainId.PLASMA]: 'plasma',
+  [SupportedChainId.INK]: null, // As of now (2026/01/23), Ink is not on Trust Wallet assets repo
+  [SupportedChainId.SOLANA]: 'solana',
+  [AdditionalTargetChainId.BITCOIN]: 'bitcoin',
+  [AdditionalTargetChainId.OPTIMISM]: 'optimism',
 }
 
-export function trustTokenLogoUrl(address: string, chainId: SupportedChainId): string {
-  return `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/${chainIdToName[chainId]}/assets/${address}/logo.png`
+/**
+ * @deprecated TODO5(daniel)
+ */
+export function trustTokenLogoUrl(address: string, chainId: TargetChainId): string | null {
+  const trustChainName = chainIdToName[chainId]
+
+  if (!trustChainName) {
+    return null
+  }
+
+  // TODO: Never point to master! Use a specific commit hash or tag.
+  return `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/${trustChainName}/assets/${address}/logo.png`
 }

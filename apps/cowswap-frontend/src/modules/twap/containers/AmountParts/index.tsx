@@ -1,56 +1,39 @@
-import { useAtomValue } from 'jotai/index'
-import React, { ReactNode } from 'react'
+import { useAtomValue } from 'jotai'
+import { ReactElement, ReactNode } from 'react'
 
+import { Currency, CurrencyAmount } from '@cowprotocol/currency'
 import { HelpTooltip, renderTooltip } from '@cowprotocol/ui'
-import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
 
-import { Trans } from '@lingui/macro'
 import { Nullish } from 'types'
 
-import { useReceiveAmountInfo } from 'modules/trade'
+import { useGetReceiveAmountInfo } from 'modules/trade'
 import { useUsdAmount } from 'modules/usdAmount'
 
 import * as styledEl from './styled'
 
-import { AMOUNT_PARTS_LABELS } from '../../containers/TwapFormWidget/tooltips'
 import { twapOrdersSettingsAtom } from '../../state/twapOrdersSettingsAtom'
+import { useAmountPartsLabels } from '../TwapFormWidget/tooltips'
 
 interface TradeAmountPreviewProps {
   amount: Nullish<CurrencyAmount<Currency>>
   usdAmount: Nullish<CurrencyAmount<Currency>>
-  label: JSX.Element
+  label: ReactElement
   tooltip: ReactNode
   children?: ReactNode
 }
 
-function TradeAmountPreview(props: TradeAmountPreviewProps) {
-  const { amount, usdAmount, label, tooltip, children } = props
-
-  return (
-    <styledEl.Part>
-      <styledEl.Label>
-        <Trans>{label}</Trans>
-        <HelpTooltip text={tooltip} />
-      </styledEl.Label>
-
-      <styledEl.Amount amount={amount} tokenSymbol={amount?.currency} />
-      <styledEl.Fiat amount={usdAmount} />
-      {children}
-    </styledEl.Part>
-  )
-}
-
-export function AmountParts() {
+export function AmountParts(): ReactNode {
   const {
     sellAmount: { label: sellLabel, tooltip: sellTooltip },
     buyAmount: { label: buyLabel, tooltip: buyTooltip },
-  } = AMOUNT_PARTS_LABELS
+  } = useAmountPartsLabels()
 
   const { numberOfPartsValue } = useAtomValue(twapOrdersSettingsAtom)
 
-  const receiveAmountInfo = useReceiveAmountInfo()
+  const receiveAmountInfo = useGetReceiveAmountInfo()
 
-  const { sellAmount: inputPartAmount, buyAmount: outputPartAmount } = receiveAmountInfo?.afterPartnerFees || {}
+  const { sellAmount: inputPartAmount } = receiveAmountInfo?.beforeAllFees || {}
+  const { buyAmount: outputPartAmount } = receiveAmountInfo?.afterPartnerFees || {}
 
   const inputPartAmountUsd = useUsdAmount(inputPartAmount).value
   const outputPartAmountUsd = useUsdAmount(outputPartAmount).value
@@ -79,5 +62,22 @@ export function AmountParts() {
         usdAmount={outputPartAmountUsd}
       ></TradeAmountPreview>
     </styledEl.Wrapper>
+  )
+}
+
+function TradeAmountPreview(props: TradeAmountPreviewProps): ReactNode {
+  const { amount, usdAmount, label, tooltip, children } = props
+
+  return (
+    <styledEl.Part>
+      <styledEl.Label>
+        {label}
+        <HelpTooltip text={tooltip} />
+      </styledEl.Label>
+
+      <styledEl.Amount amount={amount} tokenSymbol={amount?.currency} />
+      <styledEl.Fiat amount={usdAmount} />
+      {children}
+    </styledEl.Part>
   )
 }

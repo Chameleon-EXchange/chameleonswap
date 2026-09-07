@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 
 import { Command } from '@cowprotocol/types'
-import { TruncatedText } from '@cowprotocol/ui/pure/TruncatedText'
+import { Color, TruncatedText } from '@cowprotocol/ui'
 
 import { faExchangeAlt } from '@fortawesome/free-solid-svg-icons'
 import { safeTokenName } from '@gnosis.pm/dex-js'
@@ -26,17 +26,18 @@ import { ToggleFilter } from './ToggleFilter'
 
 import { TableState } from '../../../explorer/components/TokensTableWidget/useTable'
 import { SimpleTable, SimpleTableProps } from '../../common/SimpleTable'
+import { Tags } from '../../common/Tags'
 import { StatusLabel } from '../StatusLabel'
 import { UnsignedOrderWarning } from '../UnsignedOrderWarning'
 
-const EXPIRED_CANCELED_STATES: OrderStatus[] = ['cancelled', 'cancelling', 'expired']
+const EXPIRED_CANCELED_STATES: OrderStatus[] = [OrderStatus.Cancelled, OrderStatus.Cancelling, OrderStatus.Expired]
 
 function isExpiredOrCanceled(order: Order): boolean {
   const { executedSellAmount, executedBuyAmount, status } = order
-  // We don't consider an order expired or canceled if it was partially or fully filled
+  // We don't consider an order expired or cancelled if it was partially or fully filled
   if (!executedSellAmount.isZero() || !executedBuyAmount.isZero()) return false
 
-  // Otherwise, return if the order is expired or canceled
+  // Otherwise, return if the order is expired or cancelled
   return EXPIRED_CANCELED_STATES.includes(status)
 }
 
@@ -70,7 +71,7 @@ interface RowProps {
 }
 
 const FilterRow = styled.tr`
-  background-color: ${({ theme }) => theme.background};
+  background: ${Color.explorer_background};
 
   @media (max-width: 1155px) {
     div:first-child {
@@ -81,10 +82,10 @@ const FilterRow = styled.tr`
   td {
     padding: 2rem;
     text-align: right;
-    padding-right: 10px;
+    padding-right: 1rem;
     max-width: 100%;
     & > * {
-      margin-left: 10px;
+      margin-left: 1rem;
     }
   }
 
@@ -112,9 +113,12 @@ const HiddenOrdersLegend = styled.div`
   }
 
   a:hover {
-    color: ${({ theme }) => theme.textSecondary2};
+    color: ${Color.explorer_textSecondary1};
   }
 `
+
+// TODO: Break down this large function into smaller functions
+// TODO: Reduce function complexity by extracting logic
 
 const RowOrder: React.FC<RowProps> = ({ order, isPriceInverted, showCanceledAndExpired, showPreSigning }) => {
   const { creationDate, buyToken, buyAmount, sellToken, sellAmount, kind, partiallyFilled, uid, filledPercentage } =
@@ -135,9 +139,9 @@ const RowOrder: React.FC<RowProps> = ({ order, isPriceInverted, showCanceledAndE
     if (textValue === '-') return <Spinner spin size="1x" />
   }
 
-  // Hide the row if the order is canceled, expired or pre-signing
+  // Hide the row if the order is cancelled, expired or pre-signing
   if (!showCanceledAndExpired && isExpiredOrCanceled(order)) return null
-  if (!showPreSigning && order.status === 'signing') return null
+  if (!showPreSigning && order.status === OrderStatus.Signing) return null
 
   return (
     <tr key={uid}>
@@ -178,6 +182,9 @@ const RowOrder: React.FC<RowProps> = ({ order, isPriceInverted, showCanceledAndE
         <OrderSurplusDisplayStyledByRow order={order} />
       </td>
       <td>
+        <Tags order={order} />
+      </td>
+      <td>
         <DateDisplay date={creationDate} showIcon={true} />
       </td>
       <td>
@@ -187,6 +194,9 @@ const RowOrder: React.FC<RowProps> = ({ order, isPriceInverted, showCanceledAndE
   )
 }
 
+// TODO: Break down this large function into smaller functions
+// TODO: Reduce function complexity by extracting logic
+// eslint-disable-next-line max-lines-per-function, complexity
 const OrdersUserDetailsTable: React.FC<Props> = (props) => {
   const { orders, messageWhenEmpty, tableState, handleNextPage } = props
   const [isPriceInverted, setIsPriceInverted] = useState(false)
@@ -194,7 +204,7 @@ const OrdersUserDetailsTable: React.FC<Props> = (props) => {
   const [showPreSigning, setShowPreSigning] = useState(false)
 
   const canceledAndExpiredCount = orders?.filter(isExpiredOrCanceled).length || 0
-  const preSigningCount = orders?.filter((order) => order.status === 'signing').length || 0
+  const preSigningCount = orders?.filter((order) => order.status === OrderStatus.Signing).length || 0
   const showFilter = canceledAndExpiredCount > 0 || preSigningCount > 0
 
   const hiddenOrdersCount =
@@ -230,13 +240,14 @@ const OrdersUserDetailsTable: React.FC<Props> = (props) => {
                 </span>
               </th>
               <th>Surplus</th>
+              <th>Tags</th>
               <th>Created</th>
               <th>Status</th>
             </tr>
           )}
           {showPreSigning && (
             <FilterRow>
-              <td colSpan={8}>
+              <td colSpan={9}>
                 <div>
                   <UnsignedOrderWarning />
                 </div>
@@ -260,7 +271,7 @@ const OrdersUserDetailsTable: React.FC<Props> = (props) => {
 
           {showFilter && (
             <FilterRow>
-              <td colSpan={8}>
+              <td colSpan={9}>
                 <div>
                   <HiddenOrdersLegend>
                     {hiddenOrdersCount > 0 ? (
@@ -289,7 +300,7 @@ const OrdersUserDetailsTable: React.FC<Props> = (props) => {
                       <ToggleFilter
                         checked={showCanceledAndExpired}
                         onChange={() => setShowCanceledAndExpired((previousValue) => !previousValue)}
-                        label={(showCanceledAndExpired ? 'Hide' : 'Show') + ' canceled/expired'}
+                        label={(showCanceledAndExpired ? 'Hide' : 'Show') + ' cancelled/expired'}
                         count={canceledAndExpiredCount}
                       />
                     )}

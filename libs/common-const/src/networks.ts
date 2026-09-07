@@ -1,57 +1,60 @@
-import { mapSupportedNetworks, SupportedChainId } from '@cowprotocol/cow-sdk'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { EvmChains, HttpsString, TargetChainId, NonEvmChains } from '@cowprotocol/cow-sdk'
 
-const INFURA_KEY = process.env.REACT_APP_INFURA_KEY || '2af29cd5ac554ae3b8d991afe1ba4b7d' // Default rate-limited infura key (should be overridden, not reliable to use)
+const INFURA_KEY = process.env['REACT_APP_INFURA_KEY'] || '2af29cd5ac554ae3b8d991afe1ba4b7d' // Default rate-limited infura key (should be overridden, not reliable to use)
 
-// Hardcoded chain IDs to avoid SDK import issues in browser bundle
-const CHAIN_IDS = {
-  MAINNET: 1,
-  BNB: 56,
-  BASE: 8453,
-  ARBITRUM_ONE: 42161,
-  POLYGON: 137,
-  AVALANCHE: 43114,
-  GNOSIS_CHAIN: 100,
-  LENS: 232,
-  LINEA: 59144,
-  PLASMA: 9745,
-  SEPOLIA: 11155111,
+const RPC_URL_ENVS: Record<TargetChainId, HttpsString | undefined> = {
+  [EvmChains.MAINNET]: (process.env['REACT_APP_NETWORK_URL_1'] as HttpsString) || undefined,
+  [EvmChains.BNB]: (process.env['REACT_APP_NETWORK_URL_56'] as HttpsString) || undefined,
+  [EvmChains.GNOSIS_CHAIN]: (process.env['REACT_APP_NETWORK_URL_100'] as HttpsString) || undefined,
+  [EvmChains.POLYGON]: (process.env['REACT_APP_NETWORK_URL_137'] as HttpsString) || undefined,
+  [EvmChains.BASE]: (process.env['REACT_APP_NETWORK_URL_8453'] as HttpsString) || undefined,
+  [EvmChains.PLASMA]: (process.env['REACT_APP_NETWORK_URL_9745'] as HttpsString) || undefined,
+  [EvmChains.ARBITRUM_ONE]: (process.env['REACT_APP_NETWORK_URL_42161'] as HttpsString) || undefined,
+  [EvmChains.AVALANCHE]: (process.env['REACT_APP_NETWORK_URL_43114'] as HttpsString) || undefined,
+  [EvmChains.INK]: (process.env['REACT_APP_NETWORK_URL_57073'] as HttpsString) || undefined,
+  [EvmChains.LINEA]: (process.env['REACT_APP_NETWORK_URL_59144'] as HttpsString) || undefined,
+  [EvmChains.SEPOLIA]: (process.env['REACT_APP_NETWORK_URL_11155111'] as HttpsString) || undefined,
+  [EvmChains.OPTIMISM]: (process.env['REACT_APP_NETWORK_URL_10'] as HttpsString) || undefined,
+  [NonEvmChains.SOLANA]: (process.env['REACT_APP_NETWORK_URL_1000000001'] as HttpsString) || undefined,
+  [NonEvmChains.BITCOIN]: (process.env['REACT_APP_NETWORK_URL_1000000000'] as HttpsString) || undefined,
 }
 
-const RPC_URL_ENVS = {
-  [CHAIN_IDS.MAINNET as SupportedChainId]: process.env.REACT_APP_NETWORK_URL_1 || undefined,
-  [CHAIN_IDS.GNOSIS_CHAIN as SupportedChainId]: process.env.REACT_APP_NETWORK_URL_100 || undefined,
-  [CHAIN_IDS.ARBITRUM_ONE as SupportedChainId]: process.env.REACT_APP_NETWORK_URL_42161 || undefined,
-  [CHAIN_IDS.BASE as SupportedChainId]: process.env.REACT_APP_NETWORK_URL_8453 || undefined,
-  [CHAIN_IDS.SEPOLIA as SupportedChainId]: process.env.REACT_APP_NETWORK_URL_11155111 || undefined,
-  [CHAIN_IDS.POLYGON as SupportedChainId]: process.env.REACT_APP_NETWORK_URL_137 || undefined,
-  [CHAIN_IDS.AVALANCHE as SupportedChainId]: process.env.REACT_APP_NETWORK_URL_43114 || undefined,
-  [CHAIN_IDS.LENS as SupportedChainId]: process.env.REACT_APP_NETWORK_URL_232 || undefined,
-  [CHAIN_IDS.BNB as SupportedChainId]: process.env.REACT_APP_NETWORK_URL_56 || undefined,
-  [CHAIN_IDS.LINEA as SupportedChainId]: process.env.REACT_APP_NETWORK_URL_59144 || undefined,
-  [CHAIN_IDS.PLASMA as SupportedChainId]: process.env.REACT_APP_NETWORK_URL_9745 || undefined,
-} as Record<SupportedChainId, string | undefined>
-
-const DEFAULT_RPC_URL = {
-  [CHAIN_IDS.MAINNET as SupportedChainId]: { url: `https://mainnet.infura.io/v3/${INFURA_KEY}`, usesInfura: true },
-  [CHAIN_IDS.GNOSIS_CHAIN as SupportedChainId]: { url: `https://rpc.gnosis.gateway.fm`, usesInfura: false },
-  [CHAIN_IDS.ARBITRUM_ONE as SupportedChainId]: { url: `https://arbitrum-mainnet.infura.io/v3/${INFURA_KEY}`, usesInfura: true },
-  [CHAIN_IDS.BASE as SupportedChainId]: { url: `https://base-mainnet.infura.io/v3/${INFURA_KEY}`, usesInfura: true },
-  [CHAIN_IDS.SEPOLIA as SupportedChainId]: { url: `https://sepolia.infura.io/v3/${INFURA_KEY}`, usesInfura: true },
-  [CHAIN_IDS.POLYGON as SupportedChainId]: { url: `https://polygon-mainnet.infura.io/v3/${INFURA_KEY}`, usesInfura: true },
-  [CHAIN_IDS.AVALANCHE as SupportedChainId]: { url: `https://avalanche-mainnet.infura.io/v3/${INFURA_KEY}`, usesInfura: true },
-  [CHAIN_IDS.BNB as SupportedChainId]: { url: `https://bsc-dataseed.binance.org/`, usesInfura: false },
-  [CHAIN_IDS.LENS as SupportedChainId]: { url: `https://rpc.lens.xyz`, usesInfura: false },
-  [CHAIN_IDS.LINEA as SupportedChainId]: { url: `https://rpc.linea.build`, usesInfura: false },
-  [CHAIN_IDS.PLASMA as SupportedChainId]: { url: `https://rpc.plasma.to`, usesInfura: false },
-} as Record<SupportedChainId, { url: string; usesInfura: boolean }>
+const DEFAULT_RPC_URL: Record<TargetChainId, { url: HttpsString; usesInfura: boolean }> = {
+  [EvmChains.MAINNET]: { url: `https://mainnet.infura.io/v3/${INFURA_KEY}`, usesInfura: true },
+  [EvmChains.BNB]: { url: `https://bsc-mainnet.infura.io/v3/${INFURA_KEY}`, usesInfura: true },
+  [EvmChains.GNOSIS_CHAIN]: { url: `https://rpc.gnosis.gateway.fm`, usesInfura: false },
+  [EvmChains.POLYGON]: { url: `https://polygon-mainnet.infura.io/v3/${INFURA_KEY}`, usesInfura: true },
+  [EvmChains.BASE]: { url: `https://base-mainnet.infura.io/v3/${INFURA_KEY}`, usesInfura: true },
+  [EvmChains.PLASMA]: { url: `https://rpc.plasma.to`, usesInfura: false },
+  [EvmChains.ARBITRUM_ONE]: { url: `https://arbitrum-mainnet.infura.io/v3/${INFURA_KEY}`, usesInfura: true },
+  [EvmChains.AVALANCHE]: { url: `https://avalanche-mainnet.infura.io/v3/${INFURA_KEY}`, usesInfura: true },
+  [EvmChains.INK]: { url: `https://rpc-ten.inkonchain.com`, usesInfura: false },
+  [EvmChains.LINEA]: { url: `https://rpc.linea.build`, usesInfura: false },
+  [EvmChains.SEPOLIA]: { url: `https://sepolia.infura.io/v3/${INFURA_KEY}`, usesInfura: true },
+  [EvmChains.OPTIMISM]: { url: `https://mainnet.optimism.io`, usesInfura: false },
+  [NonEvmChains.SOLANA]: { url: `https://api.mainnet.solana.com`, usesInfura: false },
+  [NonEvmChains.BITCOIN]: { url: 'https://bitcoin-rpc.publicnode.com', usesInfura: false },
+}
 
 /**
- * These are the network URLs used by the interface when there is not another available source of chain data
+ * Network URLs used when no other source of chain data is available.
+ *
+ * Keyed by `EvmChains` to keep non-EVM chains (Solana) out of EVM-only transports.
+ * Includes `OPTIMISM` because it lives in `EvmChains`; on-chain trading there is not
+ * supported by CoW Protocol today and its entry is a stub for future migration.
  */
-export const RPC_URLS: Record<SupportedChainId, string> = mapSupportedNetworks(getRpcUrl)
+// todo this will be replaced when pr https://github.com/cowprotocol/cow-sdk/pull/873 be merged
+export const RPC_URLS: Record<TargetChainId, HttpsString> = (
+  Object.keys(RPC_URL_ENVS) as unknown as EvmChains[]
+).reduce(
+  (acc, chainId) => {
+    acc[Number(chainId) as TargetChainId] = getRpcUrl(Number(chainId) as TargetChainId)
+    return acc
+  },
+  {} as Record<TargetChainId, HttpsString>,
+)
 
-function getRpcUrl(chainId: SupportedChainId): string {
+function getRpcUrl(chainId: TargetChainId): HttpsString {
   const envKey = `REACT_APP_NETWORK_URL_${chainId}`
   const rpcUrl = RPC_URL_ENVS[chainId]
 
@@ -60,30 +63,9 @@ function getRpcUrl(chainId: SupportedChainId): string {
   }
 
   const defaultRpc = DEFAULT_RPC_URL[chainId]
-  if (!defaultRpc) {
-    return ''
-  }
   if (defaultRpc.usesInfura && !INFURA_KEY) {
     throw new Error(`Either ${envKey} or REACT_APP_INFURA_KEY environment variable are required`)
   }
 
   return defaultRpc.url
-}
-
-const rpcProviderCache: Record<number, JsonRpcProvider> = {}
-
-export function getRpcProvider(chainId: SupportedChainId): JsonRpcProvider
-export function getRpcProvider(chainId: number): JsonRpcProvider | null {
-  if (!rpcProviderCache[chainId]) {
-    const url = RPC_URLS[chainId as SupportedChainId]
-    if (!url) return null
-
-    const provider = new JsonRpcProvider(url, chainId)
-
-    rpcProviderCache[chainId] = provider
-
-    return provider
-  }
-
-  return rpcProviderCache[chainId]
 }

@@ -1,21 +1,45 @@
 import { useAtomValue, useSetAtom } from 'jotai'
+import { ReactNode, useCallback } from 'react'
 
 import { Menu, MenuItem, MenuPopover, MenuItems } from '@reach/menu-button'
 
-import { openLimitOrderSettingsAnalytics } from 'modules/analytics'
 import { ButtonsContainer, SettingsButton, SettingsIcon } from 'modules/trade/pure/Settings'
 
-import { Settings } from '../../pure/Settings'
-import { limitOrdersSettingsAtom, updateLimitOrdersSettingsAtom } from '../../state/limitOrdersSettingsAtom'
+import { useIsProviderNetworkDeprecated } from 'common/hooks/useIsProviderNetworkDeprecated'
+import { useIsProviderNetworkUnsupported } from 'common/hooks/useIsProviderNetworkUnsupported'
 
-export function SettingsWidget() {
+import { useLimitOrderSettingsAnalytics } from '../../hooks/useLimitOrderSettingsAnalytics'
+import { useUpdateLimitOrdersRawState } from '../../hooks/useLimitOrdersRawState'
+import { LimitOrdersSettingsDropdown } from '../../pure/Settings/LimitOrdersSettings.pure'
+import {
+  limitOrdersSettingsAtom,
+  LimitOrdersSettingsState,
+  updateLimitOrdersSettingsAtom,
+} from '../../state/limitOrdersSettingsAtom'
+
+export function SettingsWidget(): ReactNode {
   const settingsState = useAtomValue(limitOrdersSettingsAtom)
   const updateSettingsState = useSetAtom(updateLimitOrdersSettingsAtom)
+  const analytics = useLimitOrderSettingsAnalytics()
+  const updateLimitOrdersRawState = useUpdateLimitOrdersRawState()
+  const isProviderNetworkUnsupported = useIsProviderNetworkUnsupported()
+  const isProviderNetworkDeprecated = useIsProviderNetworkDeprecated()
+  const isSettingsDisabled = isProviderNetworkUnsupported || isProviderNetworkDeprecated
+
+  const onSettingsChange = useCallback(
+    (update: Partial<LimitOrdersSettingsState>) => {
+      updateSettingsState(update)
+      if (update.showRecipient === false) {
+        updateLimitOrdersRawState({ recipient: undefined, recipientAddress: undefined })
+      }
+    },
+    [updateSettingsState, updateLimitOrdersRawState],
+  )
 
   return (
     <ButtonsContainer>
       <Menu>
-        <SettingsButton onClick={openLimitOrderSettingsAnalytics}>
+        <SettingsButton disabled={isSettingsDisabled} onClick={() => analytics.openSettings()}>
           <SettingsIcon />
         </SettingsButton>
         <MenuPopover portal={false}>
@@ -26,7 +50,7 @@ export function SettingsWidget() {
                 onMouseDown={(e) => e.stopPropagation()}
                 onMouseUp={(e) => e.stopPropagation()}
               >
-                <Settings state={settingsState} onStateChanged={updateSettingsState} />
+                <LimitOrdersSettingsDropdown state={settingsState} onStateChanged={onSettingsChange} />
               </div>
             </MenuItem>
           </MenuItems>

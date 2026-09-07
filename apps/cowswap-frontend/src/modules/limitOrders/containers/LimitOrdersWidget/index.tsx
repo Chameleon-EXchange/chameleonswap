@@ -1,24 +1,29 @@
 import { useAtomValue } from 'jotai'
-import React, { useCallback, useEffect, useMemo } from 'react'
+import React, { ReactElement, useCallback, useEffect, useMemo } from 'react'
 
 import { useFeatureFlags } from '@cowprotocol/common-hooks'
 import { isSellOrder } from '@cowprotocol/common-utils'
 
-import { useLocation } from 'react-router-dom'
+import { msg, t } from '@lingui/core/macro'
+import { Trans, useLingui } from '@lingui/react/macro'
+import { useLocation } from 'react-router'
 
 import { Field } from 'legacy/state/types'
 
+import { TradeApproveWithAffectedOrderList } from 'modules/erc20Approve'
 import { LimitOrdersWarnings } from 'modules/limitOrders/containers/LimitOrdersWarnings'
 import { useLimitOrdersWidgetActions } from 'modules/limitOrders/containers/LimitOrdersWidget/hooks/useLimitOrdersWidgetActions'
 import { TradeButtons } from 'modules/limitOrders/containers/TradeButtons'
 import {
   TradeWidget,
+  TradeWidgetParams,
   TradeWidgetSlots,
   useIsWrapOrUnwrap,
   useTradeConfirmState,
   useTradePriceImpact,
 } from 'modules/trade'
 import { BulletListItem, UnlockWidgetScreen } from 'modules/trade/pure/UnlockWidgetScreen'
+import { useIsTradeFormValidationPassed, useShouldHideTradeRateDetails } from 'modules/tradeFormValidation'
 import { useSetTradeQuoteParams, useTradeQuote } from 'modules/tradeQuote'
 
 import { useRateInfoParams } from 'common/hooks/useRateInfoParams'
@@ -31,7 +36,7 @@ import { useLimitOrdersDerivedState } from '../../hooks/useLimitOrdersDerivedSta
 import { LimitOrdersFormState, useLimitOrdersFormState } from '../../hooks/useLimitOrdersFormState'
 import { useUpdateLimitOrdersRawState } from '../../hooks/useLimitOrdersRawState'
 import { useTradeFlowContext } from '../../hooks/useTradeFlowContext'
-import { InfoBanner } from '../../pure/InfoBanner'
+import { BottomBanners } from '../../pure/BottomBanners/BottomBanners.pure'
 import { limitOrdersSettingsAtom } from '../../state/limitOrdersSettingsAtom'
 import { limitRateAtom } from '../../state/limitRateAtom'
 import { DeadlineInput } from '../DeadlineInput'
@@ -40,27 +45,7 @@ import { RateInput } from '../RateInput'
 import { SettingsWidget } from '../SettingsWidget'
 import { TradeRateDetails } from '../TradeRateDetails'
 
-export const LIMIT_BULLET_LIST_CONTENT: BulletListItem[] = [
-  { content: 'Set any limit price and time horizon' },
-  { content: 'FREE order placement and cancellation' },
-  { content: 'Place multiple orders using the same balance' },
-  { content: 'Receive surplus of your order' },
-  { content: 'Protection from MEV by default' },
-  {
-    content: <span>Place orders for higher than available balance!</span>,
-  },
-]
-
-const UNLOCK_SCREEN = {
-  title: 'Want to try out limit orders?',
-  subtitle: 'Get started!',
-  orderType: 'partially fillable',
-  buttonText: 'Get started with limit orders',
-  buttonLink:
-    'https://medium.com/@cow-protocol/cow-swap-improves-the-limit-order-experience-with-partially-fillable-limit-orders-45f19143e87d',
-}
-
-export function LimitOrdersWidget() {
+export function LimitOrdersWidget(): ReactElement {
   const {
     inputCurrency,
     outputCurrency,
@@ -90,11 +75,11 @@ export function LimitOrdersWidget() {
     [isSell, inputCurrencyAmount, outputCurrencyAmount],
   )
 
-  useSetTradeQuoteParams(quoteAmount)
+  useSetTradeQuoteParams({ amount: quoteAmount })
 
   const inputCurrencyInfo: CurrencyInfo = {
     field: Field.INPUT,
-    label: isSell ? 'Sell' : 'You sell at most',
+    label: isSell ? t`Sell` : t`You sell at most`,
     currency: inputCurrency,
     amount: inputCurrencyAmount,
     isIndependent: isSell,
@@ -103,9 +88,10 @@ export function LimitOrdersWidget() {
     receiveAmountInfo: null,
     isUsdValuesMode,
   }
+
   const outputCurrencyInfo: CurrencyInfo = {
     field: Field.OUTPUT,
-    label: isSell ? 'Receive at least' : 'Buy exactly',
+    label: isSell ? t`Receive at least` : t`Buy exactly`,
     currency: outputCurrency,
     amount: outputCurrencyAmount,
     isIndependent: !isSell,
@@ -132,7 +118,33 @@ export function LimitOrdersWidget() {
   return <LimitOrders {...props} />
 }
 
+const LIMIT_BULLET_LIST_CONTENT: BulletListItem[] = [
+  { content: msg`Set any limit price and time horizon` },
+  { content: msg`FREE order placement and cancellation` },
+  { content: msg`Place multiple orders using the same balance` },
+  { content: msg`Receive surplus of your order` },
+  { content: msg`Protection from MEV by default` },
+  {
+    content: (
+      <span>
+        <Trans>Place orders for higher than available balance!</Trans>
+      </span>
+    ),
+  },
+]
+
+const UNLOCK_SCREEN = {
+  title: msg`Want to try out limit orders?`,
+  subtitle: msg`Get started!`,
+  orderType: msg`partially fillable`,
+  buttonText: msg`Get started with limit orders`,
+  buttonLink: 'https://cow.fi/learn/cow-swap-improves-the-limit-order-experience-with-partially-fillable-limit-orders',
+}
+
+// TODO: Break down this large function into smaller functions
+// eslint-disable-next-line max-lines-per-function
 const LimitOrders = React.memo((props: LimitOrdersProps) => {
+  const { i18n } = useLingui()
   const {
     inputCurrencyInfo,
     outputCurrencyInfo,
@@ -154,6 +166,8 @@ const LimitOrders = React.memo((props: LimitOrdersProps) => {
   const handleUnlock = useCallback(() => updateLimitOrdersState({ isUnlocked: true }), [updateLimitOrdersState])
   const { isLimitOrdersUpgradeBannerEnabled } = useFeatureFlags()
   const isWrapUnwrap = useIsWrapOrUnwrap()
+  const hideTradeRateDetails = useShouldHideTradeRateDetails()
+  const isPrimaryValidationPassed = useIsTradeFormValidationPassed()
 
   useEffect(() => {
     const skipLockScreen = search.includes('skipLockScreen')
@@ -191,28 +205,36 @@ const LimitOrders = React.memo((props: LimitOrdersProps) => {
       !isUnlocked && !isLimitOrdersUpgradeBannerEnabled ? (
         <UnlockWidgetScreen
           id="limit-orders"
-          items={LIMIT_BULLET_LIST_CONTENT}
+          items={LIMIT_BULLET_LIST_CONTENT.map(({ content }) => ({
+            content,
+          }))}
           buttonLink={UNLOCK_SCREEN.buttonLink}
-          title={UNLOCK_SCREEN.title}
-          subtitle={UNLOCK_SCREEN.subtitle}
-          orderType={UNLOCK_SCREEN.orderType}
-          buttonText={UNLOCK_SCREEN.buttonText}
+          title={i18n._(UNLOCK_SCREEN.title)}
+          subtitle={i18n._(UNLOCK_SCREEN.subtitle)}
+          orderType={i18n._(UNLOCK_SCREEN.orderType)}
+          buttonText={i18n._(UNLOCK_SCREEN.buttonText)}
           handleUnlock={handleUnlock}
         />
       ) : undefined,
     topContent: props.settingsState.limitPricePosition === 'top' ? rateInput : undefined,
     middleContent: props.settingsState.limitPricePosition === 'between' ? rateInput : undefined,
+    // TODO: Extract nested component outside render function
+    // eslint-disable-next-line react/no-unstable-nested-components
     bottomContent(warnings) {
       return (
         <>
           {props.settingsState.limitPricePosition === 'bottom' && rateInput}
-          <styledEl.FooterBox>
-            <DeadlineInput />
-            <TradeRateDetails rateInfoParams={rateInfoParams} alwaysExpanded={true} />
-          </styledEl.FooterBox>
+          {!hideTradeRateDetails && (
+            <styledEl.FooterBox>
+              <DeadlineInput />
+              <TradeRateDetails rateInfoParams={rateInfoParams} alwaysExpanded={true} loading={isRateLoading} />
+            </styledEl.FooterBox>
+          )}
 
           <LimitOrdersWarnings feeAmount={feeAmount} />
           {warnings}
+
+          {isPrimaryValidationPassed && <TradeApproveWithAffectedOrderList />}
 
           <styledEl.TradeButtonBox>
             <TradeButtons isTradeContextReady={isTradeContextReady} />
@@ -220,10 +242,10 @@ const LimitOrders = React.memo((props: LimitOrdersProps) => {
         </>
       )
     },
-    outerContent: <>{isUnlocked && <InfoBanner />}</>,
+    outerContent: isUnlocked ? <BottomBanners /> : null,
   }
 
-  const params = {
+  const params: TradeWidgetParams = {
     compactView: true,
     recipient,
     showRecipient,
@@ -231,7 +253,9 @@ const LimitOrders = React.memo((props: LimitOrdersProps) => {
     priceImpact,
     disablePriceImpact: localFormValidation === LimitOrdersFormState.FeeExceedsFrom,
     disableQuotePolling: isConfirmOpen,
+    disableSuggestedSlippageApi: true,
     hideTradeWarnings: !!localFormValidation,
+    isPriceStatic: true,
   }
 
   return (

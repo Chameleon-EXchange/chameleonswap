@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+
 import { CONFIG } from '@/const/meta'
 
 const metaTitleWithShortDescription = `${CONFIG.title.default} - ${CONFIG.descriptionShort}`

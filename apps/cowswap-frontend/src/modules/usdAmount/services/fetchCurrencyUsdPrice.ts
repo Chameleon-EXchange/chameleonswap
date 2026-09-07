@@ -1,6 +1,6 @@
-import { SupportedChainId, mapSupportedNetworks } from '@cowprotocol/cow-sdk'
+import { getAddressKey, SupportedChainId, mapSupportedNetworks } from '@cowprotocol/cow-sdk'
+import { Fraction, Token } from '@cowprotocol/currency'
 import { PersistentStateByChain } from '@cowprotocol/types'
-import { Fraction, Token } from '@uniswap/sdk-core'
 
 import { RateLimitError, UnknownCurrencyError } from '../apis/errors'
 import { getBffUsdPrice } from '../apis/getBffUsdPrice'
@@ -14,6 +14,52 @@ let defillamaRateLimitHitTimestamp: null | number = null
 
 const defillamaUnknownCurrencies: UnknownCurrenciesMap = mapSupportedNetworks({})
 const bffUnknownCurrencies: UnknownCurrenciesMap = mapSupportedNetworks({})
+
+/**
+ * Fetches USD price for a given currency from BFF, Defillama, or CowProtocol
+ * Tries sources in that order
+ */
+export async function fetchCurrencyUsdPrice(currency: Token): Promise<Fraction | null> {
+  const shouldSkipBff = getShouldSkipBff(currency)
+  const shouldSkipDefillama = getShouldSkipDefillama(currency)
+
+  if (defillamaRateLimitHitTimestamp && !shouldSkipDefillama) {
+    defillamaRateLimitHitTimestamp = null
+  }
+
+  function getCowPrice(currency: Token): Promise<Fraction | null> {
+    return getCowProtocolUsdPrice(currency).catch((error) => {
+      console.error('Cannot fetch USD price', { error })
+      return Promise.reject(error)
+    })
+  }
+
+  // Try BFF first, then fall back to Defillama, then CoW
+  if (!shouldSkipBff) {
+    return getBffUsdPrice(currency)
+      .catch(handleErrorFactory(currency, null, bffUnknownCurrencies, getDefillamaUsdPrice))
+      .catch(handleErrorFactory(currency, defillamaRateLimitHitTimestamp, defillamaUnknownCurrencies, getCowPrice))
+  }
+
+  // If BFF is skipped, try Defillama
+  if (!shouldSkipDefillama) {
+    return getDefillamaUsdPrice(currency).catch(
+      handleErrorFactory(currency, defillamaRateLimitHitTimestamp, defillamaUnknownCurrencies, getCowPrice),
+    )
+  }
+
+  // CowProtocolUsdPrice is only available for supported chains
+  if (currency.chainId in SupportedChainId) {
+    // If all other sources are skipped, use CoW as last resort
+    return getCowPrice(currency)
+  }
+
+  return null
+}
+
+function getShouldSkipBff(currency: Token): boolean {
+  return getShouldSkipPriceSource(currency, null, bffUnknownCurrencies, null, 0)
+}
 
 function getShouldSkipDefillama(currency: Token): boolean {
   return getShouldSkipPriceSource(
@@ -37,53 +83,9 @@ function getShouldSkipPriceSource(
 
   if (platforms && !platforms[chainId]) return true
 
-  if (unknownCurrenciesForChain[currency.address.toLowerCase()]) return true
+  if (unknownCurrenciesForChain[getAddressKey(currency.address)]) return true
 
   return !!rateLimitTimestamp && Date.now() - rateLimitTimestamp < timeout
-}
-
-function getShouldSkipBff(currency: Token): boolean {
-  return getShouldSkipPriceSource(currency, null, bffUnknownCurrencies, null, 0)
-}
-
-/**
- * Fetches USD price for a given currency from BFF, Defillama, or CowProtocol
- * Tries sources in that order
- */
-export function fetchCurrencyUsdPrice(
-  currency: Token,
-  getUsdcPrice: () => Promise<Fraction | null>,
-): Promise<Fraction | null> {
-  const shouldSkipBff = getShouldSkipBff(currency)
-  const shouldSkipDefillama = getShouldSkipDefillama(currency)
-
-  if (defillamaRateLimitHitTimestamp && !shouldSkipDefillama) {
-    defillamaRateLimitHitTimestamp = null
-  }
-
-  function getCowPrice(currency: Token): Promise<Fraction | null> {
-    return getCowProtocolUsdPrice(currency, getUsdcPrice).catch((error) => {
-      console.error('Cannot fetch USD price', { error })
-      return Promise.reject(error)
-    })
-  }
-
-  // Try BFF first, then fall back to Defillama, then CoW
-  if (!shouldSkipBff) {
-    return getBffUsdPrice(currency)
-      .catch(handleErrorFactory(currency, null, bffUnknownCurrencies, getDefillamaUsdPrice))
-      .catch(handleErrorFactory(currency, defillamaRateLimitHitTimestamp, defillamaUnknownCurrencies, getCowPrice))
-  }
-
-  // If BFF is skipped, try Defillama
-  if (!shouldSkipDefillama) {
-    return getDefillamaUsdPrice(currency).catch(
-      handleErrorFactory(currency, defillamaRateLimitHitTimestamp, defillamaUnknownCurrencies, getCowPrice),
-    )
-  }
-
-  // If all other sources are skipped, use CoW as last resort
-  return getCowPrice(currency)
 }
 
 function handleErrorFactory(
@@ -91,6 +93,8 @@ function handleErrorFactory(
   rateLimitTimestamp: null | number,
   unknownCurrenciesMap: UnknownCurrenciesMap,
   fetchPriceFallback: (currency: Token) => Promise<Fraction | null>,
+  // TODO: Replace any with proper type definitions
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): ((reason: any) => Fraction | PromiseLike<Fraction | null> | null) | null | undefined {
   return (error) => {
     if (error instanceof RateLimitError) {
@@ -99,12 +103,12 @@ function handleErrorFactory(
       // Mark currency as unknown
       const chainId = currency.chainId as SupportedChainId
       const unknownCurrenciesForChain = unknownCurrenciesMap[chainId]
-      const addressToLowercase = currency.address.toLowerCase()
+      const addressKey = getAddressKey(currency.address)
 
       if (unknownCurrenciesForChain === undefined) {
-        unknownCurrenciesMap[chainId] = { [addressToLowercase]: true }
+        unknownCurrenciesMap[chainId] = { [addressKey]: true }
       } else {
-        unknownCurrenciesForChain[addressToLowercase] = true
+        unknownCurrenciesForChain[addressKey] = true
       }
     } else {
     }

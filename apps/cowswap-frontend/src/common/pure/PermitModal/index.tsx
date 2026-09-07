@@ -1,9 +1,12 @@
 import { useMemo } from 'react'
 
+import { Currency, CurrencyAmount } from '@cowprotocol/currency'
+import { UiOrderType } from '@cowprotocol/types'
 import { TokenAmount, TokenSymbol } from '@cowprotocol/ui'
-import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
 
-import ICON_ARROW from 'assets/icon/arrow.svg'
+import { t } from '@lingui/core/macro'
+import { Trans } from '@lingui/react/macro'
+import iconArrowSrc from 'assets/icon/arrow.svg'
 import SVG from 'react-inlinesvg'
 import styled from 'styled-components/macro'
 import { Nullish } from 'types'
@@ -16,7 +19,7 @@ export type PermitModalProps = NewModalProps & {
   inputAmount: Nullish<CurrencyAmount<Currency>>
   outputAmount: Nullish<CurrencyAmount<Currency>>
   step: 'approve' | 'submit'
-  orderType: string
+  orderType: UiOrderType
   icon?: React.ReactNode
 }
 
@@ -24,17 +27,21 @@ export type PermitModalProps = NewModalProps & {
  * You probably want to use containers/PermitModal instead
  * This is the pure component for cosmos
  */
+// TODO: Break down this large function into smaller functions
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function PermitModal(props: PermitModalProps) {
   const { inputAmount, outputAmount, step, icon: inputIcon, orderType, ...rest } = props
+  const orderTypeLabel = getPermitOrderTypeLabel(orderType)
 
   const steps: StepProps[] = useMemo(
     () => [
       {
         stepState: step === 'approve' ? 'loading' : 'finished',
         stepNumber: 1,
-        label: 'Approve' + (step === 'approve' ? '' : 'd'),
+        label: step === 'approve' ? t`Approve` : t`Approved`,
       },
-      { stepState: step === 'submit' ? 'loading' : 'active', stepNumber: 2, label: 'Submit' },
+      { stepState: step === 'submit' ? 'loading' : 'active', stepNumber: 2, label: t`Submit` },
     ],
     [step],
   )
@@ -52,20 +59,21 @@ export function PermitModal(props: PermitModalProps) {
     () =>
       step === 'approve' ? (
         <>
-          Approve spending <TokenSymbol token={inputAmount?.currency} /> <br />
-          on Chameleon swap
+          <Trans>
+            Approve spending <TokenSymbol token={inputAmount?.currency} /> <br /> on CoW Swap
+          </Trans>
         </>
       ) : (
-        `Confirm ${orderType}`
+        t`Confirm ${orderTypeLabel}`
       ),
-    [inputAmount?.currency, orderType, step],
+    [inputAmount?.currency, orderTypeLabel, step],
   )
 
   const body = useMemo(
     () =>
       step === 'approve' ? null : (
         <p>
-          <TokenAmount amount={inputAmount} tokenSymbol={inputAmount?.currency} /> <ArrowRight src={ICON_ARROW} />{' '}
+          <TokenAmount amount={inputAmount} tokenSymbol={inputAmount?.currency} /> <ArrowRight src={iconArrowSrc} />{' '}
           <TokenAmount amount={outputAmount} tokenSymbol={outputAmount?.currency} />
         </p>
       ),
@@ -83,11 +91,28 @@ export function PermitModal(props: PermitModalProps) {
       </NewModalContentTop>
 
       <NewModalContentBottom gap={24}>
-        <SignDescription>Sign (gas-free!) in your wallet...</SignDescription>
+        <SignDescription>
+          <Trans>Sign (gas-free!) in your wallet...</Trans>
+        </SignDescription>
         <Stepper maxWidth={'75%'} steps={steps} />
       </NewModalContentBottom>
     </NewModal>
   )
+}
+
+function getPermitOrderTypeLabel(orderType: UiOrderType): string {
+  switch (orderType) {
+    case UiOrderType.SWAP:
+      return t`Swap`
+    case UiOrderType.LIMIT:
+      return t`Limit Order`
+    case UiOrderType.TWAP:
+      return t`TWAP`
+    case UiOrderType.HOOKS:
+      return t`Hooks`
+    case UiOrderType.YIELD:
+      return t`Yield`
+  }
 }
 
 const SignDescription = styled.p`

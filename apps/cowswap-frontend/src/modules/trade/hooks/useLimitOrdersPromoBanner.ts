@@ -5,9 +5,8 @@ import { useCallback } from 'react'
 import { useFeatureFlags } from '@cowprotocol/common-hooks'
 import { isInjectedWidget } from '@cowprotocol/common-utils'
 
-import { useMatch } from 'react-router-dom'
-
-import { useInjectedWidgetParams } from 'modules/injectedWidget'
+import { useInjectedWidgetParams } from 'entities/injectedWidget'
+import { useMatch } from 'react-router'
 
 import { Routes } from 'common/constants/routes'
 
@@ -15,8 +14,10 @@ const STORAGE_KEY = 'limitOrdersPromoBanner:v0'
 
 const promoBannerAtom = atomWithStorage<boolean>(STORAGE_KEY, true)
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function useLimitOrdersPromoBanner() {
-  const isLimitOrdersTab = !!useMatch(Routes.LIMIT_ORDER)
+  const isLimitOrdersTab = !!useMatch(Routes.LIMIT_ORDERS)
   const { standaloneMode } = useInjectedWidgetParams()
   const [isVisible, setIsVisible] = useAtom(promoBannerAtom)
   const { isLimitOrdersUpgradeBannerEnabled } = useFeatureFlags()

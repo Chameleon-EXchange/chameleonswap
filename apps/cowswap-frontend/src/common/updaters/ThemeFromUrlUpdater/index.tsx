@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 
-import { useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router'
 
 import { useAppDispatch } from 'legacy/state/hooks'
 import { useIsDarkMode } from 'legacy/state/user/hooks'
@@ -9,12 +9,13 @@ import { updateUserDarkMode } from 'legacy/state/user/reducer'
 /**
  * Switch theme depending on theme query parameter
  */
-export function ThemeFromUrlUpdater() {
+export function ThemeFromUrlUpdater(): null {
   const darkMode = useIsDarkMode()
   const darkModeRef = useRef(darkMode)
   const dispatch = useAppDispatch()
   const { search } = useLocation()
 
+  // eslint-disable-next-line react-hooks/refs
   darkModeRef.current = darkMode
 
   useEffect(() => {

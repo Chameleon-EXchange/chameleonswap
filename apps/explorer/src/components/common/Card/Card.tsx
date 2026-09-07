@@ -1,18 +1,17 @@
-import { Media } from '@cowprotocol/ui'
+import { Media, Color, UI } from '@cowprotocol/ui'
 
 import Grid, { GridSize } from '@material-ui/core/Grid'
 import styled from 'styled-components/macro'
-import { COLOURS } from 'styles'
-
-const { white, fadedGreyishWhite, blackLight } = COLOURS
 
 const DefaultCard = styled.div`
   height: inherit;
   min-width: 13rem;
   min-height: 10rem;
-  background-color: #f5f5f5;
+  background-color: ${Color.explorer_bgInput};
   border-radius: 6px;
-  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 7%), 0 4px 6px -2px rgb(0 0 0 / 5%);
+  box-shadow:
+    0 10px 15px -3px ${Color.explorer_boxShadow},
+    0 4px 6px -2px ${Color.explorer_boxShadow};
   margin: 0.8rem;
 
   ${Media.upToSmall()} {
@@ -26,8 +25,8 @@ const CardComponent = styled(DefaultCard)`
   flex-direction: column;
   border-top-right-radius: 6px;
   border-top-left-radius: 6px;
-  background: ${({ theme }): string => (theme.darkMode ? fadedGreyishWhite : white)};
-  color: ${({ theme }): string => (theme.darkMode ? white : blackLight)};
+  background: ${Color.explorer_bgInput};
+  color: var(${UI.COLOR_NEUTRAL_100});
 `
 
 // CARD CONTENT STYLES
@@ -46,13 +45,6 @@ const CardContent = styled.div`
   }
 `
 
-enum CardSize {
-  xs = 12,
-  sm = 6,
-  md = 4,
-  lg = 3,
-}
-
 export interface CardBaseProps {
   children?: React.ReactNode
   emptyContent?: boolean
@@ -60,6 +52,13 @@ export interface CardBaseProps {
   sm?: GridSize
   md?: GridSize
   lg?: GridSize
+}
+
+enum CardSize {
+  xs = 12,
+  sm = 6,
+  md = 4,
+  lg = 3,
 }
 
 /**

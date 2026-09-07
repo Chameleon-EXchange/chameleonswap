@@ -1,26 +1,25 @@
 import { useCallback, useMemo, useState } from 'react'
 
 import { Command } from '@cowprotocol/types'
-import { Badge, BadgeTypes } from '@cowprotocol/ui'
+import { Badge, BadgeTypes, ModalHeader } from '@cowprotocol/ui'
 import type { TradeType } from '@cowprotocol/widget-lib'
 
-import { Trans } from '@lingui/macro'
-import IMAGE_CARET from 'assets/icon/caret.svg'
+import { Trans, useLingui } from '@lingui/react/macro'
+import iconCaretSrc from 'assets/icon/caret.svg'
+import { useInjectedWidgetParams } from 'entities/injectedWidget'
 import SVG from 'react-inlinesvg'
-import { useLocation } from 'react-router-dom'
-
-import { useInjectedWidgetParams } from 'modules/injectedWidget'
-import { ModalHeader } from 'modules/tokensList/pure/ModalHeader'
+import { useLocation } from 'react-router'
 
 import { Routes, RoutesValues } from 'common/constants/routes'
 import { useMenuItems } from 'common/hooks/useMenuItems'
+import { TradeUrlParams, addChainIdToRoute, parameterizeTradeRoute } from 'common/modules/tradeNavigation'
 
 import * as styledEl from './styled'
 
+import { useGetTradeUrlParams } from '../../hooks/useGetTradeUrlParams'
 import { useTradeRouteContext } from '../../hooks/useTradeRouteContext'
 import { useGetTradeStateByRoute } from '../../hooks/useTradeState'
-import { getDefaultTradeRawState, TradeUrlParams } from '../../types/TradeRawState'
-import { addChainIdToRoute, parameterizeTradeRoute } from '../../utils/parameterizeTradeRoute'
+import { getDefaultTradeRawState } from '../../types'
 
 interface MenuItemConfig {
   route: RoutesValues
@@ -32,7 +31,7 @@ interface MenuItemConfig {
 
 const TRADE_TYPE_TO_ROUTE: Record<TradeType, string> = {
   swap: Routes.SWAP,
-  limit: Routes.LIMIT_ORDER,
+  limit: Routes.LIMIT_ORDERS,
   advanced: Routes.ADVANCED_ORDERS,
   yield: Routes.YIELD,
 }
@@ -41,6 +40,9 @@ interface TradeWidgetLinksProps {
   isDropdown?: boolean
 }
 
+// TODO: Break down this large function into smaller functions
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function TradeWidgetLinks({ isDropdown = false }: TradeWidgetLinksProps) {
   const tradeContext = useTradeRouteContext()
   const location = useLocation()
@@ -48,6 +50,7 @@ export function TradeWidgetLinks({ isDropdown = false }: TradeWidgetLinksProps) 
   const { enabledTradeTypes } = useInjectedWidgetParams()
   const menuItems = useMenuItems()
   const getTradeStateByType = useGetTradeStateByRoute()
+  const getTradeUrlParams = useGetTradeUrlParams()
 
   const handleMenuItemClick = useCallback((_item?: MenuItemConfig): void => {
     setDropdownVisible(false)
@@ -61,31 +64,33 @@ export function TradeWidgetLinks({ isDropdown = false }: TradeWidgetLinksProps) 
     })
   }, [menuItems, enabledTradeTypes])
 
-  const menuItemsElements: JSX.Element[] = useMemo(() => {
+  const menuItemsElements = useMemo(() => {
     return enabledItems.map((item) => {
       const isItemYield = item.route === Routes.YIELD
       const chainId = tradeContext.chainId
 
       const isCurrentPathYield = location.pathname.startsWith(addChainIdToRoute(Routes.YIELD, chainId))
       const itemTradeState = getTradeStateByType(item.route)
+      const defaultState = chainId ? getDefaultTradeRawState(+chainId) : null
+
+      const tradeUrlParams = isCurrentPathYield
+        ? ({
+            chainId,
+            inputCurrencyId: itemTradeState.inputCurrencyId || defaultState?.inputCurrencyId || null,
+            outputCurrencyId: itemTradeState.outputCurrencyId,
+          } as TradeUrlParams)
+        : getTradeUrlParams(item)
 
       const routePath =
         isItemYield && !isCurrentPathYield
           ? addChainIdToRoute(item.route, chainId)
-          : parameterizeTradeRoute(
-              isCurrentPathYield
-                ? ({
-                    chainId,
-                    inputCurrencyId:
-                      itemTradeState.inputCurrencyId || (chainId && getDefaultTradeRawState(+chainId).inputCurrencyId),
-                    outputCurrencyId: itemTradeState.outputCurrencyId,
-                  } as TradeUrlParams)
-                : tradeContext,
-              item.route,
-              !isCurrentPathYield,
-            )
+          : parameterizeTradeRoute(tradeUrlParams, item.route, !isCurrentPathYield)
 
-      const isActive = location.pathname.startsWith(routePath.split('?')[0])
+      const routeBasePath = addChainIdToRoute(item.route, chainId)
+      const hooksBasePath = addChainIdToRoute(Routes.HOOKS, chainId)
+      const isActive =
+        location.pathname.startsWith(routeBasePath) &&
+        (item.route === Routes.HOOKS || !location.pathname.startsWith(hooksBasePath))
 
       return (
         <MenuItem
@@ -106,11 +111,14 @@ export function TradeWidgetLinks({ isDropdown = false }: TradeWidgetLinksProps) 
     location.pathname,
     handleMenuItemClick,
     getTradeStateByType,
+    getTradeUrlParams,
   ])
 
   const singleMenuItem = menuItemsElements.length === 1
 
   const selectedMenuItem = menuItemsElements.find((item) => item.props.isActive) || menuItemsElements[0]
+
+  const { t } = useLingui()
 
   return isDropdown ? (
     <>
@@ -118,15 +126,17 @@ export function TradeWidgetLinks({ isDropdown = false }: TradeWidgetLinksProps) 
         onClick={() => !singleMenuItem && setDropdownVisible(!isDropdownVisible)}
         isDropdownVisible={isDropdownVisible}
       >
-        <styledEl.Link to={selectedMenuItem.props.routePath || '#'}>
+        <styledEl.DropdownButton>
           {selectedMenuItem.props.item.label}
-          {!singleMenuItem ? <SVG src={IMAGE_CARET} title="select" /> : null}
-        </styledEl.Link>
+          {!singleMenuItem ? <SVG src={iconCaretSrc} title={t`select`} /> : null}
+        </styledEl.DropdownButton>
       </styledEl.MenuItem>
 
       {isDropdownVisible && (
         <styledEl.SelectMenu>
-          <ModalHeader onBack={handleMenuItemClick}>Trading mode</ModalHeader>
+          <ModalHeader onBack={handleMenuItemClick}>
+            <Trans>Trading mode</Trans>
+          </ModalHeader>
           <styledEl.TradeWidgetContent>{menuItemsElements}</styledEl.TradeWidgetContent>
         </styledEl.SelectMenu>
       )}
@@ -143,18 +153,20 @@ const MenuItem = ({
   onClick,
   isDropdownVisible,
 }: {
-  routePath: string
-  item: MenuItemConfig
   isActive: boolean
-  onClick: Command
   isDropdownVisible: boolean
+  item: MenuItemConfig
+  onClick: Command
+  routePath: string
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 }) => (
   <styledEl.MenuItem isActive={isActive} onClick={onClick} isDropdownVisible={isDropdownVisible}>
     <styledEl.Link to={routePath}>
-      <Trans>{item.label}</Trans>
+      {item.label}
       {(!isActive && item.badgeImage) || item.badge ? (
         <Badge {...(item.badgeType && { type: item.badgeType })}>
-          {item.badgeImage ? <SVG src={item.badgeImage} /> : <Trans>{item.badge}</Trans>}
+          {item.badgeImage ? <SVG src={item.badgeImage} /> : item.badge}
         </Badge>
       ) : null}
     </styledEl.Link>

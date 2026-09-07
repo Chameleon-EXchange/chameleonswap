@@ -1,7 +1,6 @@
 import { formatSymbol } from '@cowprotocol/common-utils'
-import { Currency } from '@uniswap/sdk-core'
-
-import { Nullish } from '../../types'
+import { Currency } from '@cowprotocol/currency'
+import { Nullish } from '@cowprotocol/types'
 
 export type TokenNameAndSymbol = Pick<Currency, 'symbol' | 'name'>
 
@@ -11,6 +10,30 @@ export type TokenSymbolProps = {
   className?: string
 }
 
+export function formatTokenSymbol(props: Omit<TokenSymbolProps, 'className'>): string | null {
+  const abbreviatedSymbol = getAbbreviatedSymbol(props)
+  if (!abbreviatedSymbol) return null
+
+  return abbreviatedSymbol.abbreviateSymbol || null
+}
+
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export function TokenSymbol(props: TokenSymbolProps) {
+  const abbreviatedSymbol = getAbbreviatedSymbol(props)
+  if (!abbreviatedSymbol) return null
+
+  const { abbreviateSymbol, title } = abbreviatedSymbol
+
+  return (
+    <span className={props.className} title={title}>
+      {abbreviateSymbol}
+    </span>
+  )
+}
+
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 function getAbbreviatedSymbol(props: Omit<TokenSymbolProps, 'className'>) {
   const { token, length } = props
   const { symbol, name } = token || {}
@@ -25,24 +48,4 @@ function getAbbreviatedSymbol(props: Omit<TokenSymbolProps, 'className'>) {
     abbreviateSymbol,
     title,
   }
-}
-
-export function TokenSymbol(props: TokenSymbolProps) {
-  const abbreviatedSymbol = getAbbreviatedSymbol(props)
-  if (!abbreviatedSymbol) return null
-
-  const { abbreviateSymbol, title } = abbreviatedSymbol
-
-  return (
-    <span className={props.className} title={title}>
-      {abbreviateSymbol}
-    </span>
-  )
-}
-
-export function formatTokenSymbol(props: Omit<TokenSymbolProps, 'className'>): string | null {
-  const abbreviatedSymbol = getAbbreviatedSymbol(props)
-  if (!abbreviatedSymbol) return null
-
-  return abbreviatedSymbol.abbreviateSymbol || null
 }

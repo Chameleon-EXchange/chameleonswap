@@ -1,7 +1,6 @@
-import { TokenAmount, loadingOpacityMixin, Media } from '@cowprotocol/ui'
-import { UI } from '@cowprotocol/ui'
+import { loadingOpacityMixin, Media, TokenAmount, UI } from '@cowprotocol/ui'
 
-import styled from 'styled-components/macro'
+import styled, { css } from 'styled-components/macro'
 
 import Input from 'legacy/components/NumericalInput'
 
@@ -11,7 +10,8 @@ export const OuterWrapper = styled.div`
   flex-flow: column wrap;
 `
 
-export const Wrapper = styled.div<{ withReceiveAmountInfo: boolean; readOnly: boolean; pointerDisabled: boolean }>`
+export const Wrapper = styled.label<{ withReceiveAmountInfo: boolean; readOnly: boolean; pointerDisabled: boolean }>`
+  position: relative;
   display: flex;
   flex-flow: row wrap;
   align-content: space-between;
@@ -25,12 +25,25 @@ export const Wrapper = styled.div<{ withReceiveAmountInfo: boolean; readOnly: bo
   pointer-events: ${({ pointerDisabled }) => (pointerDisabled ? 'none' : '')};
   max-width: 100%;
 
+  ${({ pointerDisabled }) =>
+    pointerDisabled &&
+    css`
+      &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        cursor: not-allowed;
+        pointer-events: auto;
+      }
+    `}
+
   ${Media.upToSmall()} {
     padding: 16px 12px;
   }
 `
 
-export const CurrencyInputBox = styled.div`
+export const CurrencyInputBox = styled.div<{ isInvalid?: boolean }>`
   display: grid;
   width: 100%;
   grid-template-columns: repeat(2, auto);
@@ -40,10 +53,15 @@ export const CurrencyInputBox = styled.div`
   margin: 0;
   font-weight: 400;
   font-size: 13px;
-  color: inherit;
+  color: ${({ isInvalid }) => (isInvalid ? `var(${UI.COLOR_RED})` : 'inherit')};
 
   ${Media.upToSmall()} {
     gap: 8px;
+  }
+
+  ${Media.upToTiny()} {
+    grid-template-columns: repeat(1, auto);
+    grid-template-rows: max-content;
   }
 
   > div {
@@ -135,30 +153,20 @@ export const FiatAmountText = styled.span`
   > div {
     font-weight: 500;
     font-size: 13px;
-    opacity: 0.7;
     color: inherit;
     transition: opacity var(${UI.ANIMATION_DURATION}) ease-in-out;
-
-    &:hover {
-      opacity: 1;
-    }
   }
 `
 
 export const SetMaxBtn = styled.button`
   display: inline-block;
-  cursor: pointer;
-  margin: 0;
-  background: none;
-  border: none;
-  outline: none;
-  color: inherit;
   font-weight: 600;
   font-size: 11px;
   background: var(${UI.COLOR_PAPER});
   border-radius: 6px;
   padding: 3px 4px;
   text-transform: uppercase;
+  white-space: nowrap;
   transition:
     background var(${UI.ANIMATION_DURATION}) ease-in-out,
     color var(${UI.ANIMATION_DURATION}) ease-in-out;

@@ -1,12 +1,17 @@
 import { useAtom, useAtomValue } from 'jotai'
-import React, { useMemo } from 'react'
+import React, { ReactNode, useMemo } from 'react'
 
 import { getWrappedToken } from '@cowprotocol/common-utils'
+import { isSupportedPermitInfo } from '@cowprotocol/permit-utils'
+import { UiOrderType } from '@cowprotocol/types'
 import { TokenSymbol } from '@cowprotocol/ui'
-import { useWalletDetails, useWalletInfo } from '@cowprotocol/wallet'
+
+import { t } from '@lingui/core/macro'
+import { Trans } from '@lingui/react/macro'
 
 import { PriceImpact } from 'legacy/hooks/usePriceImpact'
 
+import { useIsZeroBalance } from 'modules/combinedBalances'
 import { LimitOrdersWarnings } from 'modules/limitOrders/containers/LimitOrdersWarnings'
 import { useHandleOrderPlacement } from 'modules/limitOrders/hooks/useHandleOrderPlacement'
 import { useLimitOrdersWarningsAccepted } from 'modules/limitOrders/hooks/useLimitOrdersWarningsAccepted'
@@ -15,7 +20,12 @@ import { executionPriceAtom } from 'modules/limitOrders/state/executionPriceAtom
 import { limitOrdersSettingsAtom } from 'modules/limitOrders/state/limitOrdersSettingsAtom'
 import { limitRateAtom } from 'modules/limitOrders/state/limitRateAtom'
 import { partiallyFillableOverrideAtom } from 'modules/limitOrders/state/partiallyFillableOverride'
-import { TradeConfirmation, TradeConfirmModal, useTradeConfirmActions } from 'modules/trade'
+import {
+  TradeConfirmation,
+  TradeConfirmModal,
+  useTradeConfirmActions,
+  useCommonTradeConfirmContext,
+} from 'modules/trade'
 
 import { useIsSafeApprovalBundle } from 'common/hooks/useIsSafeApprovalBundle'
 import { useRateInfoParams } from 'common/hooks/useRateInfoParams'
@@ -26,8 +36,6 @@ import { LimitOrdersDetails } from '../../pure/LimitOrdersDetails'
 import { TradeFlowContext } from '../../services/types'
 import { TradeRateDetails } from '../TradeRateDetails'
 
-const CONFIRM_TITLE = 'Limit Order'
-
 export interface LimitOrdersConfirmModalProps {
   tradeContext: TradeFlowContext
   inputCurrencyInfo: CurrencyPreviewInfo
@@ -36,7 +44,8 @@ export interface LimitOrdersConfirmModalProps {
   recipient?: string | null
 }
 
-export function LimitOrdersConfirmModal(props: LimitOrdersConfirmModalProps) {
+export function LimitOrdersConfirmModal(props: LimitOrdersConfirmModalProps): ReactNode {
+  const CONFIRM_TITLE = t`Review Limit Order`
   const { inputCurrencyInfo, outputCurrencyInfo, tradeContext: tradeContextInitial, priceImpact, recipient } = props
 
   /**
@@ -47,8 +56,7 @@ export function LimitOrdersConfirmModal(props: LimitOrdersConfirmModalProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const tradeContext = useMemo(() => tradeContextInitial, [])
 
-  const { account } = useWalletInfo()
-  const { ensName } = useWalletDetails()
+  const commonTradeConfirmContext = useCommonTradeConfirmContext()
   const warningsAccepted = useLimitOrdersWarningsAccepted(true)
   const settingsState = useAtomValue(limitOrdersSettingsAtom)
   const executionPrice = useAtomValue(executionPriceAtom)
@@ -65,25 +73,34 @@ export function LimitOrdersConfirmModal(props: LimitOrdersConfirmModalProps) {
 
   const doTrade = useHandleOrderPlacement(tradeContext, priceImpact, settingsState, tradeConfirmActions)
   const isTooLowRate = rateImpact < LOW_RATE_THRESHOLD_PERCENT
-  const isConfirmDisabled = isTooLowRate ? !warningsAccepted : false
 
-  const isSafeApprovalBundle = useIsSafeApprovalBundle(inputAmount)
-  const buttonText = isSafeApprovalBundle ? (
+  // Limit orders may be placed with amount > balance, so only block when the sell token balance
+  // dropped to 0 while the modal was open (e.g. a previous order fully filled) — see issue #5645.
+  const isInsufficientBalance = useIsZeroBalance(inputAmount?.currency)
+  const isConfirmDisabled = (isTooLowRate ? !warningsAccepted : false) || isInsufficientBalance
+
+  const inputSymbol = inputAmount?.currency?.symbol || t`token`
+  const canUsePermit = tradeContext.allowsOffchainSigning && isSupportedPermitInfo(tradeContext.permitInfo)
+  // Temporary: keep limit-order bundles Safe-only until EIP-5792 order lifecycle tracking lands.
+  const isSafeApprovalBundle =
+    useIsSafeApprovalBundle(inputAmount) && tradeContext.postOrderParams.isSafeWallet && !canUsePermit
+  const buttonText = isInsufficientBalance ? (
+    t`Insufficient ${inputSymbol} balance`
+  ) : isSafeApprovalBundle ? (
     <>
-      Confirm (Approve&nbsp;
+      <Trans>Confirm</Trans> (<Trans>Approve</Trans>&nbsp;
       <TokenSymbol token={inputAmount && getWrappedToken(inputAmount.currency)} length={6} />
-      &nbsp;& Limit order)
+      &nbsp;& <Trans>Limit order</Trans>)
     </>
   ) : (
-    'Place limit order'
+    <Trans>Place limit order</Trans>
   )
 
   return (
-    <TradeConfirmModal title={CONFIRM_TITLE}>
+    <TradeConfirmModal orderType={UiOrderType.LIMIT} showGetNotifiedMessage>
       <TradeConfirmation
+        {...commonTradeConfirmContext}
         title={CONFIRM_TITLE}
-        account={account}
-        ensName={ensName}
         inputCurrencyInfo={inputCurrencyInfo}
         outputCurrencyInfo={outputCurrencyInfo}
         onConfirm={doTrade}
@@ -93,7 +110,7 @@ export function LimitOrdersConfirmModal(props: LimitOrdersConfirmModalProps) {
         buttonText={buttonText}
         recipient={recipient}
         appData={tradeContext.postOrderParams.appData || undefined}
-        isPriceStatic={true}
+        isPriceStatic
       >
         {(restContent) => (
           <>

@@ -1,10 +1,18 @@
 'use client'
 
+import { useCowAnalytics } from '@cowprotocol/analytics'
+import { Media, UI } from '@cowprotocol/ui'
+
+import Link from 'next/link'
+import { CowFiCategory } from 'src/common/analytics/types'
 import styled from 'styled-components/macro'
-import { CmsImage, Color, Font, Media } from '@cowprotocol/ui'
-import { CategoryLinks } from '@/components/CategoryLinks'
-import { SearchBar } from '@/components/SearchBar'
+
+import { Article } from '../services/cms'
+
 import { ArrowButton } from '@/components/ArrowButton'
+import { CategoryLinks } from '@/components/CategoryLinks'
+import { CmsImage } from '@/components/CmsImage'
+import { SearchBar } from '@/components/SearchBar'
 import {
   Breadcrumbs,
   ContainerCard,
@@ -15,8 +23,6 @@ import {
   LinkItem,
   LinkSection,
 } from '@/styles/styled'
-import { clickOnKnowledgeBase } from '../modules/analytics'
-import Link from 'next/link'
 
 const Wrapper = styled.div`
   display: flex;
@@ -69,7 +75,7 @@ const CategoryImage = styled(CmsImage)`
 const CategoryDescription = styled.div`
   font-size: 21px;
   line-height: 1.5;
-  color: ${Color.neutral20};
+  color: var(${UI.COLOR_NEUTRAL_20});
   display: flex;
   flex-flow: column wrap;
   gap: 24px;
@@ -83,75 +89,111 @@ const CategoryDescription = styled.div`
 
   > i {
     font-size: 16px;
-    font-weight: ${Font.weight.bold};
-    color: ${Color.neutral0};
+    font-weight: var(${UI.FONT_WEIGHT_BOLD});
+    color: var(${UI.COLOR_NEUTRAL_0});
     font-style: normal;
   }
 `
 
 interface TopicPageProps {
   category: any
-  articles: any[]
+  articles: Article[]
   allCategories: { name: string; slug: string }[]
+  allArticles: Article[]
 }
 
 export function TopicPageComponent({ category, allCategories, articles }: TopicPageProps) {
-  const { name, description, image } = category.attributes || {}
-  const imageUrl = image?.data?.attributes?.url
+  const analytics = useCowAnalytics()
 
   return (
     <Wrapper>
       <CategoryLinks allCategories={allCategories} />
 
-      <SearchBar articles={articles} />
+      <SearchBar />
 
       <ContainerCard gap={42} gapMobile={24} minHeight="100vh" alignContent="flex-start" touchFooter>
         <ContainerCardInner maxWidth={970} gap={24} gapMobile={24}>
           <Breadcrumbs padding={'0'}>
-            <Link href="/" onClick={() => clickOnKnowledgeBase('click-breadcrumbs-home')}>
+            <Link
+              href="/"
+              onClick={() =>
+                analytics.sendEvent({
+                  category: CowFiCategory.KNOWLEDGEBASE,
+                  action: 'Click breadcrumb',
+                  label: 'home',
+                })
+              }
+            >
               Home
             </Link>
-            <Link href="/learn" onClick={() => clickOnKnowledgeBase('click-breadcrumbs-knowledgebase')}>
+            <Link
+              href="/learn"
+              onClick={() =>
+                analytics.sendEvent({
+                  category: CowFiCategory.KNOWLEDGEBASE,
+                  action: 'Click breadcrumb',
+                  label: 'knowledge-base',
+                })
+              }
+            >
               Knowledge Base
             </Link>
-            <Link href="/learn/topics" onClick={() => clickOnKnowledgeBase('click-breadcrumbs-topics')}>
+            <Link
+              href="/learn/topics"
+              onClick={() =>
+                analytics.sendEvent({
+                  category: CowFiCategory.KNOWLEDGEBASE,
+                  action: 'Click breadcrumb',
+                  label: 'topics',
+                })
+              }
+            >
               Topic
             </Link>
-            <span>{name}</span>
+            <span>{category.name}</span>
           </Breadcrumbs>
 
           <ContainerCardSectionTop>
             <CategoryTitle>
-              {imageUrl && (
+              {category.imageUrl && (
                 <CategoryImageWrapper>
-                  <CategoryImage src={imageUrl} alt={name} width={82} height={82} />
+                  <CategoryImage src={category.imageUrl} alt={category.name} width={82} height={82} />
                 </CategoryImageWrapper>
               )}
-              <h1>{name}</h1>
+              <h1>{category.name}</h1>
             </CategoryTitle>
             <ArrowButton link="/learn/topics" text="All topics" />
           </ContainerCardSectionTop>
 
           <ContainerCardSection>
             <CategoryDescription>
-              <p>{description}</p>
+              <p>{category.description}</p>
               <i>{articles.length} articles</i>
             </CategoryDescription>
 
             <LinkSection bgColor={'transparent'} columns={1} padding="0">
               <LinkColumn>
-                {articles?.map((article) =>
-                  article.attributes ? (
+                {articles.map((article) => {
+                  const attrs = article.attributes
+                  if (!attrs?.title || !attrs?.slug) return null
+
+                  return (
                     <LinkItem
                       key={article.id}
-                      href={`/learn/${article.attributes.slug}`}
-                      onClick={() => clickOnKnowledgeBase(`click-article-${article.attributes.title}`)}
+                      href={`/learn/${attrs.slug}`}
+                      onClick={() =>
+                        analytics.sendEvent({
+                          category: CowFiCategory.KNOWLEDGEBASE,
+                          action: 'Click article',
+                          label: attrs.title,
+                        })
+                      }
                     >
-                      {article.attributes.title}
+                      {attrs.title}
                       <span>→</span>
                     </LinkItem>
-                  ) : null,
-                )}
+                  )
+                })}
               </LinkColumn>
             </LinkSection>
           </ContainerCardSection>

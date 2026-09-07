@@ -1,7 +1,7 @@
 import React from 'react'
 
-import { COW_PROTOCOL_SETTLEMENT_CONTRACT_ADDRESS, COW_PROTOCOL_VAULT_RELAYER_ADDRESS } from '@cowprotocol/cow-sdk'
-import { Media } from '@cowprotocol/ui'
+import { COW_PROTOCOL_SETTLEMENT_CONTRACT_ADDRESS, COW_PROTOCOL_VAULT_RELAYER_ADDRESS } from '@cowprotocol/common-utils'
+import { Color, Media } from '@cowprotocol/ui'
 
 import { BlockExplorerLink } from 'components/common/BlockExplorerLink'
 import LogoWrapper, { LOGO_MAP } from 'components/common/LogoWrapper'
@@ -17,7 +17,7 @@ const FooterStyled = styled.footer`
   box-sizing: border-box;
   font-size: 1.2rem;
   flex: 1 1 auto;
-  color: ${({ theme }): string => theme.textSecondary2};
+  color: ${Color.explorer_textSecondary2};
   width: 100%;
   justify-content: space-around;
   margin: auto auto 0;
@@ -141,7 +141,7 @@ export const Footer: React.FC<FooterType> = (props) => {
               label="Settlement contract"
             />
             <a target="_blank" rel="noopener noreferrer" href={url.contracts.settlement}>
-              <LogoWrapper className="github-logo" src={LOGO_MAP.github} title="Open it on Github" />
+              <LogoWrapper className="github-logo" src={LOGO_MAP.imgGithubSrc} title="Open it on Github" />
             </a>
           </ContractContainer>
         )}
@@ -155,7 +155,7 @@ export const Footer: React.FC<FooterType> = (props) => {
               label="Vault Relayer contract"
             />
             <a target="_blank" rel="noopener noreferrer" href={url.contracts.vaultRelayer}>
-              <LogoWrapper className="github-logo" src={LOGO_MAP.github} title="Open it on Github" />
+              <LogoWrapper className="github-logo" src={LOGO_MAP.imgGithubSrc} title="Open it on Github" />
             </a>
           </ContractContainer>
         )}
@@ -163,7 +163,8 @@ export const Footer: React.FC<FooterType> = (props) => {
       <VersionsWrapper>
         {url.web && VERSION && (
           <a target="_blank" rel="noopener noreferrer" href={url.web + VERSION}>
-            Web: v{VERSION} <LogoWrapper className="github-logo" src={LOGO_MAP.github} title="Open it on Github" />
+            Web: v{VERSION}{' '}
+            <LogoWrapper className="github-logo" src={LOGO_MAP.imgGithubSrc} title="Open it on Github" />
           </a>
         )}
       </VersionsWrapper>

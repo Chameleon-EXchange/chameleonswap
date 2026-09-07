@@ -3,9 +3,19 @@ import { UI } from '@cowprotocol/ui'
 import styled from 'styled-components/macro'
 import { WIDGET_MAX_WIDTH } from 'theme'
 
-export const Container = styled.div`
+type ContainerSizeProps = { isTokenSelectOpen?: boolean; isTokenSelectWide?: boolean }
+
+const getContainerMaxWidth = ({ isTokenSelectOpen, isTokenSelectWide }: ContainerSizeProps): string => {
+  if (!isTokenSelectOpen) {
+    return WIDGET_MAX_WIDTH.swap
+  }
+
+  return isTokenSelectWide ? WIDGET_MAX_WIDTH.tokenSelectSidebar : WIDGET_MAX_WIDTH.tokenSelect
+}
+
+export const Container = styled.div<ContainerSizeProps>`
   width: 100%;
-  max-width: ${WIDGET_MAX_WIDTH.swap};
+  max-width: ${getContainerMaxWidth};
   margin: 0 auto;
   position: relative;
 `
@@ -19,7 +29,7 @@ export const ContainerBox = styled.div`
   color: var(${UI.COLOR_TEXT_PAPER});
   border: none;
   border-radius: var(${UI.BORDER_RADIUS_NORMAL});
-  box-shadow: ${({ theme }) => (theme.isInjectedWidgetMode ? theme.boxShadow1 : 'none')};
+  box-shadow: ${({ theme }) => (theme.isWidget ? theme.boxShadow1 : 'none')};
   padding: 10px;
   position: relative;
 
@@ -37,13 +47,25 @@ export const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: ${({ theme }) => (theme.isInjectedWidgetMode ? '0 7px' : '0 5px 0 0')};
+  padding: ${({ theme }) => (theme.isWidget ? '0 7px' : '0 5px 0 0')};
   margin: 0;
   color: inherit;
 `
 
 export const OuterContentWrapper = styled.div`
   margin-top: 10px;
+
+  &:empty {
+    display: none;
+  }
+`
+
+export const HeaderRight = styled.div`
+  display: flex;
+  flex-direction: row;
+  gap: 5px;
+  align-items: center;
+  font-size: 0;
 `
 
 export const CurrencySeparatorBox = styled.div<{ compactView: boolean }>`

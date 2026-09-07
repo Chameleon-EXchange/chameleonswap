@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { useTradeFormValidationContext } from '../hooks/useTradeFormValidationContext'
 import { tradeFormValidationContextAtom } from '../state/tradeFormValidationContextAtom'
 
-export function TradeFormValidationUpdater() {
+export function TradeFormValidationUpdater(): null {
   const updateContext = useSetAtom(tradeFormValidationContextAtom)
   const commonContext = useTradeFormValidationContext()
 

@@ -1,66 +1,68 @@
-import { useCallback, useMemo } from 'react'
+import { ReactNode, useCallback, useMemo } from 'react'
 
-import EtherscanImage from '@cowprotocol/assets/cow-swap/etherscan-icon.svg'
+import iconEtherscanSrc from '@cowprotocol/assets/cow-swap/etherscan-icon.svg'
+import iconSolanaExplorerSrc from '@cowprotocol/assets/cow-swap/solana-explorer-icon.svg'
 import { TokenWithLogo } from '@cowprotocol/common-const'
 import { useTheme } from '@cowprotocol/common-hooks'
-import { getBlockExplorerUrl, getIsNativeToken } from '@cowprotocol/common-utils'
-import { COW_PROTOCOL_VAULT_RELAYER_ADDRESS } from '@cowprotocol/cow-sdk'
+import { getBlockExplorerUrl, getIsNativeToken, COW_PROTOCOL_VAULT_RELAYER_ADDRESS } from '@cowprotocol/common-utils'
+import { MAX_UINT256, getAddressKey, isSolanaChain } from '@cowprotocol/cow-sdk'
+import { CurrencyAmount, Token } from '@cowprotocol/currency'
 import { useAreThereTokensWithSameSymbol } from '@cowprotocol/tokens'
 import { Command } from '@cowprotocol/types'
-import { Loader, TokenAmount, TokenName, TokenSymbol } from '@cowprotocol/ui'
+import { Loader, TokenName, TokenSymbol } from '@cowprotocol/ui'
 import { useWalletInfo } from '@cowprotocol/wallet'
-import { CurrencyAmount, MaxUint256, Token } from '@uniswap/sdk-core'
 
+import { t } from '@lingui/core/macro'
 import SVG from 'react-inlinesvg'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 
 import { useErrorModal } from 'legacy/hooks/useErrorMessageAndModal'
+import { useHasPendingApproval } from 'legacy/state/enhancedTransactions/hooks'
 
-import { parameterizeTradeRoute } from 'modules/trade/utils/parameterizeTradeRoute'
+import { ApprovalState, getApprovalState, useApproveCallback } from 'modules/erc20Approve'
 
 import { Routes } from 'common/constants/routes'
-import { useApproveCallback } from 'common/hooks/useApproveCallback'
-import { ApprovalState, useApproveState } from 'common/hooks/useApproveState'
-import { CardsSpinner, ExtLink } from 'pages/Account/styled'
+import { useSafeMemo } from 'common/hooks/useSafeMemo'
+import { parameterizeTradeRoute } from 'common/modules/tradeNavigation'
+import { ExtLink } from 'pages/Account/styled'
 
 import BalanceCell from './BalanceCell'
 import FavoriteTokenButton from './FavoriteTokenButton'
 import { FiatBalanceCell } from './FiatBalanceCell'
-import {
-  ApproveLabel,
-  BalanceValue,
-  Cell,
-  CustomLimit,
-  IndexNumber,
-  ResponsiveLogo,
-  TableButton,
-  TokenText,
-} from './styled'
+import { getTokenApproveActionState } from './getTokenApproveActionState'
+import { BalanceValue, Cell, IndexNumber, ResponsiveLogo, TableButton, TokenText } from './styled'
+import { TokenApproveActionCell } from './TokenApproveActionCell'
+import { useSolanaTokenApprove } from './useSolanaTokenApprove'
 
 type DataRowParams = {
   tokenData: TokenWithLogo
   index: number
-  balance?: CurrencyAmount<Token> | undefined
+  balance: CurrencyAmount<Token> | undefined
+  allowance: CurrencyAmount<Token> | undefined
   openApproveModal: (tokenSymbol?: string) => void
   closeApproveModal: Command
   toggleWalletModal: Command
 }
 
+// TODO: Break down this large function into smaller functions
+// eslint-disable-next-line max-lines-per-function
 export const TokensTableRow = ({
   tokenData,
   index,
   balance,
+  allowance,
   closeApproveModal,
   openApproveModal,
   toggleWalletModal,
-}: DataRowParams) => {
+}: DataRowParams): ReactNode => {
   const { account, chainId } = useWalletInfo()
+  const isSolana = isSolanaChain(chainId)
   const areThereTokensWithSameSymbol = useAreThereTokensWithSameSymbol()
 
   const theme = useTheme()
   const tradeLink = useCallback(
     ({ symbol, address }: Token) => {
-      const inputCurrencyId = areThereTokensWithSameSymbol(symbol) ? address : symbol
+      const inputCurrencyId = areThereTokensWithSameSymbol(symbol, chainId) ? address : symbol
 
       return parameterizeTradeRoute(
         {
@@ -71,10 +73,10 @@ export const TokensTableRow = ({
           outputCurrencyAmount: undefined,
           orderKind: undefined,
         },
-        Routes.SWAP
+        Routes.SWAP,
       )
     },
-    [areThereTokensWithSameSymbol, chainId]
+    [areThereTokensWithSameSymbol, chainId],
   )
 
   const { handleSetError, handleCloseError } = useErrorModal()
@@ -82,10 +84,20 @@ export const TokensTableRow = ({
   const vaultRelayer = chainId ? COW_PROTOCOL_VAULT_RELAYER_ADDRESS[chainId] : undefined
   const isNativeToken = getIsNativeToken(tokenData)
 
-  const amountToApprove = useMemo(() => CurrencyAmount.fromRawAmount(tokenData, MaxUint256), [tokenData])
+  const amountToApprove = useMemo(() => CurrencyAmount.fromRawAmount(tokenData, MAX_UINT256.toString()), [tokenData])
 
-  const { state: approvalState, currentAllowance } = useApproveState(isNativeToken ? null : amountToApprove)
-  const approveCallback = useApproveCallback(amountToApprove, vaultRelayer)
+  const tokenAddress = getAddressKey(tokenData.address)
+
+  const pendingApproval = useHasPendingApproval(tokenAddress)
+
+  const approvalState = useSafeMemo(() => {
+    if (isNativeToken) return ApprovalState.APPROVED
+    if (!allowance) return ApprovalState.UNKNOWN
+
+    return getApprovalState(amountToApprove, BigInt(allowance.quotient.toString()), pendingApproval)
+  }, [amountToApprove, allowance, isNativeToken, pendingApproval])
+
+  const approveCallback = useApproveCallback(amountToApprove.currency, vaultRelayer)
 
   const handleApprove = useCallback(async () => {
     handleCloseError()
@@ -98,7 +110,12 @@ export const TokensTableRow = ({
     // TODO: make a separate hook out of this and add GA
     try {
       openApproveModal(tokenData?.symbol)
-      await approveCallback(`Approve ${tokenData?.symbol || 'token'}`)
+
+      const symbol = tokenData?.symbol || t`token`
+      await approveCallback(amountToApprove, t`Approve ${symbol}`)
+
+      // TODO: Replace any with proper type definitions
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error(`[TokensTableRow]: Issue approving.`, error)
       handleSetError(error?.message)
@@ -114,11 +131,19 @@ export const TokensTableRow = ({
     tokenData?.symbol,
     openApproveModal,
     closeApproveModal,
+    amountToApprove,
   ])
+
+  const onSolanaApprove = useSolanaTokenApprove({
+    token: tokenData,
+    openApproveModal,
+    closeApproveModal,
+    toggleWalletModal,
+  })
 
   const hasZeroBalance = !balance || balance?.equalTo(0)
 
-  const balanceLessThanAllowance = balance && currentAllowance ? balance.lessThan(currentAllowance.quotient) : false
+  const balanceLessThanAllowance = balance && allowance ? balance.lessThan(allowance) : false
 
   // This is so we only create fiat value request if there is a balance
   const fiatValue = useMemo(() => {
@@ -131,35 +156,31 @@ export const TokensTableRow = ({
     }
   }, [account, balance, hasZeroBalance, theme])
 
-  const displayApproveContent = useMemo(() => {
-    if (isNativeToken) {
-      return null
-    }
+  const approveActionState = useMemo(
+    () =>
+      getTokenApproveActionState({
+        isNativeToken,
+        isSolana,
+        allowance,
+        account,
+        approvalState,
+        balanceLessThanAllowance,
+        hasATA: !hasZeroBalance,
+      }),
+    [isSolana, isNativeToken, allowance, account, approvalState, balanceLessThanAllowance, hasZeroBalance],
+  )
 
-    if (approvalState === ApprovalState.APPROVED || balanceLessThanAllowance) {
-      return <ApproveLabel>Approved ✓</ApproveLabel>
-    }
-
-    if (!account || approvalState === ApprovalState.NOT_APPROVED) {
-      if (!currentAllowance || currentAllowance.equalTo(0)) {
-        return <TableButton onClick={handleApprove}>Approve</TableButton>
-      }
-
-      return (
-        <CustomLimit>
-          <TableButton onClick={handleApprove}>Approve all</TableButton>
-          <ApproveLabel>
-            Approved:{' '}
-            <strong>
-              <TokenAmount amount={currentAllowance} />
-            </strong>
-          </ApproveLabel>
-        </CustomLimit>
-      )
-    }
-
-    return <CardsSpinner />
-  }, [account, isNativeToken, currentAllowance, handleApprove, approvalState, balanceLessThanAllowance])
+  const explorerLink = (
+    <ExtLink href={getBlockExplorerUrl(chainId, 'token', tokenData.address)}>
+      <TableButton>
+        <SVG
+          src={isSolana ? iconSolanaExplorerSrc : iconEtherscanSrc}
+          title={t`View token contract`}
+          description={t`View token contract`}
+        />
+      </TableButton>
+    </ExtLink>
+  )
 
   return (
     <>
@@ -191,14 +212,14 @@ export const TokensTableRow = ({
       <Cell>{fiatValue}</Cell>
 
       <Cell>
-        {displayApproveContent && (
+        {approveActionState && (
           <>
-            <ExtLink href={getBlockExplorerUrl(chainId, 'token', tokenData.address)}>
-              <TableButton>
-                <SVG src={EtherscanImage} title="View token contract" description="View token contract" />
-              </TableButton>
-            </ExtLink>
-            {displayApproveContent}
+            {explorerLink}
+            <TokenApproveActionCell
+              state={approveActionState}
+              allowance={allowance}
+              onApprove={isSolana ? onSolanaApprove : handleApprove}
+            />
           </>
         )}
       </Cell>

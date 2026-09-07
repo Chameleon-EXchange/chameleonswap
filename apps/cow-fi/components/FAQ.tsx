@@ -1,21 +1,23 @@
 import React, { useState } from 'react'
-import styled from 'styled-components/macro'
-import { Font, Color, Media } from '@cowprotocol/ui'
-import IMG_ICON_MINUS from '@cowprotocol/assets/images/icon-minus.svg'
-import IMG_ICON_PLUS from '@cowprotocol/assets/images/icon-plus.svg'
-import SVG from 'react-inlinesvg'
 
-const Wrapper = styled.div`
+import iconMinusSrc from '@cowprotocol/assets/images/icon-minus.svg'
+import iconPlusSrc from '@cowprotocol/assets/images/icon-plus.svg'
+import { Media, UI } from '@cowprotocol/ui'
+
+import SVG from 'react-inlinesvg'
+import styled from 'styled-components/macro'
+
+const Wrapper = styled.div<{ $fontSize?: number }>`
   --titleSize: 26px;
-  --color: ${Color.neutral10};
+  --color: var(${UI.COLOR_NEUTRAL_10});
   display: flex;
   flex-flow: column wrap;
   align-items: flex-start;
   gap: 10px;
   margin: 24px 0;
   width: 100%;
-  font-size: 24px;
-  font-weight: ${Font.weight.bold};
+  font-size: ${({ $fontSize }) => `${$fontSize ?? 24}px`};
+  font-weight: var(${UI.FONT_WEIGHT_BOLD});
 
   ${Media.upToMedium()} {
     --titleSize: 18px;
@@ -38,7 +40,7 @@ const Wrapper = styled.div`
     font-size: inherit;
     font-weight: inherit;
     position: relative;
-    background: ${Color.neutral95};
+    background: var(${UI.COLOR_NEUTRAL_95});
     border-radius: var(--borderRadius);
 
     ${Media.upToMedium()} {
@@ -82,7 +84,7 @@ const Wrapper = styled.div`
       justify-content: center;
 
       &:hover {
-        background: ${Color.neutral100};
+        background: var(${UI.COLOR_NEUTRAL_100});
       }
     }
 
@@ -98,8 +100,8 @@ const Wrapper = styled.div`
     --padding: 21px;
     font-size: inherit;
     line-height: 1.8;
-    color: ${Color.neutral40};
-    font-weight: ${Font.weight.regular};
+    color: var(${UI.COLOR_NEUTRAL_40});
+    font-weight: var(${UI.FONT_WEIGHT_NORMAL});
     margin: 0;
     padding: 0 33% var(--padding) var(--padding);
 
@@ -127,7 +129,7 @@ interface FAQItemProps {
 const FAQItem: React.FC<FAQItemProps> = ({ question, answer }) => {
   const [isOpen, setIsOpen] = useState(false)
 
-  const handleToggle = (e: React.MouseEvent) => {
+  const handleToggle = (e: React.MouseEvent): void => {
     e.preventDefault()
     setIsOpen(!isOpen)
   }
@@ -138,11 +140,11 @@ const FAQItem: React.FC<FAQItemProps> = ({ question, answer }) => {
         {question}
         {isOpen ? (
           <i>
-            <SVG src={IMG_ICON_MINUS} />
+            <SVG src={iconMinusSrc} />
           </i>
         ) : (
           <i>
-            <SVG src={IMG_ICON_PLUS} />
+            <SVG src={iconPlusSrc} />
           </i>
         )}
       </summary>
@@ -153,11 +155,12 @@ const FAQItem: React.FC<FAQItemProps> = ({ question, answer }) => {
 
 interface FAQComponentProps {
   faqs: FAQItemProps[]
+  fontSize?: number
 }
 
-const FAQComponent: React.FC<FAQComponentProps> = ({ faqs }) => {
+const FAQComponent: React.FC<FAQComponentProps> = ({ faqs, fontSize }) => {
   return (
-    <Wrapper>
+    <Wrapper $fontSize={fontSize}>
       {faqs.map((faq, index) => (
         <FAQItem key={index} question={faq.question} answer={faq.answer} />
       ))}

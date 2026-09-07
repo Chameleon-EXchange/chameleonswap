@@ -1,9 +1,47 @@
-import { latest } from '@cowprotocol/app-data'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import type { Address, PublicClient } from 'viem'
+import type { Config } from 'wagmi'
 
-import { Eip2612PermitUtils } from '@1inch/permit-signed-approvals-utils'
+import type { cowAppDataLatestScheme } from '@cowprotocol/cow-sdk'
 
-export type PermitType = 'dai-like' | 'eip-2612' | 'unsupported'
+import type { Eip2612PermitUtils } from '@1inch/permit-signed-approvals-utils'
+
+export type BuildDaiLikePermitCallDataParams = BasePermitCallDataParams & {
+  callDataParams: Parameters<Eip2612PermitUtils['buildDaiLikePermitCallData']>
+}
+
+export type BuildEip2612PermitCallDataParams = BasePermitCallDataParams & {
+  callDataParams: Parameters<Eip2612PermitUtils['buildPermitCallData']>
+}
+
+export type GetTokenPermitInfoParams = {
+  chainId: number
+  config: Config
+  publicClient: PublicClient
+  spender: string
+  tokenAddress: Address
+  amount?: bigint
+  minGasLimit?: bigint | undefined
+}
+
+export type GetTokenPermitIntoResult =
+  // When it's a permittable token:
+  | PermitInfo
+  // When something failed:
+  | FailedToIdentify
+
+export type PermitHookData = cowAppDataLatestScheme.CoWHook
+
+export type PermitHookParams = {
+  chainId: number
+  config: Config
+  eip2612Utils: Eip2612PermitUtils
+  inputToken: TokenInfo
+  permitInfo: PermitInfo
+  spender: string
+  account?: Address
+  amount?: bigint
+  nonce?: number
+}
 
 export type PermitInfo = {
   type: PermitType
@@ -12,48 +50,15 @@ export type PermitInfo = {
   version?: string | undefined // Some tokens have it different than `1`, and won't work without it
 }
 
-// Local TokenInfo definition to not depend on external libs just for this
-type TokenInfo = {
-  address: string
-  // TODO: remove from token info
-  name: string | undefined
+export type PermitType = 'dai-like' | 'eip-2612' | 'unsupported'
+type BasePermitCallDataParams = {
+  eip2612Utils: Eip2612PermitUtils
 }
-
-export type PermitHookParams = {
-  inputToken: TokenInfo
-  spender: string
-  chainId: number
-  permitInfo: PermitInfo
-  provider: JsonRpcProvider
-  eip2162Utils: Eip2612PermitUtils
-  account?: string | undefined
-  nonce?: number | undefined
-}
-
-export type PermitHookData = latest.CoWHook
-
 type FailedToIdentify = { error: string }
 
-export type GetTokenPermitIntoResult =
-  // When it's a permittable token:
-  | PermitInfo
-  // When something failed:
-  | FailedToIdentify
-
-type BasePermitCallDataParams = {
-  eip2162Utils: Eip2612PermitUtils
-}
-export type BuildEip2162PermitCallDataParams = BasePermitCallDataParams & {
-  callDataParams: Parameters<Eip2612PermitUtils['buildPermitCallData']>
-}
-export type BuildDaiLikePermitCallDataParams = BasePermitCallDataParams & {
-  callDataParams: Parameters<Eip2612PermitUtils['buildDaiLikePermitCallData']>
-}
-
-export type GetTokenPermitInfoParams = {
-  spender: string
-  tokenAddress: string
-  chainId: number
-  provider: JsonRpcProvider
-  minGasLimit?: number | undefined
+// Local TokenInfo definition to not depend on external libs just for this
+type TokenInfo = {
+  address: Address
+  // TODO: remove from token info
+  name: string | undefined
 }

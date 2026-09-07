@@ -1,17 +1,69 @@
 import { useSetAtom } from 'jotai'
 import { useCallback } from 'react'
 
-import { useIsSafeWallet, useIsWalletConnect } from '@cowprotocol/wallet'
-import SafeApiKit from '@safe-global/api-kit'
-import { SafeMultisigTransactionResponse } from '@safe-global/safe-core-sdk-types'
-import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
+import { usePublicClient } from 'wagmi'
 
-import { useApproveCallback } from 'common/hooks/useApproveCallback'
+import { useTradeSpenderAddress } from '@cowprotocol/balances-and-allowances'
+import { logSafeApi } from '@cowprotocol/common-utils'
+import { normalizeSafeError, SAFE_RATE_LIMIT_MSG } from '@cowprotocol/core'
+import { Currency, CurrencyAmount } from '@cowprotocol/currency'
+import { Nullish } from '@cowprotocol/types'
+import { useIsSafeWallet, useIsWalletConnect } from '@cowprotocol/wallet'
+import type SafeApiKit from '@safe-global/api-kit'
+import type { SafeMultisigTransactionResponse } from '@safe-global/types-kit'
+
+import { useApproveCallback } from 'modules/erc20Approve'
+
 import { useSafeApiKit } from 'common/hooks/useSafeApiKit'
-import { useTradeSpenderAddress } from 'common/hooks/useTradeSpenderAddress'
 import { pollUntil } from 'common/utils/pollUntil'
 
 import { zeroApprovalState } from '../state/zeroApprovalState'
+
+export type ZeroApproveReceipt = Awaited<
+  ReturnType<NonNullable<ReturnType<typeof usePublicClient>>['waitForTransactionReceipt']>
+>
+
+export function useZeroApprove(
+  currency: Currency | undefined,
+): () => Promise<Nullish<ZeroApproveReceipt | SafeMultisigTransactionResponse>> {
+  const setZeroApprovalState = useSetAtom(zeroApprovalState)
+  const spender = useTradeSpenderAddress()
+  const amountToApprove = currency ? CurrencyAmount.fromRawAmount(currency, 0) : undefined
+  const approveCallback = useApproveCallback(amountToApprove?.currency, spender)
+  const publicClient = usePublicClient()
+  const safeApiKit = useSafeApiKit()
+  const isWalletConnect = useIsWalletConnect()
+  const isSafeWallet = useIsSafeWallet()
+
+  return useCallback(async () => {
+    if (!amountToApprove) return
+
+    try {
+      setZeroApprovalState({ isApproving: true, currency })
+      const txResult = await approveCallback(amountToApprove)
+
+      // For Wallet Connect based Safe Wallet connections, wait for transaction to be executed.
+      if (txResult && safeApiKit && isSafeWallet && isWalletConnect) {
+        return waitForSafeTransactionExecution({ safeApiKit, txHash: txResult.hash })
+      }
+      if (txResult && publicClient) {
+        return publicClient.waitForTransactionReceipt({ hash: txResult.hash })
+      }
+      return undefined
+    } finally {
+      setZeroApprovalState({ isApproving: false })
+    }
+  }, [
+    amountToApprove,
+    setZeroApprovalState,
+    currency,
+    approveCallback,
+    publicClient,
+    safeApiKit,
+    isSafeWallet,
+    isWalletConnect,
+  ])
+}
 
 async function waitForSafeTransactionExecution({
   safeApiKit,
@@ -23,8 +75,13 @@ async function waitForSafeTransactionExecution({
   return await pollUntil(
     async () => {
       try {
+        logSafeApi.info('Wait for Safe transaction execution')
         return await safeApiKit.getTransaction(txHash)
-      } catch {
+      } catch (err: unknown) {
+        const error = normalizeSafeError(err)
+        if (error.statusCode === 429) {
+          logSafeApi.error(new Error(SAFE_RATE_LIMIT_MSG))
+        }
         return null
       }
     },
@@ -33,28 +90,4 @@ async function waitForSafeTransactionExecution({
     },
     1000,
   )
-}
-
-export function useZeroApprove(currency: Currency | undefined) {
-  const setZeroApprovalState = useSetAtom(zeroApprovalState)
-  const spender = useTradeSpenderAddress()
-  const amountToApprove = currency ? CurrencyAmount.fromRawAmount(currency, 0) : undefined
-  const approveCallback = useApproveCallback(amountToApprove, spender)
-  const safeApiKit = useSafeApiKit()
-  const isWalletConnect = useIsWalletConnect()
-  const isSafeWallet = useIsSafeWallet()
-
-  return useCallback(async () => {
-    try {
-      setZeroApprovalState({ isApproving: true, currency })
-      const txReceipt = await approveCallback()
-
-      // For Wallet Connect based Safe Wallet connections, wait for transaction to be executed.
-      if (txReceipt && safeApiKit && isSafeWallet && isWalletConnect) {
-        await waitForSafeTransactionExecution({ safeApiKit, txHash: txReceipt.hash })
-      }
-    } finally {
-      setZeroApprovalState({ isApproving: false })
-    }
-  }, [approveCallback, setZeroApprovalState, currency, safeApiKit, isSafeWallet, isWalletConnect])
 }

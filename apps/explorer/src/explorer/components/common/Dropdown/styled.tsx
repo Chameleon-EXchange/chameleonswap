@@ -1,20 +1,18 @@
+import { Color } from '@cowprotocol/ui'
+
 import styled, { css } from 'styled-components/macro'
 
 export const BaseCard = styled.div<{ noPadding?: boolean }>`
-  background-color: ${({ theme }): string => theme.paper};
+  background-color: ${Color.explorer_bg};
   border-radius: 0.6rem;
-  border: 1px solid ${({ theme }): string => theme.borderPrimary};
+  border: 1px solid ${Color.explorer_border};
   display: flex;
   flex-direction: column;
   position: relative;
 `
 
-BaseCard.defaultProps = {
-  noPadding: false,
-}
-
 export const DropdownTextCSS = css`
-  color: ${({ theme }): string => theme.textPrimary1};
+  color: ${Color.neutral100};
   font-size: ${({ theme }): string => theme.fontSizeDefault};
   font-weight: normal;
   white-space: nowrap;
@@ -47,9 +45,9 @@ export interface DropdownItemProps {
 
 export const DropdownItemCSS = css<DropdownItemProps>`
   align-items: center;
-  background-color: ${(props): string => props.theme.paper};
-  border-bottom: 1px solid ${(props): string => props.theme.borderPrimary};
-  color: ${(props): string => props.theme.textPrimary1};
+  background-color: ${Color.explorer_bg};
+  border-bottom: 1px solid ${Color.explorer_border};
+  color: ${Color.neutral100};
   cursor: pointer;
   display: flex;
   font-size: var(--font-size-default);
@@ -62,8 +60,8 @@ export const DropdownItemCSS = css<DropdownItemProps>`
   user-select: none;
 
   &.active {
-    background-color: var(--color-gradient-2);
-    color: var(--color-text-primary);
+    background-color: ${Color.explorer_gradient2};
+    color: ${Color.neutral100};
     font-weight: 600;
   }
 
@@ -79,7 +77,7 @@ export const DropdownItemCSS = css<DropdownItemProps>`
   }
 
   &:hover {
-    background-color: var(--color-gradient-1);
+    background-color: ${Color.explorer_gradient1};
   }
 
   &:disabled,

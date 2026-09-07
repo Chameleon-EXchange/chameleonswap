@@ -1,0 +1,66 @@
+import type { Hex } from 'viem'
+import { usePublicClient, useWalletClient } from 'wagmi'
+
+import { useWalletInfo } from '@cowprotocol/wallet'
+
+import ms from 'ms.macro'
+import useSWR, { SWRConfiguration } from 'swr'
+
+import { usePermitInfo } from 'modules/permit'
+
+import { isPending } from 'common/hooks/useCategorizeRecentActivity'
+import { TradeType } from 'common/modules/tradeNavigation'
+import { GenericOrder } from 'common/types'
+import { getOrderPermitIfExists } from 'common/utils/doesOrderHavePermit'
+import { isPermitDecodedCalldataValid } from 'utils/orderUtils/isPermitValidForOrder'
+
+import { checkPermitNonceAndAmount } from '../utils/checkPermitNonceAndAmount'
+
+const SWR_CONFIG: SWRConfiguration = {
+  refreshInterval: ms`30s`,
+  revalidateOnFocus: false,
+  revalidateOnReconnect: false,
+  errorRetryInterval: 0,
+}
+
+export function useDoesOrderHaveValidPermit(order?: GenericOrder, tradeType?: TradeType): boolean | undefined {
+  const publicClient = usePublicClient()
+  const { data: walletClient } = useWalletClient()
+  const { chainId, account } = useWalletInfo()
+  const permit = order ? getOrderPermitIfExists(order) : null
+  const tokenPermitInfo = usePermitInfo(order?.inputToken, tradeType)
+
+  const isPendingOrder = order ? isPending(order) : false
+  const checkPermit = isPermitValid(permit, chainId, account) && account && publicClient && isPendingOrder && tradeType
+
+  const { data: isValid } = useSWR(
+    checkPermit ? [account, chainId, publicClient, walletClient, order?.id, tradeType, permit] : null,
+    async ([account, chainId, publicClient, walletClient]) => {
+      if (!permit || !order || !account || !publicClient || !walletClient || !chainId || !tokenPermitInfo) {
+        return undefined
+      }
+
+      try {
+        return await checkPermitNonceAndAmount(
+          account,
+          chainId,
+          publicClient,
+          order,
+          permit,
+          tokenPermitInfo,
+          walletClient,
+        )
+      } catch (error) {
+        console.error('Error validating permit:', error)
+        return undefined
+      }
+    },
+    SWR_CONFIG,
+  )
+
+  return isValid
+}
+
+function isPermitValid(permit: Hex | null, chainId: number, account: string | undefined): boolean {
+  return permit && account ? isPermitDecodedCalldataValid(permit, chainId, account).isValid : false
+}

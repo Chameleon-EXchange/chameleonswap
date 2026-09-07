@@ -1,8 +1,14 @@
-import { percentToBps } from '@cowprotocol/common-utils'
-import { useIsSafeWallet, useWalletInfo } from '@cowprotocol/wallet'
+import { useAtomValue } from 'jotai'
+import { ReactNode } from 'react'
 
-import { useComposableCowContract } from 'modules/advancedOrders/hooks/useComposableCowContract'
+import { TradeSpenderOverrideUpdater } from '@cowprotocol/balances-and-allowances'
+import { percentToBps, COW_PROTOCOL_VAULT_RELAYER_ADDRESS_PROD } from '@cowprotocol/common-utils'
+import { useIsSafeViaWc, useIsSafeWallet, useWalletInfo } from '@cowprotocol/wallet'
+
+import { useComposableCowContractData } from 'modules/advancedOrders/hooks/useComposableCowContract'
+import { advancedOrdersSettingsAtom } from 'modules/advancedOrders/state/advancedOrdersSettingsAtom'
 import { AppDataUpdater } from 'modules/appData'
+import { Erc20ApproveWidget } from 'modules/erc20Approve'
 
 import { CreatedInOrderBookOrdersUpdater } from './CreatedInOrderBookOrdersUpdater'
 import { FallbackHandlerVerificationUpdater } from './FallbackHandlerVerificationUpdater'
@@ -14,20 +20,27 @@ import { TwapOrdersUpdater } from './TwapOrdersUpdater'
 
 import { useTwapSlippage } from '../hooks/useTwapSlippage'
 
-export function TwapUpdaters() {
-  const { account } = useWalletInfo()
+export function TwapUpdaters(): ReactNode {
+  const { chainId, account } = useWalletInfo()
   const isSafeWallet = useIsSafeWallet()
-  const { contract: composableCowContract, chainId: composableCowChainId } = useComposableCowContract()
+  const isSafeViaWc = useIsSafeViaWc()
+  const composableCowContract = useComposableCowContractData()
   const twapOrderSlippage = useTwapSlippage()
+  const { enablePartialApprovalBySettings } = useAtomValue(advancedOrdersSettingsAtom)
 
-  const shouldLoadTwapOrders = !!(isSafeWallet && account && composableCowContract)
+  const shouldLoadTwapOrders = !!((isSafeWallet || isSafeViaWc) && account && composableCowContract.address)
+  const composableCowChainId = composableCowContract.chainId
+  // TWAP orders always approve against the production vault relayer regardless of the current environment.
+  const spenderAddress = chainId ? COW_PROTOCOL_VAULT_RELAYER_ADDRESS_PROD[chainId] : undefined
 
   return (
     <>
+      <TradeSpenderOverrideUpdater spenderAddress={spenderAddress} />
       <CreatedInOrderBookOrdersUpdater />
       <QuoteParamsUpdater />
       <AppDataUpdater orderClass="twap" slippageBips={percentToBps(twapOrderSlippage)} />
       <QuoteObserverUpdater />
+      <Erc20ApproveWidget isPartialApprovalEnabled={enablePartialApprovalBySettings} />
       {shouldLoadTwapOrders && (
         <>
           <FullAmountQuoteUpdater />

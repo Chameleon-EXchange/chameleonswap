@@ -1,24 +1,18 @@
-import combineReducers, { Reducer, AnyAction, Action } from 'combine-reducers'
+import { Reducer, AnyAction, Action } from 'combine-reducers'
+import { Theme } from 'theme/types'
 
-import {
-  reducer as ThemeReducer,
-  ThemeState,
-  INITIAL_THEME_STATE as theme,
-  sideEffect as ThemeSideEffect,
-} from './theme'
+export type ActionCreator<T, P> = (payload: P) => Actions<T, P>
 
 export interface Actions<T, P> {
   type: T
   payload: P
 }
 
-export type ActionCreator<T, P> = (payload: P) => Actions<T, P>
+export interface GlobalState {
+  theme: Theme
+}
 
 export type ReducerCreator<S, A> = (state: S, action: A) => S
-
-export interface GlobalState {
-  theme: ThemeState
-}
 
 /**********************************
  * Initial Global State
@@ -27,7 +21,7 @@ export interface GlobalState {
  * make sure the name of the state key(s) is/are the same as the reducer key(s) below
  */
 
-export const GLOBAL_INITIAL_STATE = (): GlobalState => ({ theme })
+export const GLOBAL_INITIAL_STATE = (): GlobalState => ({ theme: Theme.DARK })
 
 /**********************************
  * Side Effect after a reducer has run its course
@@ -50,11 +44,8 @@ export const addSideEffect = <S, A extends Action = AnyAction>(
 }
 
 /**********************************
- * combineReducers
+ * Root Reducer
  *
- * reduces all reducers into 1 reducer function
  * make sure the name of the Reducer key is the same as the state key you'd like from src/App
  */
-export const globalRootReducer = combineReducers({
-  theme: addSideEffect(ThemeReducer, ThemeSideEffect),
-})
+export const globalRootReducer = (state: GlobalState = GLOBAL_INITIAL_STATE()): GlobalState => state

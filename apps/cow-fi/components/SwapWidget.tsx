@@ -1,10 +1,20 @@
-import React, { useState, useEffect, ChangeEvent } from 'react'
-import styled from 'styled-components/macro'
-import { Color } from 'styles/variables'
-import { Button } from '@/components/Button'
+import { useState, useEffect, ChangeEvent, JSX } from 'react'
+
+import { Color, UI } from '@cowprotocol/ui'
+
+import Image from 'next/image'
 import { transparentize } from 'polished'
-import { CONFIG } from '@/const/meta'
-import { LinkWithUtmComponent } from 'modules/utm'
+import styled from 'styled-components/macro'
+
+import { Button } from '@/components/Button'
+import {
+  Network,
+  NETWORK_DEFAULT_BUY_TOKEN_MAP,
+  NETWORK_DEFAULT_SELL_TOKEN_MAP,
+  NETWORK_ID_MAP,
+  NETWORK_IMAGE_MAP,
+  NETWORK_MAP,
+} from '@/const/networkMap'
 
 type TabProps = {
   active: boolean
@@ -20,10 +30,12 @@ const Tab = styled.div<TabProps>`
   cursor: pointer;
   padding: 1.6rem 0;
   background: none;
-  color: ${({ active }) => (active ? Color.darkBlue : transparentize(0.5, Color.darkBlue))};
-  transition: color 0.2s ease-in-out, border-bottom 0.2s ease-in-out;
+  color: ${({ active }) => (active ? Color.cowfi_darkBlue : transparentize(0.5, Color.cowfi_darkBlue))};
+  transition:
+    color 0.2s ease-in-out,
+    border-bottom 0.2s ease-in-out;
   border-bottom: ${({ active }) =>
-    active ? `0.2rem solid ${Color.darkBlue}` : `0.1rem solid ${transparentize(0.8, Color.darkBlue)}`};
+    active ? `0.2rem solid ${Color.cowfi_darkBlue}` : `0.1rem solid ${transparentize(0.8, Color.cowfi_darkBlue)}`};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -71,7 +83,7 @@ const InputLabel = styled.div`
   flex-flow: column wrap;
   justify-content: space-between;
   border-radius: 0.8rem;
-  background: ${Color.grey};
+  background: ${Color.cowfi_grey};
   padding: 1.2rem;
   font-size: 1.4rem;
   margin: 0 0 1rem;
@@ -142,7 +154,7 @@ const DropdownBody = styled.div`
   top: calc(100% + 1rem);
   left: 0;
   width: 100%;
-  background-color: ${Color.grey};
+  background-color: ${Color.cowfi_grey};
   border-radius: 1.6rem;
   padding: 0.6rem;
   display: flex;
@@ -159,7 +171,7 @@ const DropdownOption = styled.div`
   font-weight: 500;
 
   &:hover {
-    background-color: ${Color.white};
+    background-color: var(${UI.COLOR_NEUTRAL_100});
     border-radius: 1rem;
   }
 
@@ -187,37 +199,105 @@ type SwapWidgetProps = {
   platforms: Platforms
 }
 
-enum Networks {
-  ETHEREUM = 'ethereum',
-  XDAI = 'xdai',
+type Tab = 'Buy' | 'Sell'
+const DEFAULT_TAB: Tab = 'Buy'
+const DEFAULT_NETWORK: Network = 'ethereum'
+
+const getBuyAndSellTokens = (
+  activeTab: Tab,
+  network: Network,
+  contractAddress: string,
+): { sellToken: string; buyToken: string } => {
+  if (activeTab === 'Buy') {
+    return {
+      sellToken: NETWORK_DEFAULT_SELL_TOKEN_MAP[network],
+      buyToken: contractAddress,
+    }
+  }
+
+  return {
+    sellToken: contractAddress,
+    buyToken: NETWORK_DEFAULT_BUY_TOKEN_MAP[network],
+  }
 }
 
-const NETWORK_MAP: { [key: string]: string } = {
-  [Networks.ETHEREUM]: 'Ethereum',
-  [Networks.XDAI]: 'Gnosis Chain',
+const Tabs = ({ activeTab, setActiveTab }: { activeTab: Tab; setActiveTab: (tab: Tab) => void }): JSX.Element => {
+  return (
+    <TabContainer>
+      <Tab onClick={() => setActiveTab('Buy')} active={activeTab === 'Buy'}>
+        Buy
+      </Tab>
+      <Tab onClick={() => setActiveTab('Sell')} active={activeTab === 'Sell'}>
+        Sell
+      </Tab>
+    </TabContainer>
+  )
 }
 
-const WXDAI = '0xe91d153e0b41518a2ce8dd3d7944fa863463a97d'
-const WETH = ['0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', '0x6a023ccd1ff6f2045c3309768ead9e68f978f6e1']
+function DropdownNetworkOption({
+  network,
+  handleSelect,
+}: {
+  network: Network
+  handleSelect: (network: Network) => void
+}): JSX.Element {
+  const width = 20
+  const height = 20
 
-export const SwapWidget = ({ tokenId, tokenSymbol, tokenImage, platforms }: SwapWidgetProps) => {
-  const [activeTab, setActiveTab] = useState('Buy')
-  const [network, setNetwork] = useState<string | null>(null)
+  return (
+    <DropdownOption onClick={() => handleSelect(network)}>
+      <Image src={NETWORK_IMAGE_MAP[network]} alt={NETWORK_MAP[network]} width={width} height={height} />
+      {NETWORK_MAP[network]}
+    </DropdownOption>
+  )
+}
+
+const getDropdownBody = (platforms: Platforms, handleSelect: (network: Network) => void): JSX.Element => {
+  const { ethereum, xdai, base, 'arbitrum-one': arbitrum, avalanche, 'polygon-pos': polygon } = platforms
+
+  return (
+    <DropdownBody>
+      {ethereum?.contractAddress && <DropdownNetworkOption network="ethereum" handleSelect={handleSelect} />}
+      {base?.contractAddress && <DropdownNetworkOption network="base" handleSelect={handleSelect} />}
+      {arbitrum?.contractAddress && <DropdownNetworkOption network="arbitrum-one" handleSelect={handleSelect} />}
+      {polygon?.contractAddress && <DropdownNetworkOption network="polygon-pos" handleSelect={handleSelect} />}
+      {avalanche?.contractAddress && <DropdownNetworkOption network="avalanche" handleSelect={handleSelect} />}
+      {xdai?.contractAddress && <DropdownNetworkOption network="xdai" handleSelect={handleSelect} />}
+    </DropdownBody>
+  )
+}
+
+function getNetworkFromPlatforms(platforms: Platforms): Network {
+  const { ethereum, xdai, base, 'arbitrum-one': arbitrum, avalanche, 'polygon-pos': polygon } = platforms
+
+  if (ethereum?.contractAddress) return 'ethereum'
+  if (base?.contractAddress) return 'base'
+  if (arbitrum?.contractAddress) return 'arbitrum-one'
+  if (polygon?.contractAddress) return 'polygon-pos'
+  if (avalanche?.contractAddress) return 'avalanche'
+  if (xdai?.contractAddress) return 'xdai'
+
+  return 'ethereum'
+}
+
+export const SwapWidget = ({ tokenSymbol, tokenImage, platforms }: SwapWidgetProps): JSX.Element => {
+  const [activeTab, setActiveTab] = useState<Tab>(DEFAULT_TAB)
+  const [network, setNetwork] = useState<Network>(DEFAULT_NETWORK)
   const [amount, setAmount] = useState(0)
 
   const [isOpen, setIsOpen] = useState(false)
-  const handleSelect = (network: string | null) => {
+
+  const handleSelect = (network: Network): void => {
     setNetwork(network)
     setIsOpen(false)
   }
 
+  // set initial network based on the available platforms
   useEffect(() => {
-    // set initial network based on the available platforms
-    if (platforms.ethereum.contractAddress) setNetwork(Networks.ETHEREUM)
-    else if (platforms.xdai.contractAddress) setNetwork(Networks.XDAI)
+    setNetwork(getNetworkFromPlatforms(platforms))
   }, [platforms])
 
-  const handleInputChange = (event: ChangeEvent<any>) => {
+  const handleInputChange = (event: ChangeEvent<HTMLInputElement>): void => {
     let value = event.target.value
 
     // Remove leading minus sign if present
@@ -225,82 +305,37 @@ export const SwapWidget = ({ tokenId, tokenSymbol, tokenImage, platforms }: Swap
       value = value.slice(1)
     }
 
-    if (value === '' || (parseFloat(value) >= 0 && !isNaN(value))) {
-      setAmount(value)
+    if (value === '' || (parseFloat(value) >= 0 && !isNaN(parseFloat(value)))) {
+      setAmount(parseFloat(value))
     }
   }
 
-  const onSwap = () => {
+  const getSwapUrl = (): string => {
     if (network && platforms[network]) {
-      const networkId = network === 'xdai' ? 100 : 1
+      const networkId = NETWORK_ID_MAP[network as Network]
       const contractAddress = platforms[network].contractAddress
 
-      let sellToken, buyToken
-      if (activeTab === 'Buy') {
-        sellToken = networkId === 100 ? 'WXDAI' : 'WETH'
-        buyToken = contractAddress
+      const { sellToken, buyToken } = getBuyAndSellTokens(activeTab, network as Network, contractAddress)
 
-        if (contractAddress === WXDAI) {
-          sellToken = 'XDAI'
-        }
-
-        if (WETH.includes(contractAddress)) {
-          sellToken = networkId === 100 ? 'WXDAI' : 'ETH'
-        }
-      } else {
-        sellToken = contractAddress
-        buyToken = networkId === 100 ? 'WXDAI' : 'WETH'
-
-        if (contractAddress === WXDAI) {
-          buyToken = 'XDAI'
-        }
-
-        if (WETH.includes(contractAddress)) {
-          buyToken = networkId === 100 ? 'WXDAI' : 'ETH'
-        }
-      }
-
-      return `https://chameleon.exchange/#/${networkId}/swap/${sellToken}/${buyToken}?${activeTab.toLowerCase()}Amount=${amount}`
+      return `https://swap.cow.fi/#/${networkId}/swap/${sellToken}/${buyToken}?${activeTab.toLowerCase()}Amount=${amount}`
     } else {
       return '#'
     }
   }
 
+  const networkImage = NETWORK_IMAGE_MAP[network as Network]
+  const networkName = NETWORK_MAP[network as Network]
+
   return (
     <Wrapper>
-      <TabContainer>
-        <Tab onClick={() => setActiveTab('Buy')} active={activeTab === 'Buy'}>
-          Buy
-        </Tab>
-        <Tab onClick={() => setActiveTab('Sell')} active={activeTab === 'Sell'}>
-          Sell
-        </Tab>
-      </TabContainer>
+      <Tabs activeTab={activeTab} setActiveTab={setActiveTab} />
 
       <DropdownContainer>
         <DropdownHeader onClick={() => setIsOpen(!isOpen)}>
-          <img
-            src={`/images/${network === Networks.ETHEREUM ? 'ethereum' : 'gnosis-chain'}.svg`}
-            alt={network ? NETWORK_MAP[network] : ''}
-          />
-          <b>{network ? NETWORK_MAP[network] : ''}</b>
+          <Image src={networkImage} alt={networkName} width={16} height={16} />
+          <b>{networkName}</b>
         </DropdownHeader>
-        {isOpen && (
-          <DropdownBody>
-            {platforms?.ethereum?.contractAddress && (
-              <DropdownOption onClick={() => handleSelect('ethereum')}>
-                <img src="/images/ethereum.svg" alt="Ethereum" />
-                Ethereum
-              </DropdownOption>
-            )}
-            {platforms?.xdai?.contractAddress && (
-              <DropdownOption onClick={() => handleSelect('xdai')}>
-                <img src="/images/gnosis-chain.svg" alt="Gnosis Chain" />
-                Gnosis Chain
-              </DropdownOption>
-            )}
-          </DropdownBody>
-        )}
+        {isOpen && getDropdownBody(platforms, handleSelect)}
       </DropdownContainer>
 
       <InputLabel>
@@ -308,23 +343,21 @@ export const SwapWidget = ({ tokenId, tokenSymbol, tokenImage, platforms }: Swap
 
         <div>
           <TokenLabel>
-            <img src={tokenImage} alt={tokenSymbol} />
+            <Image src={tokenImage} alt={tokenSymbol} width={20} height={20} />
             <span>{tokenSymbol}</span>
           </TokenLabel>
           <Input min={0} value={amount} type="text" onChange={handleInputChange} placeholder="0" />
         </div>
       </InputLabel>
 
-      <LinkWithUtmComponent
-        defaultUtm={{
-          ...CONFIG.utm,
-          utmContent: 'utm_content=swap-widget-token__' + encodeURI(tokenId),
-        }}
-        href={onSwap()}
-        passHref
-      >
-        <Button label={`Swap ${tokenSymbol}`} fontSize={1.6} minHeight={4.2} />
-      </LinkWithUtmComponent>
+      <Button
+        label={`Swap ${tokenSymbol}`}
+        fontSize={1.6}
+        minHeight={4.2}
+        href={getSwapUrl()}
+        target="_blank"
+        rel="noopener noreferrer nofollow"
+      />
     </Wrapper>
   )
 }

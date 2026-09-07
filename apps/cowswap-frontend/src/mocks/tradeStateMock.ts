@@ -1,7 +1,7 @@
-import { COW, GNO_MAINNET } from '@cowprotocol/common-const'
+import { COW_TOKEN_TO_CHAIN, GNO_MAINNET } from '@cowprotocol/common-const'
 import { tryParseCurrencyAmount } from '@cowprotocol/common-utils'
 import { SupportedChainId } from '@cowprotocol/cow-sdk'
-import { Currency, Percent, Price } from '@uniswap/sdk-core'
+import { Currency, Percent, Price } from '@cowprotocol/currency'
 
 import { PriceImpact } from 'legacy/hooks/usePriceImpact'
 import { Field } from 'legacy/state/types'
@@ -10,8 +10,12 @@ import { CurrencyInfo } from 'common/pure/CurrencyInputPanel/types'
 
 const chainId = SupportedChainId.MAINNET
 
-const inputCurrency = COW[chainId]
+const inputCurrency = COW_TOKEN_TO_CHAIN[chainId]
 const outputCurrency = GNO_MAINNET
+
+if (!inputCurrency) {
+  throw new Error('Input currency not found')
+}
 
 export const inputCurrencyInfoMock: CurrencyInfo = {
   field: Field.INPUT,
@@ -32,6 +36,10 @@ export const inputCurrencyInfoMock: CurrencyInfo = {
         bps: 0,
       },
     },
+    beforeAllFees: {
+      sellAmount: tryParseCurrencyAmount('120', inputCurrency),
+      buyAmount: tryParseCurrencyAmount('600', outputCurrency),
+    },
     beforeNetworkCosts: {
       sellAmount: tryParseCurrencyAmount('120', inputCurrency),
       buyAmount: tryParseCurrencyAmount('600', outputCurrency),
@@ -46,6 +54,10 @@ export const inputCurrencyInfoMock: CurrencyInfo = {
     },
     afterSlippage: {
       sellAmount: tryParseCurrencyAmount('110', inputCurrency),
+      buyAmount: tryParseCurrencyAmount('530', outputCurrency),
+    },
+    amountsToSign: {
+      sellAmount: tryParseCurrencyAmount('120', inputCurrency),
       buyAmount: tryParseCurrencyAmount('530', outputCurrency),
     },
   },

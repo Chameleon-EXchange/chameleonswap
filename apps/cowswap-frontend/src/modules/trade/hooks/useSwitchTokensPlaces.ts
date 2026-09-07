@@ -1,21 +1,22 @@
 import { useCallback } from 'react'
 
+import { useCowAnalytics } from '@cowprotocol/analytics'
 import { FractionUtils } from '@cowprotocol/common-utils'
 import { useWalletInfo } from '@cowprotocol/wallet'
 
-import { switchTokensAnalytics } from 'modules/analytics'
+import { CowSwapAnalyticsCategory } from 'common/analytics/types'
+import { useTradeNavigate } from 'common/modules/tradeNavigation'
 
 import { useDerivedTradeState } from './useDerivedTradeState'
 import { useIsWrapOrUnwrap } from './useIsWrapOrUnwrap'
-import { useTradeNavigate } from './useTradeNavigate'
 import { useTradeState } from './useTradeState'
 
 import { ExtendedTradeRawState } from '../types/TradeRawState'
 
 const EMPTY_CURRENCY_ID = '_'
 
-// TODO: when implementing this for SWAP remmeber this logic related to ETH flow
-// https://github.com/cowprotocol/cowswap/blob/628c62596d65e0761ccf70677a55bec9a0a36411/src/legacy/state/swap/reducer.ts#L143
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function useSwitchTokensPlaces(stateOverride: Partial<ExtendedTradeRawState> = {}) {
   const { chainId } = useWalletInfo()
   const tradeState = useTradeState()
@@ -26,11 +27,16 @@ export function useSwitchTokensPlaces(stateOverride: Partial<ExtendedTradeRawSta
   const { inputCurrencyId, outputCurrencyId } = tradeState?.state || {}
   const updateState = tradeState?.updateState
 
+  const cowAnalytics = useCowAnalytics()
+
   return useCallback(() => {
     if (!updateState) return
 
     if (!isWrapOrUnwrap) {
-      switchTokensAnalytics()
+      cowAnalytics.sendEvent({
+        category: CowSwapAnalyticsCategory.TRADE,
+        action: 'Switch INPUT/OUTPUT tokens',
+      })
       updateState({
         inputCurrencyId: outputCurrencyId,
         outputCurrencyId: inputCurrencyId,
@@ -54,5 +60,6 @@ export function useSwitchTokensPlaces(stateOverride: Partial<ExtendedTradeRawSta
     inputCurrencyAmount,
     outputCurrencyAmount,
     stateOverride,
+    cowAnalytics,
   ])
 }

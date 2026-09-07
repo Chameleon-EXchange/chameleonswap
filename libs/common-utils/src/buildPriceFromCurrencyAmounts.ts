@@ -1,19 +1,19 @@
-import { Currency, CurrencyAmount, Price } from '@uniswap/sdk-core'
+import { Currency, CurrencyAmount, Price } from '@cowprotocol/currency'
+import { Nullish } from '@cowprotocol/types'
 
 import { isFractionFalsy } from './isFractionFalsy'
-import { Nullish } from './types'
 
 export function buildPriceFromCurrencyAmounts(
   inputCurrencyAmount: CurrencyAmount<Currency>,
-  outputCurrencyAmount: CurrencyAmount<Currency>
+  outputCurrencyAmount: CurrencyAmount<Currency>,
 ): Price<Currency, Currency>
 export function buildPriceFromCurrencyAmounts(
   inputCurrencyAmount: Nullish<CurrencyAmount<Currency>>,
-  outputCurrencyAmount: Nullish<CurrencyAmount<Currency>>
+  outputCurrencyAmount: Nullish<CurrencyAmount<Currency>>,
 ): Price<Currency, Currency> | null
 export function buildPriceFromCurrencyAmounts(
   inputCurrencyAmount: Nullish<CurrencyAmount<Currency>>,
-  outputCurrencyAmount: Nullish<CurrencyAmount<Currency>>
+  outputCurrencyAmount: Nullish<CurrencyAmount<Currency>>,
 ): Price<Currency, Currency> | null {
   if (
     !inputCurrencyAmount ||

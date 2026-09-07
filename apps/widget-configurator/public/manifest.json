@@ -2,7 +2,7 @@
   "background_color": "#ffffff",
   "display": "standalone",
   "homepage_url": "https://widget.cow.fi",
-  "description": "Widget configurator for Chameleon swap",
+  "description": "Widget configurator for CoW Swap",
   "icons": [
     {
       "src": "/android-chrome-192x192.png",
@@ -18,8 +18,8 @@
     }
   ],
   "orientation": "portrait",
-  "name": "Chameleon swap Widget",
-  "short_name": "Chameleon swap Widget",
+  "name": "CoW Swap Widget",
+  "short_name": "CoW Swap Widget",
   "start_url": ".",
   "theme_color": "#ffffff"
 }

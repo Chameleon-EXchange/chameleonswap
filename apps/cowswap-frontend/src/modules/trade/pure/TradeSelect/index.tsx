@@ -1,12 +1,15 @@
-import { UI } from '@cowprotocol/ui'
+import { ReactNode } from 'react'
 
-import { Menu, MenuButton, MenuItem, MenuList } from '@reach/menu-button'
+import { MessageDescriptor } from '@lingui/core'
+
+import { useExtractText } from '@cowprotocol/common-utils'
+import { ContextMenu, ContextMenuButton, ContextMenuItem, ContextMenuList } from '@cowprotocol/ui'
+
 import { ChevronDown } from 'react-feather'
-import styled from 'styled-components/macro'
 
 import { TradeWidgetField, TradeWidgetFieldProps } from '../TradeWidgetField'
 
-export type TradeSelectItem = { label: string; value: unknown }
+export type TradeSelectItem = { label: string | MessageDescriptor; value: unknown }
 
 export interface TradeSelectProps extends TradeWidgetFieldProps {
   activeLabel: string
@@ -15,75 +18,28 @@ export interface TradeSelectProps extends TradeWidgetFieldProps {
   className?: string
 }
 
-const StyledMenuList = styled(MenuList)`
-  background: var(${UI.COLOR_PAPER_DARKER});
-  box-shadow: var(${UI.BOX_SHADOW});
-  color: inherit;
-  margin: 15px 0 0 0;
-  padding: 16px;
-  border-radius: 20px;
-  outline: none;
-  list-style: none;
-  position: relative;
-  z-index: 2;
-  min-width: 120px;
-  display: flex;
-  flex-flow: column wrap;
-  gap: 10px;
-  transition: background var(${UI.ANIMATION_DURATION}) ease-in-out;
-`
-
-const StyledMenuButton = styled(MenuButton)`
-  color: inherit;
-  background: none;
-  border: 0;
-  outline: none;
-  padding: 0;
-  margin: 0;
-  font-size: 18px;
-  display: flex;
-  align-items: center;
-  flex-flow: row wrap;
-  cursor: pointer;
-  width: 100%;
-  justify-content: space-between;
-`
-
-const StyledMenuItem = styled(MenuItem)`
-  cursor: pointer;
-  font-size: 16px;
-  color: inherit;
-  opacity: 0.7;
-  transition: opacity var(${UI.ANIMATION_DURATION}) ease-in-out;
-
-  &:hover {
-    opacity: 1;
-  }
-
-  &:not(:last-child) {
-    margin: 0 0 10px;
-  }
-`
-
-export function TradeSelect(props: TradeSelectProps) {
+export function TradeSelect(props: TradeSelectProps): ReactNode {
   const { activeLabel, items, onSelect, className } = props
+  const { extractTextFromStringOrI18nDescriptor } = useExtractText()
+
   return (
     <TradeWidgetField {...props}>
       <div>
-        <Menu>
-          <StyledMenuButton className={className}>
+        <ContextMenu>
+          <ContextMenuButton className={className}>
             {activeLabel} <ChevronDown size={20} />
-          </StyledMenuButton>
-          <StyledMenuList>
+          </ContextMenuButton>
+          <ContextMenuList>
             {items.map((item) => {
+              const label = extractTextFromStringOrI18nDescriptor(item.label)
               return (
-                <StyledMenuItem key={item.label} onSelect={() => onSelect(item)}>
-                  {item.label}
-                </StyledMenuItem>
+                <ContextMenuItem key={label} onSelect={() => onSelect(item)}>
+                  {label}
+                </ContextMenuItem>
               )
             })}
-          </StyledMenuList>
-        </Menu>
+          </ContextMenuList>
+        </ContextMenu>
       </div>
     </TradeWidgetField>
   )

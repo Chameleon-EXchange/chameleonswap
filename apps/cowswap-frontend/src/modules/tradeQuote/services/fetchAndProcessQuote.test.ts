@@ -1,0 +1,792 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+// Mock modules that require window before imports
+jest.mock('@cowprotocol/common-utils', () => ({
+  ...jest.requireActual('@cowprotocol/common-utils'),
+  getCurrentChainIdFromUrl: jest.fn().mockReturnValue(1),
+  onlyResolvesLast: jest.fn().mockImplementation((fn) => {
+    return async (...args: any[]) => {
+      const result = await fn(...args)
+      // If the function already returns a CancelableResult format, return as-is
+      if (result && typeof result === 'object' && 'cancelled' in result) {
+        return result
+      }
+      // Otherwise wrap in CancelableResult format
+      return { cancelled: false, data: result }
+    }
+  }),
+}))
+
+jest.mock('cowSdk', () => ({
+  orderBookApi: {},
+}))
+
+jest.mock('tradingSdk/bridgingSdk', () => ({
+  bridgingSdk: {
+    getQuote: jest.fn(),
+    getBestQuote: jest.fn(),
+  },
+}))
+
+jest.mock('@cowprotocol/common-const', () => ({
+  ...jest.requireActual('@cowprotocol/common-const'),
+  IS_SOLANA_ENABLED: true,
+}))
+
+jest.mock('./getSolanaQuote.service', () => ({
+  getSolanaQuote: jest.fn(),
+}))
+
+import { onlyResolvesLast } from '@cowprotocol/common-utils'
+import { OrderKind, PriceQuality, SupportedChainId, QuoteAndPost } from '@cowprotocol/cow-sdk'
+import {
+  BridgeProviderError,
+  BridgeProviderQuoteError,
+  BridgeQuoteAndPost,
+  BridgeQuoteErrors,
+  BridgeQuoteResults,
+  MultiQuoteResult,
+  QuoteBridgeRequest,
+} from '@cowprotocol/sdk-bridging'
+
+import { bridgingSdk } from 'tradingSdk/bridgingSdk'
+
+import { QuoteApiError, QuoteApiErrorCodes } from 'api/cowProtocol/errors/QuoteError'
+import { getIsQuoteApiTypedError } from 'api/cowProtocol/getIsOrderBookTypedError'
+
+import { fetchAndProcessQuote } from './fetchAndProcessQuote'
+import { getSolanaQuote } from './getSolanaQuote.service'
+
+import { TradeQuoteManager } from '../hooks/useTradeQuoteManager'
+import { TradeQuoteFetchParams, TradeQuotePollingParameters } from '../types'
+import { getBridgeQuoteSigner } from '../utils/getBridgeQuoteSigner'
+
+// Mock dependencies
+jest.mock('../utils/getBridgeQuoteSigner', () => ({
+  getBridgeQuoteSigner: jest.fn(),
+}))
+
+jest.mock('api/cowProtocol/getIsOrderBookTypedError', () => ({
+  getIsQuoteApiTypedError: jest.fn(),
+}))
+
+// Mock console.error to avoid noise in tests
+jest.spyOn(console, 'error').mockImplementation(() => {})
+
+const tradeQuotePollingParameters: TradeQuotePollingParameters = {
+  isConfirmOpen: false,
+  isQuoteUpdatePossible: true,
+  useSuggestedSlippageApi: false,
+  hasPendingTrade: false,
+}
+
+// eslint-disable-next-line max-lines-per-function
+describe('fetchAndProcessQuote', () => {
+  let mockTradeQuoteManager: jest.Mocked<TradeQuoteManager>
+  let mockBridgingSdk: jest.Mocked<typeof bridgingSdk>
+  let mockGetBridgeQuoteSigner: jest.MockedFunction<typeof getBridgeQuoteSigner>
+  let mockGetQuoteApiTypedError: jest.MockedFunction<typeof getIsQuoteApiTypedError>
+  let mockOnlyResolvesLast: jest.MockedFunction<typeof onlyResolvesLast>
+
+  const mockFetchParams: TradeQuoteFetchParams = {
+    hasParamsChanged: true,
+    priceQuality: PriceQuality.FAST,
+    fetchStartTimestamp: Date.now(),
+  }
+
+  const mockQuoteParams: QuoteBridgeRequest = {
+    kind: OrderKind.SELL,
+    amount: BigInt('1000000000000000000'),
+    owner: '0x1234567890123456789012345678901234567890' as `0x${string}`,
+    sellTokenChainId: SupportedChainId.MAINNET,
+    sellTokenAddress: '0xA0b86a33E6441E3bbC44Bd264B41a30AD5D3B1c6',
+    sellTokenDecimals: 18,
+    buyTokenChainId: SupportedChainId.MAINNET,
+    buyTokenAddress: '0xC02aaA39b223FE8D0A0e5C4F27ead9083C756Cc2',
+    buyTokenDecimals: 18,
+    account: '0x1234567890123456789012345678901234567890' as `0x${string}`,
+    appCode: 'test',
+    signer: {} as jest.Mocked<any>,
+    receiver: '0x1234567890123456789012345678901234567890',
+    validFor: 3600,
+  }
+
+  const mockAppData = {
+    appCode: 'test',
+    environment: 'prod' as const,
+    metadata: {},
+    version: '1.0.0',
+  }
+
+  beforeEach(() => {
+    // Reset all mocks
+    jest.clearAllMocks()
+
+    // Setup mock implementations
+    mockTradeQuoteManager = {
+      setLoading: jest.fn(),
+      reset: jest.fn(),
+      onError: jest.fn(),
+      onResponse: jest.fn(),
+    }
+
+    mockBridgingSdk = bridgingSdk as jest.Mocked<typeof bridgingSdk>
+    mockGetBridgeQuoteSigner = getBridgeQuoteSigner as jest.MockedFunction<typeof getBridgeQuoteSigner>
+    mockGetQuoteApiTypedError = getIsQuoteApiTypedError as jest.MockedFunction<typeof getIsQuoteApiTypedError>
+    mockOnlyResolvesLast = onlyResolvesLast as jest.MockedFunction<typeof onlyResolvesLast>
+
+    mockGetBridgeQuoteSigner.mockReturnValue({} as jest.Mocked<any>)
+    mockGetQuoteApiTypedError.mockReturnValue(false)
+  })
+
+  describe('Main fetchAndProcessQuote function', () => {
+    it('should set loading state and call fetchSwapQuote for same-chain swaps', async () => {
+      const sameChainQuoteParams = {
+        ...mockQuoteParams,
+        buyTokenChainId: SupportedChainId.MAINNET, // Same as sellTokenChainId
+      }
+
+      const mockQuoteAndPost: QuoteAndPost = {
+        quoteResults: {} as any,
+        postSwapOrderFromQuote: jest.fn(),
+      }
+
+      mockBridgingSdk.getQuote.mockResolvedValue({
+        cancelled: false,
+        data: mockQuoteAndPost,
+      } as any)
+
+      await fetchAndProcessQuote(
+        mockFetchParams,
+        sameChainQuoteParams,
+        tradeQuotePollingParameters,
+        mockAppData,
+        mockTradeQuoteManager,
+      )
+
+      expect(mockTradeQuoteManager.setLoading).toHaveBeenCalledWith(true, sameChainQuoteParams)
+      expect(mockBridgingSdk.getQuote).toHaveBeenCalledWith(sameChainQuoteParams, {
+        allowIntermediateEqSellToken: true,
+        quoteRequest: {
+          priceQuality: PriceQuality.FAST,
+        },
+        appData: mockAppData,
+        quoteSigner: undefined,
+        getSlippageSuggestion: undefined,
+        getCorrelatedTokens: undefined,
+      })
+      expect(mockTradeQuoteManager.onResponse).toHaveBeenCalledWith(
+        mockQuoteAndPost,
+        null,
+        mockFetchParams,
+        sameChainQuoteParams,
+      )
+    })
+
+    it('should set loading state and call fetchBridgingQuote for cross-chain swaps', async () => {
+      const crossChainQuoteParams = {
+        ...mockQuoteParams,
+        sellTokenChainId: SupportedChainId.MAINNET,
+        buyTokenChainId: SupportedChainId.GNOSIS_CHAIN,
+      }
+
+      const mockResult: MultiQuoteResult = {
+        providerDappId: 'test-provider',
+        quote: null,
+      }
+
+      mockBridgingSdk.getBestQuote.mockResolvedValue(mockResult)
+
+      await fetchAndProcessQuote(
+        mockFetchParams,
+        crossChainQuoteParams,
+        tradeQuotePollingParameters,
+        mockAppData,
+        mockTradeQuoteManager,
+      )
+
+      expect(mockTradeQuoteManager.setLoading).toHaveBeenCalledWith(true, crossChainQuoteParams)
+      expect(mockGetBridgeQuoteSigner).toHaveBeenCalledWith(SupportedChainId.MAINNET)
+      expect(mockBridgingSdk.getBestQuote).toHaveBeenCalledWith({
+        quoteBridgeRequest: crossChainQuoteParams,
+        advancedSettings: expect.objectContaining({
+          quoteRequest: {
+            priceQuality: PriceQuality.FAST,
+          },
+          appData: mockAppData,
+          quoteSigner: {},
+        }),
+        options: {
+          onQuoteResult: expect.any(Function),
+        },
+      })
+    })
+
+    it('should use optimal quote for OPTIMAL price quality', async () => {
+      const optimalFetchParams = {
+        ...mockFetchParams,
+        priceQuality: PriceQuality.OPTIMAL,
+      }
+
+      const mockQuoteAndPost: QuoteAndPost = {
+        quoteResults: {} as any,
+        postSwapOrderFromQuote: jest.fn(),
+      }
+
+      mockBridgingSdk.getQuote.mockResolvedValue({
+        cancelled: false,
+        data: mockQuoteAndPost,
+      } as any)
+
+      await fetchAndProcessQuote(
+        optimalFetchParams,
+        mockQuoteParams,
+        tradeQuotePollingParameters,
+        mockAppData,
+        mockTradeQuoteManager,
+      )
+
+      expect(mockBridgingSdk.getQuote).toHaveBeenCalledWith(mockQuoteParams, {
+        allowIntermediateEqSellToken: true,
+        quoteRequest: {
+          priceQuality: PriceQuality.OPTIMAL,
+        },
+        appData: mockAppData,
+        quoteSigner: undefined,
+        getSlippageSuggestion: undefined,
+        getCorrelatedTokens: undefined,
+      })
+    })
+
+    it('should pass getCorrelatedTokens to advancedSettings', async () => {
+      const mockCorrelatedTokens = [{ '0xTokenAddress': 'TOKEN' }]
+      const mockGetCorrelatedTokens = jest.fn().mockReturnValue(mockCorrelatedTokens)
+
+      const mockQuoteAndPost: QuoteAndPost = {
+        quoteResults: {} as any,
+        postSwapOrderFromQuote: jest.fn(),
+      }
+
+      mockBridgingSdk.getQuote.mockResolvedValue({
+        cancelled: false,
+        data: mockQuoteAndPost,
+      } as any)
+
+      await fetchAndProcessQuote(
+        mockFetchParams,
+        mockQuoteParams,
+        tradeQuotePollingParameters,
+        mockAppData,
+        mockTradeQuoteManager,
+        mockGetCorrelatedTokens,
+      )
+
+      expect(mockBridgingSdk.getQuote).toHaveBeenCalledWith(mockQuoteParams, {
+        allowIntermediateEqSellToken: true,
+        quoteRequest: {
+          priceQuality: PriceQuality.FAST,
+        },
+        appData: mockAppData,
+        quoteSigner: undefined,
+        getSlippageSuggestion: undefined,
+        getCorrelatedTokens: mockGetCorrelatedTokens,
+      })
+    })
+  })
+
+  describe('fetchSwapQuote', () => {
+    beforeEach(() => {
+      const mockQuoteAndPost: QuoteAndPost = {
+        quoteResults: {} as any,
+        postSwapOrderFromQuote: jest.fn(),
+      }
+
+      mockBridgingSdk.getQuote.mockResolvedValue({
+        cancelled: false,
+        data: mockQuoteAndPost,
+      } as any)
+    })
+
+    it('should handle successful quote response', async () => {
+      const mockQuoteAndPost: QuoteAndPost = {
+        quoteResults: {} as any,
+        postSwapOrderFromQuote: jest.fn(),
+      }
+
+      mockBridgingSdk.getQuote.mockResolvedValue({
+        cancelled: false,
+        data: mockQuoteAndPost,
+      } as any)
+
+      await fetchAndProcessQuote(
+        mockFetchParams,
+        mockQuoteParams,
+        tradeQuotePollingParameters,
+        mockAppData,
+        mockTradeQuoteManager,
+      )
+
+      expect(mockTradeQuoteManager.onResponse).toHaveBeenCalledWith(
+        mockQuoteAndPost,
+        null,
+        mockFetchParams,
+        mockQuoteParams,
+      )
+    })
+
+    it('should handle cancelled request', async () => {
+      mockBridgingSdk.getQuote.mockResolvedValue({
+        cancelled: true,
+        data: null,
+      } as any)
+
+      await fetchAndProcessQuote(
+        mockFetchParams,
+        mockQuoteParams,
+        tradeQuotePollingParameters,
+        mockAppData,
+        mockTradeQuoteManager,
+      )
+
+      expect(mockTradeQuoteManager.onResponse).not.toHaveBeenCalled()
+      expect(mockTradeQuoteManager.onError).not.toHaveBeenCalled()
+    })
+
+    it('should handle QuoteApiError', async () => {
+      const mockError = new Error('API Error')
+
+      mockBridgingSdk.getQuote.mockRejectedValue(mockError)
+      mockGetQuoteApiTypedError.mockReturnValue(false)
+
+      await fetchAndProcessQuote(
+        mockFetchParams,
+        mockQuoteParams,
+        tradeQuotePollingParameters,
+        mockAppData,
+        mockTradeQuoteManager,
+      )
+
+      expect(mockTradeQuoteManager.onError).toHaveBeenCalledWith(
+        expect.any(QuoteApiError),
+        SupportedChainId.MAINNET,
+        mockQuoteParams,
+        mockFetchParams,
+      )
+    })
+
+    it('should handle generic error', async () => {
+      const mockError = new Error('Generic error')
+
+      mockBridgingSdk.getQuote.mockRejectedValue(mockError)
+      mockGetQuoteApiTypedError.mockReturnValue(false)
+
+      await fetchAndProcessQuote(
+        mockFetchParams,
+        mockQuoteParams,
+        tradeQuotePollingParameters,
+        mockAppData,
+        mockTradeQuoteManager,
+      )
+
+      // Should call onError for generic errors in swap quotes
+      expect(mockTradeQuoteManager.onError).toHaveBeenCalled()
+      expect(console.error).toHaveBeenCalledWith(
+        '[fetchAndProcessQuote]:: fetchSwapQuote error',
+        expect.any(QuoteApiError),
+      )
+    })
+  })
+
+  describe('Solana quotes', () => {
+    const solanaQuoteParams: QuoteBridgeRequest = {
+      ...mockQuoteParams,
+      sellTokenChainId: SupportedChainId.SOLANA,
+      buyTokenChainId: SupportedChainId.SOLANA,
+    }
+    const mockGetSolanaQuote = getSolanaQuote as jest.MockedFunction<typeof getSolanaQuote>
+
+    it('serves a real Jupiter-sourced quote instead of calling bridgingSdk', async () => {
+      const mockQuoteAndPost: QuoteAndPost = { quoteResults: {} as any, postSwapOrderFromQuote: jest.fn() }
+      mockGetSolanaQuote.mockResolvedValue(mockQuoteAndPost)
+
+      await fetchAndProcessQuote(
+        mockFetchParams,
+        solanaQuoteParams,
+        tradeQuotePollingParameters,
+        mockAppData,
+        mockTradeQuoteManager,
+      )
+
+      expect(mockGetSolanaQuote).toHaveBeenCalledWith(solanaQuoteParams, undefined)
+      expect(mockBridgingSdk.getQuote).not.toHaveBeenCalled()
+      expect(mockTradeQuoteManager.onResponse).toHaveBeenCalledWith(
+        mockQuoteAndPost,
+        null,
+        mockFetchParams,
+        solanaQuoteParams,
+      )
+    })
+
+    it('surfaces a Jupiter quote failure via onError, same as an EVM quote failure', async () => {
+      mockGetSolanaQuote.mockRejectedValue(new Error('no route found'))
+
+      await fetchAndProcessQuote(
+        mockFetchParams,
+        solanaQuoteParams,
+        tradeQuotePollingParameters,
+        mockAppData,
+        mockTradeQuoteManager,
+      )
+
+      expect(mockTradeQuoteManager.onError).toHaveBeenCalled()
+      expect(mockTradeQuoteManager.reset).not.toHaveBeenCalled()
+    })
+
+    // Solana quotes now go through the same per-tier onlyResolvesLast protection the EVM path uses
+    // above (getFastQuote/getOptimalQuote), so a stale FAST response can no longer overwrite a newer
+    // OPTIMAL one. onlyResolvesLast's actual cancellation semantics are covered directly, with real
+    // delayed promises, in libs/common-utils/src/async.test.ts — here we only need to confirm the FAST
+    // vs OPTIMAL request is still wired correctly through the wrapper for Solana.
+    it('requests a Jupiter quote for both FAST and OPTIMAL price qualities', async () => {
+      const mockQuoteAndPost: QuoteAndPost = { quoteResults: {} as any, postSwapOrderFromQuote: jest.fn() }
+      mockGetSolanaQuote.mockResolvedValue(mockQuoteAndPost)
+
+      await fetchAndProcessQuote(
+        { ...mockFetchParams, priceQuality: PriceQuality.FAST },
+        solanaQuoteParams,
+        tradeQuotePollingParameters,
+        mockAppData,
+        mockTradeQuoteManager,
+      )
+      await fetchAndProcessQuote(
+        { ...mockFetchParams, priceQuality: PriceQuality.OPTIMAL },
+        solanaQuoteParams,
+        tradeQuotePollingParameters,
+        mockAppData,
+        mockTradeQuoteManager,
+      )
+
+      expect(mockGetSolanaQuote).toHaveBeenCalledTimes(2)
+      expect(mockGetSolanaQuote).toHaveBeenNthCalledWith(1, solanaQuoteParams, undefined)
+      expect(mockGetSolanaQuote).toHaveBeenNthCalledWith(2, solanaQuoteParams, undefined)
+      expect(mockTradeQuoteManager.onResponse).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  describe('fetchBridgingQuote', () => {
+    const crossChainQuoteParams = {
+      ...mockQuoteParams,
+      sellTokenChainId: SupportedChainId.MAINNET,
+      buyTokenChainId: SupportedChainId.GNOSIS_CHAIN,
+    }
+
+    it('should handle successful bridge quote with onQuoteResult callback', async () => {
+      const mockBridgeQuote: BridgeQuoteResults = {
+        providerInfo: { name: 'Test Provider', logoUrl: '', dappId: 'test', website: '', type: 'HookBridgeProvider' },
+        tradeParameters: crossChainQuoteParams,
+        bridgeCallDetails: {} as any,
+        amountsAndCosts: {} as any,
+        quoteTimestamp: Date.now(),
+        fees: { bridgeFee: BigInt(0), destinationGasFee: BigInt(0) },
+        limits: { minDeposit: BigInt(0), maxDeposit: BigInt(0) },
+        isSell: true,
+        expectedFillTimeSeconds: 300,
+      }
+
+      const mockQuoteAndPost: BridgeQuoteAndPost = {
+        swap: {} as any,
+        bridge: mockBridgeQuote,
+        postSwapOrderFromQuote: jest.fn(),
+      }
+
+      const mockResult: MultiQuoteResult = {
+        providerDappId: 'test-provider',
+        quote: mockQuoteAndPost,
+      }
+
+      let onQuoteResultCallback: ((result: MultiQuoteResult) => void) | undefined
+
+      mockBridgingSdk.getBestQuote.mockImplementation(async (request) => {
+        onQuoteResultCallback = request.options?.onQuoteResult
+        return mockResult
+      })
+
+      await fetchAndProcessQuote(
+        mockFetchParams,
+        crossChainQuoteParams,
+        tradeQuotePollingParameters,
+        mockAppData,
+        mockTradeQuoteManager,
+      )
+
+      // Simulate the callback being called
+      if (onQuoteResultCallback) {
+        onQuoteResultCallback(mockResult)
+      }
+
+      expect(mockTradeQuoteManager.onResponse).toHaveBeenCalledWith(
+        {
+          quoteResults: mockQuoteAndPost.swap,
+          postSwapOrderFromQuote: mockQuoteAndPost.postSwapOrderFromQuote,
+        },
+        mockBridgeQuote,
+        mockFetchParams,
+        crossChainQuoteParams,
+      )
+    })
+
+    it('should handle BridgeProviderQuoteError', async () => {
+      const mockBridgeError = new BridgeProviderQuoteError(BridgeQuoteErrors.API_ERROR, { context: 'test' })
+      const mockResult: MultiQuoteResult = {
+        providerDappId: 'test-provider',
+        quote: null,
+        error: mockBridgeError,
+      }
+
+      mockBridgingSdk.getBestQuote.mockResolvedValue(mockResult)
+
+      await fetchAndProcessQuote(
+        mockFetchParams,
+        crossChainQuoteParams,
+        tradeQuotePollingParameters,
+        mockAppData,
+        mockTradeQuoteManager,
+      )
+
+      expect(mockTradeQuoteManager.onError).toHaveBeenCalledWith(
+        mockBridgeError,
+        SupportedChainId.MAINNET,
+        crossChainQuoteParams,
+        mockFetchParams,
+      )
+    })
+
+    it('should handle generic error in bridge result', async () => {
+      const mockGenericError = new BridgeProviderError('Generic bridge error', { context: 'test' })
+      const mockResult: MultiQuoteResult = {
+        providerDappId: 'test-provider',
+        quote: null,
+        error: mockGenericError,
+      }
+
+      mockBridgingSdk.getBestQuote.mockResolvedValue(mockResult)
+
+      await fetchAndProcessQuote(
+        mockFetchParams,
+        crossChainQuoteParams,
+        tradeQuotePollingParameters,
+        mockAppData,
+        mockTradeQuoteManager,
+      )
+
+      expect(console.error).toHaveBeenCalledWith(
+        '[fetchAndProcessQuote]:: fetchBridgingQuote error',
+        expect.any(BridgeProviderQuoteError),
+      )
+    })
+
+    it('should handle null result', async () => {
+      mockBridgingSdk.getBestQuote.mockResolvedValue(null)
+
+      await fetchAndProcessQuote(
+        mockFetchParams,
+        crossChainQuoteParams,
+        tradeQuotePollingParameters,
+        mockAppData,
+        mockTradeQuoteManager,
+      )
+
+      // Should not call any manager methods for null result
+      expect(mockTradeQuoteManager.onError).not.toHaveBeenCalled()
+      expect(mockTradeQuoteManager.onResponse).not.toHaveBeenCalled()
+    })
+
+    it('should handle unexpected exception in getBestQuote', async () => {
+      const unexpectedError = new Error('Unexpected error')
+      mockBridgingSdk.getBestQuote.mockRejectedValue(unexpectedError)
+
+      await fetchAndProcessQuote(
+        mockFetchParams,
+        crossChainQuoteParams,
+        tradeQuotePollingParameters,
+        mockAppData,
+        mockTradeQuoteManager,
+      )
+
+      expect(console.error).toHaveBeenCalledWith(
+        '[fetchAndProcessQuote]:: fetchBridgingQuote error',
+        expect.any(BridgeProviderQuoteError),
+      )
+    })
+
+    it('should not call onResponse when quote is null in onQuoteResult callback', async () => {
+      const mockResult: MultiQuoteResult = {
+        providerDappId: 'test-provider',
+        quote: null,
+      }
+
+      let onQuoteResultCallback: ((result: MultiQuoteResult) => void) | undefined
+
+      mockBridgingSdk.getBestQuote.mockImplementation(async (request) => {
+        onQuoteResultCallback = request.options?.onQuoteResult
+        return mockResult
+      })
+
+      await fetchAndProcessQuote(
+        mockFetchParams,
+        crossChainQuoteParams,
+        tradeQuotePollingParameters,
+        mockAppData,
+        mockTradeQuoteManager,
+      )
+
+      // Simulate the callback being called with null quote
+      if (onQuoteResultCallback) {
+        onQuoteResultCallback(mockResult)
+      }
+
+      expect(mockTradeQuoteManager.onResponse).not.toHaveBeenCalled()
+    })
+
+    it('should handle request cancellation in getBestQuote', async () => {
+      const mockResult: MultiQuoteResult = {
+        providerDappId: 'test-provider',
+        quote: null,
+      }
+
+      mockBridgingSdk.getBestQuote.mockResolvedValue(mockResult)
+
+      // Override onlyResolvesLast to return cancelled for this test
+      mockOnlyResolvesLast.mockImplementation((fn: any) => {
+        return async (...args: any[]) => {
+          const data = await fn(...args)
+          return { cancelled: true, data }
+        }
+      })
+
+      await fetchAndProcessQuote(
+        mockFetchParams,
+        crossChainQuoteParams,
+        tradeQuotePollingParameters,
+        mockAppData,
+        mockTradeQuoteManager,
+      )
+
+      // Should not call any manager methods when request is cancelled
+      expect(mockTradeQuoteManager.onError).not.toHaveBeenCalled()
+      expect(mockTradeQuoteManager.onResponse).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('parseError function', () => {
+    it('should return QuoteApiError for order book typed errors', async () => {
+      const mockError = new Error('Order book error')
+      const mockErrorBody = {
+        errorType: QuoteApiErrorCodes.UnsupportedToken,
+        description: 'Unsupported token',
+      }
+
+      // Mock the error to have a body property
+      ;(mockError as any).body = mockErrorBody
+
+      mockBridgingSdk.getQuote.mockRejectedValue(mockError)
+      mockGetQuoteApiTypedError.mockReturnValue(true)
+
+      await fetchAndProcessQuote(
+        mockFetchParams,
+        mockQuoteParams,
+        tradeQuotePollingParameters,
+        mockAppData,
+        mockTradeQuoteManager,
+      )
+
+      expect(mockTradeQuoteManager.onError).toHaveBeenCalledWith(
+        expect.any(QuoteApiError),
+        SupportedChainId.MAINNET,
+        mockQuoteParams,
+        mockFetchParams,
+      )
+    })
+
+    it('should return original error for non-order book errors', async () => {
+      const mockError = new Error('Generic error')
+
+      mockBridgingSdk.getQuote.mockRejectedValue(mockError)
+      mockGetQuoteApiTypedError.mockReturnValue(false)
+
+      await fetchAndProcessQuote(
+        mockFetchParams,
+        mockQuoteParams,
+        tradeQuotePollingParameters,
+        mockAppData,
+        mockTradeQuoteManager,
+      )
+
+      expect(mockTradeQuoteManager.onError).toHaveBeenCalled()
+      expect(console.error).toHaveBeenCalledWith(
+        '[fetchAndProcessQuote]:: fetchSwapQuote error',
+        expect.any(QuoteApiError),
+      )
+    })
+  })
+
+  describe('Edge cases', () => {
+    it('should handle undefined appData', async () => {
+      const mockQuoteAndPost: QuoteAndPost = {
+        quoteResults: {} as any,
+        postSwapOrderFromQuote: jest.fn(),
+      }
+
+      mockBridgingSdk.getQuote.mockResolvedValue({
+        cancelled: false,
+        data: mockQuoteAndPost,
+      } as any)
+
+      await fetchAndProcessQuote(
+        mockFetchParams,
+        mockQuoteParams,
+        tradeQuotePollingParameters,
+        undefined,
+        mockTradeQuoteManager,
+      )
+
+      expect(mockBridgingSdk.getQuote).toHaveBeenCalledWith(mockQuoteParams, {
+        allowIntermediateEqSellToken: true,
+        quoteRequest: {
+          priceQuality: PriceQuality.FAST,
+        },
+        appData: undefined,
+        quoteSigner: undefined,
+        getSlippageSuggestion: undefined,
+        getCorrelatedTokens: undefined,
+      })
+    })
+
+    it('should handle hasParamsChanged = false', async () => {
+      const noParamsChangedFetchParams = {
+        ...mockFetchParams,
+        hasParamsChanged: false,
+      }
+
+      const mockQuoteAndPost: QuoteAndPost = {
+        quoteResults: {} as any,
+        postSwapOrderFromQuote: jest.fn(),
+      }
+
+      mockBridgingSdk.getQuote.mockResolvedValue({
+        cancelled: false,
+        data: mockQuoteAndPost,
+      } as any)
+
+      await fetchAndProcessQuote(
+        noParamsChangedFetchParams,
+        mockQuoteParams,
+        tradeQuotePollingParameters,
+        mockAppData,
+        mockTradeQuoteManager,
+      )
+
+      expect(mockTradeQuoteManager.setLoading).toHaveBeenCalledWith(false, mockQuoteParams)
+    })
+  })
+})

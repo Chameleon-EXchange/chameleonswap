@@ -1,8 +1,8 @@
-import { TokenAmount, HoverTooltip } from '@cowprotocol/ui'
-import { UI } from '@cowprotocol/ui'
-import { FractionLike, Nullish } from '@cowprotocol/ui'
-import { Currency, Price, CurrencyAmount, Fraction } from '@uniswap/sdk-core'
+import { Currency, Price, CurrencyAmount, Fraction } from '@cowprotocol/currency'
+import { Nullish } from '@cowprotocol/types'
+import { TokenAmount, HoverTooltip, UI } from '@cowprotocol/ui'
 
+import { Trans } from '@lingui/react/macro'
 import styled from 'styled-components/macro'
 
 import { ExecutionPriceTooltip } from '../ExecutionPriceTooltip'
@@ -39,13 +39,15 @@ const QuestionWrapper = styled.div`
 
 export interface EstimatedFillPriceProps {
   currency: Currency
-  estimatedFillPrice: Nullish<FractionLike>
+  estimatedFillPrice: Nullish<Fraction>
   executionPrice: Price<Currency, Currency>
   isInverted: boolean
   feeAmount: CurrencyAmount<Currency> | null
   marketRate: Fraction | null
 }
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function EstimatedFillPrice({
   currency,
   estimatedFillPrice,
@@ -57,7 +59,7 @@ export function EstimatedFillPrice({
   return (
     <EstimatedFillPriceBox>
       <Label>
-        Estimated fill price
+        <Trans>Estimated fill price</Trans>
         <QuestionWrapper>
           <HoverTooltip
             content={

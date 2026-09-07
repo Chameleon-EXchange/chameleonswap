@@ -1,9 +1,15 @@
-import { ExplorerDataType, getExplorerLink, isAddress, shortenAddress } from '@cowprotocol/common-utils'
-import { SupportedChainId } from '@cowprotocol/cow-sdk'
+import { ReactNode } from 'react'
+
+import { isAddress } from '@cowprotocol/common-utils'
+import { areAddressesEqual, SupportedChainId } from '@cowprotocol/cow-sdk'
 import { InfoTooltip } from '@cowprotocol/ui'
 
+import { t } from '@lingui/core/macro'
+import { Trans } from '@lingui/react/macro'
 import styled from 'styled-components/macro'
 import { Nullish } from 'types'
+
+import { AddressLink } from 'common/pure/AddressLink'
 
 const Row = styled.div`
   display: flex;
@@ -15,45 +21,35 @@ const Row = styled.div`
   gap: 3px;
 `
 
-const Link = styled.a`
-  text-decoration: none;
-
-  &:hover {
-    text-decoration: underline;
-  }
-`
-
 interface RecipientRowProps {
   chainId: SupportedChainId
   recipient: Nullish<string>
+  recipientAddress: Nullish<string>
   account: Nullish<string>
 }
 
-export function RecipientRow(props: RecipientRowProps) {
+export function RecipientRow(props: RecipientRowProps): ReactNode {
   const { chainId, recipient, account } = props
+
+  const recipientAddress = isAddress(recipient) ? recipient : props.recipientAddress
+
+  if (!recipient || !recipientAddress || areAddressesEqual(recipientAddress, account)) {
+    return null
+  }
+
   return (
-    <>
-      {recipient && recipient.toLowerCase() !== account?.toLowerCase() && (
-        <Row>
-          <div>
-            <span>Recipient</span>{' '}
-            <InfoTooltip
-              content={
-                'The tokens received from this order will automatically be sent to this address. No need to do a second transaction!'
-              }
-            />
-          </div>
-          <div>
-            <Link
-              title={recipient}
-              href={getExplorerLink(chainId, recipient, ExplorerDataType.ADDRESS)}
-              target="_blank"
-            >
-              {isAddress(recipient) ? shortenAddress(recipient) : recipient} ↗
-            </Link>
-          </div>
-        </Row>
-      )}
-    </>
+    <Row>
+      <div>
+        <span>
+          <Trans>Recipient</Trans>
+        </span>{' '}
+        <InfoTooltip
+          content={t`The tokens received from this order will automatically be sent to this address. No need to do a second transaction!`}
+        />
+      </div>
+      <div>
+        <AddressLink address={recipientAddress} content={recipient} chainId={chainId} />
+      </div>
+    </Row>
   )
 }

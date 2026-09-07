@@ -3,6 +3,10 @@ import { SupportedChainId } from '@cowprotocol/cow-sdk'
 
 import { gql, GraphQLClient } from 'graphql-request'
 
+export interface TokenSearchFromApiResult extends FetchTokensResult {
+  chainId: SupportedChainId
+}
+
 type Address = `0x${string}`
 
 type Chain =
@@ -11,10 +15,15 @@ type Chain =
   | 'ETHEREUM_SEPOLIA'
   | 'OPTIMISM'
   | 'POLYGON'
+  | 'AVALANCHE'
   | 'CELO'
   | 'BNB'
   | 'BASE'
   | 'UNKNOWN_CHAIN'
+
+interface FetchTokensApiResult {
+  searchTokens: FetchTokensResult[]
+}
 
 interface FetchTokensResult {
   id: string
@@ -34,14 +43,6 @@ interface FetchTokensResult {
     }
     safetyLevel: string
   }
-}
-
-interface FetchTokensApiResult {
-  searchTokens: FetchTokensResult[]
-}
-
-export interface TokenSearchFromApiResult extends FetchTokensResult {
-  chainId: SupportedChainId
 }
 
 const SEARCH_TOKENS = gql`
@@ -121,12 +122,20 @@ const SEARCH_TOKENS = gql`
 const BASE_URL = `${BFF_BASE_URL}/proxies/tokens`
 const GQL_CLIENT = new GraphQLClient(BASE_URL)
 
+// TODO: remove/replace, no longer working
 const CHAIN_NAMES: Record<SupportedChainId, Chain | null> = {
   [SupportedChainId.MAINNET]: 'ETHEREUM',
   [SupportedChainId.ARBITRUM_ONE]: 'ARBITRUM',
   [SupportedChainId.BASE]: 'BASE',
   [SupportedChainId.SEPOLIA]: 'ETHEREUM_SEPOLIA',
   [SupportedChainId.GNOSIS_CHAIN]: null,
+  [SupportedChainId.POLYGON]: 'POLYGON',
+  [SupportedChainId.AVALANCHE]: 'AVALANCHE',
+  [SupportedChainId.BNB]: 'BNB',
+  [SupportedChainId.LINEA]: null,
+  [SupportedChainId.PLASMA]: null,
+  [SupportedChainId.INK]: null,
+  [SupportedChainId.SOLANA]: null,
 }
 
 const CHAIN_IDS = Object.entries(CHAIN_NAMES).reduce(

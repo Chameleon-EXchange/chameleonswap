@@ -1,22 +1,54 @@
-import { createJSONStorage } from 'jotai/utils'
+import { atomWithStorage, createJSONStorage } from 'jotai/utils'
 import { createStore } from 'jotai/vanilla'
+
+import { AsyncStringStorage } from 'jotai/vanilla/utils/atomWithStorage'
+import { createInstance } from 'localforage'
 
 export const jotaiStore = createStore()
 
+export const localForageJotai = createInstance({
+  name: 'cowswap_jotai',
+})
+
 /**
- * atomWithStorage() has build-in feature to persist state between all tabs
+ * atomWithStorage() has built-in feature to persist state between all tabs
  * To disable this feature we pass our own instance of storage
  * https://github.com/pmndrs/jotai/pull/1004/files
  *
  * Important!
  * In jotai@2.x they changed the fix above, and now we have to patch the subscribe method
  */
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export const getJotaiIsolatedStorage = <T>() => {
   const storage = createJSONStorage<T>(() => localStorage)
 
   storage.subscribe = () => () => void 0
 
   return storage
+}
+
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export function atomWithIdbStorage<Value>(key: string, initialValue: Value) {
+  const storage: AsyncStringStorage = {
+    async getItem(key: string): Promise<string | null> {
+      return localForageJotai.getItem(key).then((result) => result as string | null)
+    },
+    async setItem(key: string, newValue: string): Promise<void> {
+      await localForageJotai.setItem(key, newValue)
+    },
+    async removeItem(key: string): Promise<void> {
+      await localForageJotai.removeItem(key)
+    },
+  }
+
+  return atomWithStorage<Value>(
+    key,
+    initialValue,
+    createJSONStorage(() => storage),
+    { getOnInit: true },
+  )
 }
 
 /**
@@ -30,9 +62,13 @@ export const getJotaiIsolatedStorage = <T>() => {
  *
  * @returns jotai json storage with merged localStorage info and initial state.
  */
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function getJotaiMergerStorage<T>() {
   const storage = createJSONStorage<T>(() => localStorage)
 
+  // TODO: Add proper return type annotation
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   function getItem(key: string, initial: T) {
     const value = storage.getItem(key, initial)
 
@@ -41,4 +77,30 @@ export function getJotaiMergerStorage<T>() {
   }
 
   return { ...storage, getItem }
+}
+
+/**
+ * Migrates a persisted `atomWithStorage` value from an old localStorage key to a new one.
+ *
+ * Storage keys get bumped (e.g. `my-atom:v3` -> `my-atom:v4`) when the persisted shape changes.
+ * Without this, `atomWithStorage` finds nothing under the new key and silently falls back to the
+ * atom's default value, discarding everything the user had previously saved under the old key.
+ *
+ * No-ops once the new key already exists, so it's safe to call on every module load.
+ */
+export function migrateLocalStorageKey<T extends object>(oldKey: string, newKey: string, patch: Partial<T>): void {
+  if (typeof localStorage === 'undefined') return
+  if (localStorage.getItem(newKey) !== null) return
+
+  const oldValue = localStorage.getItem(oldKey)
+
+  if (oldValue === null) return
+
+  try {
+    const parsed = JSON.parse(oldValue) as T
+
+    localStorage.setItem(newKey, JSON.stringify({ ...parsed, ...patch }))
+  } catch {
+    // Malformed old value; leave the new key unset so the atom falls back to its default.
+  }
 }

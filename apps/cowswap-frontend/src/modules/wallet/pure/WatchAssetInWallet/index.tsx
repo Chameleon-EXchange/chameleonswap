@@ -1,13 +1,16 @@
-import React from 'react'
+import { useMemo } from 'react'
 
 import { useTheme } from '@cowprotocol/common-hooks'
+import { Currency } from '@cowprotocol/currency'
 import { Command } from '@cowprotocol/types'
-import { UI } from '@cowprotocol/ui'
-import { RowFixed, TokenSymbol } from '@cowprotocol/ui'
-import { Currency } from '@uniswap/sdk-core'
+import { UI, RowFixed, TokenSymbol } from '@cowprotocol/ui'
 
+import { t } from '@lingui/core/macro'
+import { Trans } from '@lingui/react/macro'
 import { CheckCircle } from 'react-feather'
 import styled from 'styled-components/macro'
+
+import { CowSwapAnalyticsCategory, toCowSwapGtmEvent } from 'common/analytics/types'
 
 export const ButtonCustom = styled.button`
   display: flex;
@@ -20,14 +23,12 @@ export const ButtonCustom = styled.button`
   border: 1px solid ${({ theme }) => theme.border2};
   color: inherit;
   background: transparent;
-  outline: 0;
   padding: 8px 16px;
   margin: 16px 0 0;
   font-size: 14px;
   line-height: 1;
   font-weight: 500;
   transition: background var(${UI.ANIMATION_DURATION}) ease-in-out;
-  cursor: pointer;
 
   &:hover {
     background: ${({ theme }) => theme.border2};
@@ -64,28 +65,43 @@ export type WatchAssetInWalletProps = {
   success?: boolean
   className?: string
 }
+
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function WatchAssetInWallet(props: WatchAssetInWalletProps) {
   const { className, walletIcon, walletName, currency, shortLabel, addToken, success } = props
   const theme = useTheme()
 
+  const analyticsEvent = useMemo(
+    () => ({
+      category: CowSwapAnalyticsCategory.WALLET,
+      action: 'Add Token To Wallet',
+      label: currency ? `${currency.symbol}|${walletName}` : 'unknown',
+    }),
+    [currency, walletName],
+  )
+
   return (
-    <ButtonCustom className={className} onClick={addToken}>
+    <ButtonCustom className={className} onClick={addToken} data-click-event={toCowSwapGtmEvent(analyticsEvent)}>
       {!success ? (
         <RowFixed>
           <StyledIcon src={walletIcon} />{' '}
           {shortLabel ? (
-            'Add token'
+            t`Add token`
           ) : (
             <>
-              Add <TokenSymbol token={currency} /> to {walletName}
+              <Trans>
+                Add <TokenSymbol token={currency} /> to {walletName}
+              </Trans>
             </>
           )}
         </RowFixed>
       ) : (
         <RowFixed>
           <CheckCircleCustom size={'16px'} stroke={theme.green1} />
-          Added &nbsp;
-          <TokenSymbol token={currency} />
+          <Trans>
+            Added <TokenSymbol token={currency} />
+          </Trans>
         </RowFixed>
       )}
     </ButtonCustom>

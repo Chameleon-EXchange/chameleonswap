@@ -1,8 +1,10 @@
-import { TokenWithLogo } from '@cowprotocol/common-const'
-import { COW_PROTOCOL_VAULT_RELAYER_ADDRESS, OrderClass, SupportedChainId } from '@cowprotocol/cow-sdk'
-import { useIsSafeWallet, useWalletDetails, useWalletInfo } from '@cowprotocol/wallet'
-import { useWalletProvider } from '@cowprotocol/wallet-provider'
+import { useConfig, useWalletClient } from 'wagmi'
 
+import { OrderClass, PriceQuality } from '@cowprotocol/cow-sdk'
+import type { Token } from '@cowprotocol/currency'
+import { useIsSafeWallet, useWalletDetails, useWalletInfo } from '@cowprotocol/wallet'
+
+import { useAddBridgeOrder } from 'entities/bridgeOrders'
 import { useDispatch } from 'react-redux'
 import useSWR from 'swr'
 
@@ -10,41 +12,54 @@ import { AppDispatch } from 'legacy/state'
 import { useCloseModals } from 'legacy/state/application/hooks'
 
 import { useAppData, useAppDataHooks } from 'modules/appData'
+import { useBridgeQuoteAmounts } from 'modules/bridge'
+import { useGetAmountToSignApprove } from 'modules/erc20Approve'
 import { useGeneratePermitHook, useGetCachedPermit, usePermitInfo } from 'modules/permit'
-import { useEnoughBalanceAndAllowance } from 'modules/tokens'
 import {
+  TradeTypeToUiOrderType,
   useDerivedTradeState,
+  useGetReceiveAmountInfo,
   useIsHooksTradeType,
-  useReceiveAmountInfo,
   useTradeConfirmActions,
   useTradeTypeInfo,
 } from 'modules/trade'
 import { getOrderValidTo, useTradeQuote } from 'modules/tradeQuote'
 
-import { useGP2SettlementContract } from 'common/hooks/useContract'
+import { useGP2SettlementContractData } from 'common/hooks/useContract'
+import { useEnoughAllowance } from 'common/hooks/useEnoughAllowance'
 
-import { TradeTypeToUiOrderType } from '../../trade/const/common'
+import { useSetSigningStep } from './useSetSigningStep'
+
 import { TradeFlowContext } from '../types/TradeFlowContext'
 
 export interface TradeFlowParams {
   deadline: number
 }
 
+// TODO: Break down this large function into smaller functions
+// TODO: Reduce function complexity by extracting logic
+// eslint-disable-next-line max-lines-per-function, complexity
 export function useTradeFlowContext({ deadline }: TradeFlowParams): TradeFlowContext | null {
+  const config = useConfig()
+  const { data: walletClient } = useWalletClient()
   const { account } = useWalletInfo()
-  const provider = useWalletProvider()
   const { allowsOffchainSigning } = useWalletDetails()
   const isSafeWallet = useIsSafeWallet()
   const derivedTradeState = useDerivedTradeState()
-  const receiveAmountInfo = useReceiveAmountInfo()
+  const receiveAmountInfo = useGetReceiveAmountInfo()
   const tradeTypeInfo = useTradeTypeInfo()
   const tradeType = tradeTypeInfo?.tradeType
   const uiOrderType = tradeType ? TradeTypeToUiOrderType[tradeType] : null
   const isHooksTradeType = useIsHooksTradeType()
+  const setSigningStep = useSetSigningStep()
+
+  const tradeQuote = useTradeQuote()
+  const bridgeContext = useBridgeQuoteAmounts()
 
   const sellCurrency = derivedTradeState?.inputCurrency
-  const inputAmount = receiveAmountInfo?.afterSlippage.sellAmount
-  const outputAmount = receiveAmountInfo?.afterSlippage.buyAmount
+  const { sellAmount: inputAmount, buyAmount: outputAmount } = receiveAmountInfo?.amountsToSign ?? {}
+  const bridgeOutputAmount = bridgeContext?.bridgeMinReceiveAmount
+
   const sellAmountBeforeFee = receiveAmountInfo?.afterNetworkCosts.sellAmount
   const networkFee = receiveAmountInfo?.costs.networkFee.amountInSellCurrency
 
@@ -54,17 +69,15 @@ export function useTradeFlowContext({ deadline }: TradeFlowParams): TradeFlowCon
   const closeModals = useCloseModals()
   const dispatch = useDispatch<AppDispatch>()
   const tradeConfirmActions = useTradeConfirmActions()
-  const { contract: settlementContract, chainId: settlementChainId } = useGP2SettlementContract()
+  const settlementContract = useGP2SettlementContractData()
   const appData = useAppData()
   const typedHooks = useAppDataHooks()
-  const tradeQuote = useTradeQuote()
+  const addBridgeOrder = useAddBridgeOrder()
+  const bridgeQuoteAmounts = useBridgeQuoteAmounts()
+  const amountToSignApprove = useGetAmountToSignApprove()
+  const permitAmountToSign = amountToSignApprove ? BigInt(amountToSignApprove.quotient.toString()) : undefined
 
-  const checkAllowanceAddress = COW_PROTOCOL_VAULT_RELAYER_ADDRESS[settlementChainId || SupportedChainId.MAINNET]
-  const { enoughAllowance } = useEnoughBalanceAndAllowance({
-    account,
-    amount: inputAmount,
-    checkAllowanceAddress,
-  })
+  const enoughAllowance = useEnoughAllowance(inputAmount)
 
   const {
     inputCurrency: sellToken,
@@ -73,9 +86,10 @@ export function useTradeFlowContext({ deadline }: TradeFlowParams): TradeFlowCon
     recipientAddress,
     orderKind,
   } = derivedTradeState || {}
-  const quoteParams = tradeQuote?.quoteParams
-  const quoteResponse = tradeQuote?.response
-  const localQuoteTimestamp = tradeQuote?.localQuoteTimestamp
+
+  const validTo = getOrderValidTo(deadline, tradeQuote)
+
+  const settlementChainId = settlementContract.chainId
 
   return (
     useSWR(
@@ -86,32 +100,31 @@ export function useTradeFlowContext({ deadline }: TradeFlowParams): TradeFlowCon
         sellToken &&
         buyToken &&
         account &&
-        provider &&
         appData &&
-        quoteParams &&
-        quoteResponse &&
-        localQuoteTimestamp &&
+        tradeQuote.quote &&
+        tradeQuote.fetchParams?.priceQuality === PriceQuality.OPTIMAL &&
         orderKind &&
         settlementContract &&
-        uiOrderType
+        uiOrderType &&
+        validTo > 0 &&
+        walletClient
         ? [
             account,
             allowsOffchainSigning,
             appData,
-            quoteParams,
-            quoteResponse,
-            localQuoteTimestamp,
+            tradeQuote,
+            tradeQuote.quote,
             buyToken,
             settlementChainId,
             closeModals,
             dispatch,
             enoughAllowance,
             generatePermitHook,
+            permitAmountToSign,
             inputAmount,
             networkFee,
             outputAmount,
             permitInfo,
-            provider,
             recipient,
             recipientAddress,
             sellAmountBeforeFee,
@@ -119,29 +132,35 @@ export function useTradeFlowContext({ deadline }: TradeFlowParams): TradeFlowCon
             settlementContract,
             tradeConfirmActions,
             typedHooks,
-            deadline,
+            validTo,
             orderKind,
             uiOrderType,
+            bridgeQuoteAmounts,
+            addBridgeOrder,
+            setSigningStep,
+            walletClient,
+            config,
           ]
         : null,
+      // TODO: Break down this large function into smaller functions
+      // eslint-disable-next-line max-lines-per-function
       ([
         account,
         allowsOffchainSigning,
         appData,
-        quoteParams,
-        quoteResponse,
-        localQuoteTimestamp,
+        tradeQuoteState,
+        tradeQuote,
         buyToken,
         chainId,
         closeModals,
         dispatch,
         enoughAllowance,
         generatePermitHook,
+        permitAmountToSign,
         inputAmount,
         networkFee,
         outputAmount,
         permitInfo,
-        provider,
         recipient,
         recipientAddress,
         sellAmountBeforeFee,
@@ -149,11 +168,20 @@ export function useTradeFlowContext({ deadline }: TradeFlowParams): TradeFlowCon
         settlementContract,
         tradeConfirmActions,
         typedHooks,
-        deadline,
+        validTo,
         orderKind,
         uiOrderType,
+        bridgeQuoteAmounts,
+        addBridgeOrder,
+        setSigningStep,
+        walletClient,
+        config,
       ]) => {
+        void settlementContract // in deps for memo stability
         return {
+          tradeQuoteState,
+          tradeQuote,
+          bridgeQuoteAmounts,
           context: {
             chainId,
             inputAmount,
@@ -167,6 +195,8 @@ export function useTradeFlowContext({ deadline }: TradeFlowParams): TradeFlowCon
             closeModals,
             getCachedPermit,
             dispatch,
+            addBridgeOrder,
+            setSigningStep,
           },
           tradeConfirmActions,
           swapFlowAnalyticsContext: {
@@ -175,36 +205,35 @@ export function useTradeFlowContext({ deadline }: TradeFlowParams): TradeFlowCon
             recipientAddress,
             marketLabel: [inputAmount?.currency.symbol, outputAmount?.currency.symbol].join(','),
             orderType: uiOrderType,
+            isBridgeOrder: inputAmount.currency.chainId !== outputAmount.currency.chainId,
           },
-          contract: settlementContract,
           permitInfo: !enoughAllowance ? permitInfo : undefined,
           generatePermitHook,
+          permitAmountToSign,
           typedHooks,
           orderParams: {
             account,
             chainId,
-            signer: provider.getSigner(),
+            signer: walletClient,
             kind: orderKind,
             inputAmount,
             outputAmount,
+            bridgeOutputAmount,
             sellAmountBeforeFee,
             feeAmount: networkFee,
-            sellToken: sellToken as TokenWithLogo,
-            buyToken: buyToken as TokenWithLogo,
-            validTo: getOrderValidTo(deadline, {
-              validFor: quoteParams.validFor,
-              quoteValidTo: quoteResponse.quote.validTo,
-              localQuoteTimestamp,
-            }),
+            sellToken: sellToken as Token,
+            buyToken: buyToken as Token,
+            validTo,
             recipient: recipientAddress || recipient || account,
             recipientAddressOrName: recipient || null,
             allowsOffchainSigning,
             appData,
             class: OrderClass.MARKET,
             partiallyFillable: isHooksTradeType,
-            quoteId: quoteResponse.id,
+            quoteId: tradeQuote.quoteResults.quoteResponse.id,
             isSafeWallet,
           },
+          config,
         }
       },
     ).data || null

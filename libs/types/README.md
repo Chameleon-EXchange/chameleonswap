@@ -1,3 +1,3 @@
 # types
 
-Typescript types used in Chameleon swap.
+Typescript types used in CoW Swap.

@@ -1,10 +1,11 @@
 import { LONG_PRECISION } from '@cowprotocol/common-const'
 import { formatTokenAmount, FractionUtils } from '@cowprotocol/common-utils'
+import { Fraction } from '@cowprotocol/currency'
+import { Nullish } from '@cowprotocol/types'
 
 import styled from 'styled-components/macro'
 
 import { UI } from '../../enum'
-import { FractionLike, Nullish } from '../../types'
 import { TokenNameAndSymbol, TokenSymbol } from '../TokenSymbol'
 
 export const Wrapper = styled.span<{ lowVolumeWarning?: boolean; clickable?: boolean }>`
@@ -38,7 +39,7 @@ export const SymbolElement = styled.span<{ opacitySymbol?: boolean }>`
 `
 
 export interface TokenAmountProps {
-  amount: Nullish<FractionLike>
+  amount: Nullish<Fraction>
   defaultValue?: string
   tokenSymbol?: Nullish<TokenNameAndSymbol>
   className?: string
@@ -47,8 +48,16 @@ export interface TokenAmountProps {
   opacitySymbol?: boolean
   clickable?: boolean
   noTitle?: boolean
+  /** Test hook — most callers don't need one, only those an e2e test targets directly. */
+  testId?: string
 }
 
+export function getTokenAmountTitle({ amount, tokenSymbol }: Pick<TokenAmountProps, 'amount' | 'tokenSymbol'>): string {
+  return FractionUtils.fractionLikeToExactString(amount, LONG_PRECISION) + (tokenSymbol ? ` ${tokenSymbol.symbol}` : '')
+}
+
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function TokenAmount({
   amount,
   defaultValue,
@@ -59,6 +68,7 @@ export function TokenAmount({
   opacitySymbol,
   clickable,
   noTitle,
+  testId,
 }: TokenAmountProps) {
   const title = !noTitle ? getTokenAmountTitle({ amount, tokenSymbol }) : undefined
 
@@ -74,13 +84,9 @@ export function TokenAmount({
 
   const roundedAmount = round ? FractionUtils.round(amount) : amount
   return (
-    <Wrapper title={title} className={className} clickable={clickable}>
+    <Wrapper title={title} className={className} clickable={clickable} data-testid={testId}>
       {formatTokenAmount(roundedAmount) || defaultValue}
       <SymbolElement opacitySymbol={opacitySymbol}>{tokenSymbolElement}</SymbolElement>
     </Wrapper>
   )
-}
-
-export function getTokenAmountTitle({ amount, tokenSymbol }: Pick<TokenAmountProps, 'amount' | 'tokenSymbol'>): string {
-  return FractionUtils.fractionLikeToExactString(amount, LONG_PRECISION) + (tokenSymbol ? ` ${tokenSymbol.symbol}` : '')
 }

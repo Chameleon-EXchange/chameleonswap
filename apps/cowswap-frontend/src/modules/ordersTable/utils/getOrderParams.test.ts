@@ -1,19 +1,19 @@
-import { BigNumber } from '@ethersproject/bignumber'
-
-import { BalancesAndAllowances } from 'modules/tokens'
+import { BalancesAndAllowances } from '@cowprotocol/balances-and-allowances'
 
 import { getOrderParams } from './getOrderParams'
 
-import { ordersMock } from '../pure/OrdersTableContainer/orders.mock'
+import { ordersMock } from '../test/ordersTable.mock'
+
+// TODO: Break down this large function into smaller functions
 
 describe('getOrderParams', () => {
   const BASE_ORDER = ordersMock[0]
   const BASE_BALANCES_AND_ALLOWANCES: BalancesAndAllowances = {
     balances: {
-      [BASE_ORDER.inputToken.address.toLowerCase()]: BigNumber.from(BASE_ORDER.sellAmount),
+      [BASE_ORDER.inputToken.address.toLowerCase()]: BigInt(BASE_ORDER.sellAmount),
     },
     allowances: {
-      [BASE_ORDER.inputToken.address.toLowerCase()]: BigNumber.from(BASE_ORDER.sellAmount),
+      [BASE_ORDER.inputToken.address.toLowerCase()]: BigInt(BASE_ORDER.sellAmount),
     },
     isLoading: false,
   }
@@ -67,7 +67,7 @@ describe('getOrderParams', () => {
       const balancesAndAllowances: BalancesAndAllowances = {
         ...BASE_BALANCES_AND_ALLOWANCES,
         balances: {
-          [order.inputToken.address.toLowerCase()]: BigNumber.from(String(+order.sellAmount * 0.00051)),
+          [order.inputToken.address.toLowerCase()]: BigInt(String(+order.sellAmount * 0.00051)),
         },
       }
       const result = getOrderParams(1, balancesAndAllowances, order)
@@ -78,7 +78,7 @@ describe('getOrderParams', () => {
       const balancesAndAllowances: BalancesAndAllowances = {
         ...BASE_BALANCES_AND_ALLOWANCES,
         balances: {
-          [order.inputToken.address.toLowerCase()]: BigNumber.from(String(+order.sellAmount * 0.00049)),
+          [order.inputToken.address.toLowerCase()]: BigInt(String(+order.sellAmount * 0.00049)),
         },
       }
       const result = getOrderParams(1, balancesAndAllowances, order)
@@ -90,7 +90,7 @@ describe('getOrderParams', () => {
       const balancesAndAllowances: BalancesAndAllowances = {
         ...BASE_BALANCES_AND_ALLOWANCES,
         allowances: {
-          [order.inputToken.address.toLowerCase()]: BigNumber.from(String(+order.sellAmount * 0.00051)),
+          [order.inputToken.address.toLowerCase()]: BigInt(String(+order.sellAmount * 0.00051)),
         },
       }
       const result = getOrderParams(1, balancesAndAllowances, order)
@@ -101,11 +101,21 @@ describe('getOrderParams', () => {
       const balancesAndAllowances: BalancesAndAllowances = {
         ...BASE_BALANCES_AND_ALLOWANCES,
         allowances: {
-          [order.inputToken.address.toLowerCase()]: BigNumber.from(String(+order.sellAmount * 0.00049)),
+          [order.inputToken.address.toLowerCase()]: BigInt(String(+order.sellAmount * 0.00049)),
         },
       }
       const result = getOrderParams(1, balancesAndAllowances, order)
       expect(result.hasEnoughAllowance).toEqual(false)
     })
+  })
+
+  it('does not check connected-wallet funding for EOA TWAP orders', () => {
+    const result = getOrderParams(1, BASE_BALANCES_AND_ALLOWANCES, {
+      ...BASE_ORDER,
+      isEoaTwapOrder: true,
+    })
+
+    expect(result.hasEnoughBalance).toBeUndefined()
+    expect(result.hasEnoughAllowance).toBeUndefined()
   })
 })

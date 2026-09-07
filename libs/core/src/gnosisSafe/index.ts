@@ -1,78 +1,70 @@
 import { CHAIN_INFO } from '@cowprotocol/common-const'
+import { logSafeApi, NormalizedError, normalizeError } from '@cowprotocol/common-utils'
 import { SupportedChainId } from '@cowprotocol/cow-sdk'
-import { JsonRpcFetchFunc, Web3Provider } from '@ethersproject/providers'
-import SafeApiKit, { SafeInfoResponse } from '@safe-global/api-kit'
-import Safe, { EthersAdapter } from '@safe-global/protocol-kit'
-import { SafeMultisigTransactionResponse } from '@safe-global/safe-core-sdk-types'
+import type { SafeInfoResponse, default as SafeApiKitType } from '@safe-global/api-kit'
+import type { SafeMultisigTransactionResponse } from '@safe-global/types-kit'
 
-// eslint-disable-next-line no-restricted-imports
-import { ethers } from 'ethers'
+// export const SAFE_TRANSACTION_SERVICE_URL: Record<SupportedChainId, HttpsString> = {
+//   [SupportedChainId.MAINNET]: 'https://safe-transaction-mainnet.safe.global/api',
+//   [SupportedChainId.GNOSIS_CHAIN]: 'https://safe-transaction-gnosis-chain.safe.global/api',
+//   [SupportedChainId.ARBITRUM_ONE]: 'https://safe-transaction-arbitrum.safe.global/api',
+//   [SupportedChainId.BASE]: 'https://safe-transaction-base.safe.global/api',
+//   [SupportedChainId.SEPOLIA]: 'https://safe-transaction-sepolia.safe.global/api',
+//   [SupportedChainId.POLYGON]: 'https://safe-transaction-polygon.safe.global/api',
+//   [SupportedChainId.AVALANCHE]: 'https://safe-transaction-avalanche.safe.global/api',
+//   [SupportedChainId.BNB]: 'https://safe-transaction-bsc.safe.global/api',
+//   [SupportedChainId.LINEA]: 'https://safe-transaction-linea.safe.global/api',
+//   [SupportedChainId.PLASMA]: 'https://safe-transaction-plasma.safe.global/api',
+//   [SupportedChainId.INK]: 'https://safe-transaction-ink.safe.global/api',
+// }
 
-const SAFE_TRANSACTION_SERVICE_URL: Record<SupportedChainId, string> = {
-  [SupportedChainId.MAINNET]: 'https://safe-transaction-mainnet.safe.global',
-  [SupportedChainId.GNOSIS_CHAIN]: 'https://safe-transaction-gnosis-chain.safe.global',
-  [SupportedChainId.ARBITRUM_ONE]: 'https://safe-transaction-arbitrum.safe.global',
-  [SupportedChainId.BASE]: 'https://safe-transaction-base.safe.global',
-  [SupportedChainId.SEPOLIA]: 'https://safe-transaction-sepolia.safe.global',
+// Gnosis Safe Transaction Service is EVM-only — non-EVM chains (e.g. Solana) are
+// intentionally omitted. `Partial` keeps the type honest so the `chainId in SAFE_API_NETWORK_ID`
+// gate in `createSafeApiKitInstance` correctly rejects them instead of building a
+// malformed `tx-service//api/` URL from an empty network id.
+const SAFE_API_NETWORK_ID: Partial<Record<SupportedChainId, string>> = {
+  [SupportedChainId.MAINNET]: 'eth',
+  [SupportedChainId.GNOSIS_CHAIN]: 'gno',
+  [SupportedChainId.ARBITRUM_ONE]: 'arb1',
+  [SupportedChainId.BASE]: 'base',
+  [SupportedChainId.SEPOLIA]: 'sep',
+  [SupportedChainId.POLYGON]: 'pol',
+  [SupportedChainId.AVALANCHE]: 'avax',
+  [SupportedChainId.BNB]: 'bnb',
+  [SupportedChainId.LINEA]: 'linea',
+  [SupportedChainId.PLASMA]: 'plasma',
+  [SupportedChainId.INK]: 'ink',
 }
+
+export function getSafeApiUrl(chainId: SupportedChainId): string {
+  return `https://api.safe.global/tx-service/${SAFE_API_NETWORK_ID[chainId]}/api/`
+}
+
+const SAFE_API_AUTH_TOKEN = process.env.REACT_APP_SAFE_API_AUTH_TOKEN
 
 const SAFE_BASE_URL = 'https://app.safe.global'
 
-const SAFE_TRANSACTION_SERVICE_CACHE: Partial<Record<number, SafeApiKit | null>> = {}
+const SAFE_TRANSACTION_SERVICE_CACHE: Partial<Record<number, SafeApiKitType | null>> = {}
 
-function _getClient(chainId: number, library: Web3Provider): SafeApiKit | null {
-  const cachedClient = SAFE_TRANSACTION_SERVICE_CACHE[chainId]
+export const SAFE_RATE_LIMIT_MSG = 'Rate limit'
 
-  if (cachedClient !== undefined) {
-    return cachedClient
-  }
+export type SafeApiError = NormalizedError & { statusCode?: number }
 
-  const client = createSafeApiKitInstance(chainId, library)
-
-  // Add client to cache (or null if unknonw network)
-  SAFE_TRANSACTION_SERVICE_CACHE[chainId] = client
-
-  return client
-}
-
-function _createSafeEthAdapter(library: Web3Provider): EthersAdapter {
-  const provider = new Web3Provider(library.send.bind(library) as JsonRpcFetchFunc)
-
-  return new EthersAdapter({
-    ethers,
-    signerOrProvider: provider.getSigner(0),
-  })
-}
-
-export function createSafeApiKitInstance(chainId: number, library: Web3Provider): SafeApiKit | null {
-  const url = SAFE_TRANSACTION_SERVICE_URL[chainId as SupportedChainId]
-  if (!url) {
+export async function createSafeApiKitInstance(chainId: number): Promise<SafeApiKitType | null> {
+  if (!(chainId in SAFE_API_NETWORK_ID)) {
     return null
   }
-
-  const ethAdapter = _createSafeEthAdapter(library)
-  return new SafeApiKit({ txServiceUrl: url, ethAdapter })
-}
-
-export async function createSafeSdkInstance(safeAddress: string, library: Web3Provider): Promise<Safe> {
-  const ethAdapter = _createSafeEthAdapter(library)
-
-  return Safe.create({ ethAdapter, safeAddress })
-}
-
-function _getClientOrThrow(chainId: number, library: Web3Provider): SafeApiKit {
-  const client = _getClient(chainId, library)
-  if (!client) {
-    throw new Error('Unsupported network for Gnosis Safe Transaction Service: ' + chainId)
+  if (!SAFE_API_AUTH_TOKEN) {
+    logSafeApi.warn(
+      'No Safe API auth token provided. Requests to Safe Transaction Service may be rate-limited or fail.',
+    )
   }
-
-  return client
-}
-
-export function getSafeWebUrl(chainId: SupportedChainId, safeAddress: string, safeTxHash: string): string {
-  const chainShortName = CHAIN_INFO[chainId].addressPrefix
-
-  return `${SAFE_BASE_URL}/${chainShortName}:${safeAddress}/transactions/tx?id=multisig_${safeAddress}_${safeTxHash}`
+  const SafeApiKit = await import('@safe-global/api-kit').then((r) => r.default)
+  return new SafeApiKit({
+    txServiceUrl: getSafeApiUrl(chainId as SupportedChainId),
+    chainId: BigInt(chainId),
+    apiKey: SAFE_API_AUTH_TOKEN || undefined,
+  })
 }
 
 export function getSafeAccountUrl(chainId: SupportedChainId, safeAddress: string): string {
@@ -81,24 +73,55 @@ export function getSafeAccountUrl(chainId: SupportedChainId, safeAddress: string
   return `${SAFE_BASE_URL}/${chainShortName}:${safeAddress}`
 }
 
-export function getSafeTransaction(
+export async function getSafeInfo(chainId: number, safeAddress: string): Promise<SafeInfoResponse> {
+  logSafeApi.debug(`Fetch Safe info`, { chainId, safeAddress })
+  const client = await _getClientOrThrow(chainId)
+  const safeInfo = await client.getSafeInfo(safeAddress)
+  logSafeApi.info(`Fetched Safe info`, safeInfo)
+  return safeInfo
+}
+
+export async function getSafeTransaction(
   chainId: number,
   safeTxHash: string,
-  library: Web3Provider,
 ): Promise<SafeMultisigTransactionResponse> {
-  console.log('[api/gnosisSafe] getSafeTransaction', chainId, safeTxHash)
-  const client = _getClientOrThrow(chainId, library)
+  logSafeApi.debug('getSafeTransaction', chainId, safeTxHash)
+  const client = await _getClientOrThrow(chainId)
 
+  logSafeApi.debug('Fetch Safe transaction')
   return client.getTransaction(safeTxHash)
 }
 
-export function getSafeInfo(chainId: number, safeAddress: string, library: Web3Provider): Promise<SafeInfoResponse> {
-  console.log('[api/gnosisSafe] getSafeInfo', chainId, safeAddress)
-  try {
-    const client = _getClientOrThrow(chainId, library)
+export function getSafeWebUrl(chainId: SupportedChainId, safeAddress: string, safeTxHash: string): string {
+  const chainShortName = CHAIN_INFO[chainId].addressPrefix
 
-    return client.getSafeInfo(safeAddress)
-  } catch (error) {
-    return Promise.reject(error)
+  return `${SAFE_BASE_URL}/transactions/tx?safe=${chainShortName}:${safeAddress}&id=multisig_${safeAddress}_${safeTxHash}`
+}
+
+export function normalizeSafeError(err: unknown): SafeApiError {
+  return normalizeError(err)
+}
+
+async function _getClient(chainId: number): Promise<SafeApiKitType | null> {
+  const cachedClient = SAFE_TRANSACTION_SERVICE_CACHE[chainId]
+
+  if (cachedClient !== undefined) {
+    return cachedClient
   }
+
+  const client = await createSafeApiKitInstance(chainId)
+
+  // Add client to cache (or null if unknown network)
+  SAFE_TRANSACTION_SERVICE_CACHE[chainId] = client
+
+  return client
+}
+
+async function _getClientOrThrow(chainId: number): Promise<SafeApiKitType> {
+  const client = await _getClient(chainId)
+  if (!client) {
+    throw new Error('Unsupported network for Gnosis Safe Transaction Service: ' + chainId)
+  }
+
+  return client
 }

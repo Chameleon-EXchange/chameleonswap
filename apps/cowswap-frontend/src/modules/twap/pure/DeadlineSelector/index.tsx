@@ -1,7 +1,9 @@
 import React, { useCallback, useMemo, useState } from 'react'
 
+import { useExtractText } from '@cowprotocol/common-utils'
 import { renderTooltip, UI } from '@cowprotocol/ui'
 
+import { useLingui } from '@lingui/react/macro'
 import styled from 'styled-components/macro'
 
 import { TradeSelect, TradeSelectItem } from 'modules/trade/pure/TradeSelect'
@@ -23,11 +25,23 @@ interface DeadlineSelectorProps {
   setDeadline(value: TwapOrdersDeadline): void
 }
 
-const CUSTOM_OPTION: TradeSelectItem = { label: 'Custom', value: 'CUSTOM_ITEM_VALUE' }
-
 const StyledTradeSelect = styled(TradeSelect)`
   font-weight: 500;
   color: inherit;
+
+  button[data-reach-menu-button] {
+    width: 100%;
+    height: auto;
+    justify-content: space-between;
+    font-size: 18px;
+
+    &:hover,
+    &:active,
+    &:focus {
+      background: none;
+      border-radius: 0;
+    }
+  }
 
   > svg {
     color: inherit;
@@ -61,6 +75,9 @@ const StyledTradeField = styled(TradeWidgetField)`
   }
 `
 
+// TODO: Break down this large function into smaller functions
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function DeadlineSelector(props: DeadlineSelectorProps) {
   const {
     items,
@@ -71,10 +88,16 @@ export function DeadlineSelector(props: DeadlineSelectorProps) {
     setDeadline,
   } = props
   const [isCustomModalOpen, setIsCustomModalOpen] = useState(false)
+  const { extractTextFromStringOrI18nDescriptor } = useExtractText()
+  const { t } = useLingui()
+
+  const CUSTOM_OPTION: TradeSelectItem = useMemo((): TradeSelectItem => {
+    return { label: t`Custom`, value: 'CUSTOM_ITEM_VALUE' }
+  }, [t])
 
   const itemsWithCustom = useMemo(() => {
     return [...items, CUSTOM_OPTION]
-  }, [items])
+  }, [CUSTOM_OPTION, items])
 
   const onSelect = useCallback(
     (item: TradeSelectItem) => {
@@ -88,7 +111,7 @@ export function DeadlineSelector(props: DeadlineSelectorProps) {
         })
       }
     },
-    [setIsCustomModalOpen, setDeadline],
+    [CUSTOM_OPTION, setDeadline],
   )
 
   const activeLabel = useMemo(() => {
@@ -99,18 +122,20 @@ export function DeadlineSelector(props: DeadlineSelectorProps) {
     return items.find((item) => item.value === deadline)?.label || ''
   }, [items, deadline, customDeadline, isCustomDeadline])
 
+  const activeLabelExtracted = extractTextFromStringOrI18nDescriptor(activeLabel) || ''
+
   return (
     <>
       {isDeadlineDisabled ? (
         <StyledTradeField label={label} tooltip={renderTooltip(tooltip)}>
-          <div>{activeLabel}</div>
+          <div>{activeLabelExtracted}</div>
         </StyledTradeField>
       ) : (
         <StyledTradeSelect
           label={label}
           tooltip={renderTooltip(tooltip)}
           items={itemsWithCustom}
-          activeLabel={activeLabel}
+          activeLabel={activeLabelExtracted}
           onSelect={onSelect}
         />
       )}

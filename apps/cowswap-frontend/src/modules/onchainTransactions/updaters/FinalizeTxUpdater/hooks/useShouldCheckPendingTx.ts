@@ -1,29 +1,34 @@
 import { useCallback } from 'react'
 
+import { getAddressKey } from '@cowprotocol/cow-sdk'
 import { useWalletInfo } from '@cowprotocol/wallet'
+
+import { useBlockNumber } from 'entities/blockchain'
 
 import { EnhancedTransactionDetails } from 'legacy/state/enhancedTransactions/reducer'
 
-import { useBlockNumber } from 'common/hooks/useBlockNumber'
-
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function useShouldCheckPendingTx() {
   const { account } = useWalletInfo()
 
   const lastBlockNumber = useBlockNumber()
-  const accountLowerCase = account?.toLowerCase() || ''
+  const accountLowerCase = account ? getAddressKey(account) : ''
 
   return useCallback(
     (tx: EnhancedTransactionDetails) => shouldCheckPendingTx(lastBlockNumber, accountLowerCase, tx),
-    [accountLowerCase, lastBlockNumber]
+    [accountLowerCase, lastBlockNumber],
   )
 }
 
+// TODO: Reduce function complexity by extracting logic
+// eslint-disable-next-line complexity
 function shouldCheckPendingTx(
   lastBlockNumber: number | undefined,
   accountLowerCase: string,
-  tx: EnhancedTransactionDetails
+  tx: EnhancedTransactionDetails,
 ): boolean {
-  const isCurrentAccount = tx.from.toLowerCase() === accountLowerCase
+  const isCurrentAccount = getAddressKey(tx.from) === accountLowerCase
   const isReplaced = !!(tx.replacementType || tx.linkedTransactionHash)
   const isTxMined = !!tx.receipt
   const isFailed = !!tx.errorMessage

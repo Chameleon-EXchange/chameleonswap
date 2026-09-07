@@ -1,8 +1,11 @@
-import CowImage from '@cowprotocol/assets/cow-swap/cow_token.svg'
-import ChamImage from '@cowprotocol/assets/images/Chameleon-2.png'
-import DelegateCowIcon from '@cowprotocol/assets/cow-swap/delegate-cow.svg'
+import { useCallback } from 'react'
+
+import svgCowTokenSrc from '@cowprotocol/assets/cow-swap/cow_token.svg'
+import svgDelegateCowSrc from '@cowprotocol/assets/cow-swap/delegate-cow.svg'
 import { ClosableBanner, ButtonPrimary } from '@cowprotocol/ui'
 
+import { t } from '@lingui/core/macro'
+import { Trans } from '@lingui/react/macro'
 import SVG from 'react-inlinesvg'
 
 import { BANNER_IDS } from 'common/constants/banners'
@@ -15,27 +18,37 @@ interface DelegateProps {
   rowOnMobile?: boolean
 }
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export default function Delegate({ dismissable = false, rowOnMobile }: DelegateProps) {
-  const renderContent = (onClose?: () => void) => (
-    <BannerCard rowOnMobile={rowOnMobile}>
-      {dismissable && onClose && <CloseButton onClick={onClose} />}
-      {/* <BannerCardIcon width={159}>
-        <SVG src={DelegateCowIcon} title="Delegate" />
-      </BannerCardIcon> */}
-      <BannerCardContent>
-        <BannerCardTitle>
-          Too <i>busy</i> <br />
-          to vote?
-        </BannerCardTitle>
-        <small>
-          Delegate your <img src={ChamImage} alt="CHM Balance" height="24" width="24" /> (v)CHM
-        </small>
-        <ButtonPrimary as="a" href={DELEGATE_URL} target="_blank" rel="noopener nofollow">
-          Delegate Now ↗
-        </ButtonPrimary>
-      </BannerCardContent>
-    </BannerCard>
+  // TODO: Add proper return type annotation
+
+  const callback = useCallback(
+    (close?: () => void) => (
+      <BannerCard rowOnMobile={rowOnMobile}>
+        {dismissable && close && <CloseButton onClick={close} />}
+        <BannerCardIcon width={159}>
+          <SVG src={svgDelegateCowSrc} title={t`Delegate`} />
+        </BannerCardIcon>
+        <BannerCardContent>
+          <BannerCardTitle>
+            <Trans>
+              Too <i>busy</i> <br />
+              to vote?
+            </Trans>
+          </BannerCardTitle>
+          <small>
+            <Trans>Delegate your</Trans>
+            <img src={svgCowTokenSrc} alt={t`Cow Balance`} height="16" width="16" /> (v)COW
+          </small>
+          <ButtonPrimary as="a" href={DELEGATE_URL} target="_blank" rel="noopener nofollow">
+            <Trans>Delegate Now</Trans> ↗
+          </ButtonPrimary>
+        </BannerCardContent>
+      </BannerCard>
+    ),
+    [rowOnMobile, dismissable],
   )
 
-  return dismissable ? ClosableBanner(BANNER_IDS.DELEGATE, (onClose) => renderContent(onClose)) : renderContent()
+  return dismissable ? <ClosableBanner storageKey={BANNER_IDS.DELEGATE} callback={callback} /> : callback()
 }

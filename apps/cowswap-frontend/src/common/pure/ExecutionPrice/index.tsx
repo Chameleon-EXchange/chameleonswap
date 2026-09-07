@@ -1,6 +1,6 @@
 import { tryParseCurrencyAmount } from '@cowprotocol/common-utils'
+import { Currency, Price } from '@cowprotocol/currency'
 import { FiatAmount, TokenAmount } from '@cowprotocol/ui'
-import { Currency, Price } from '@uniswap/sdk-core'
 
 import { useExecutionPriceFiat } from './hooks/useExecutionPriceFiat'
 
@@ -14,6 +14,9 @@ export interface ExecutionPriceProps {
   className?: string
 }
 
+// TODO: Add proper return type annotation
+// TODO: Reduce function complexity by extracting logic
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function ExecutionPrice({
   executionPrice,
   isInverted,

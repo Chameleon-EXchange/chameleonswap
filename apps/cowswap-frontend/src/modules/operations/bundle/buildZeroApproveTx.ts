@@ -1,17 +1,15 @@
-import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
+import type { TransactionRequest } from 'viem'
 
-import { BuildApproveTxParams, buildApproveTx } from './buildApproveTx'
+import { buildApproveTx, BuildApproveTxParams } from './buildApproveTx'
 
-type BuildZeroApproveTxParams = Omit<BuildApproveTxParams, 'amountToApprove'> & {
-  currency: Currency
-}
+type BuildZeroApproveTxParams = Omit<BuildApproveTxParams, 'amountToApprove'>
 
 /**
  * Builds the zero approval tx, without sending it.
  */
-export async function buildZeroApproveTx({ currency, ...params }: BuildZeroApproveTxParams) {
+export async function buildZeroApproveTx({ ...params }: BuildZeroApproveTxParams): Promise<TransactionRequest> {
   return buildApproveTx({
     ...params,
-    amountToApprove: CurrencyAmount.fromRawAmount(currency, 0),
+    amountToApprove: 0n,
   })
 }

@@ -1,12 +1,15 @@
-import { formatPercent } from '@cowprotocol/common-utils'
-import { Loader, HoverTooltip } from '@cowprotocol/ui'
-import { Percent } from '@uniswap/sdk-core'
+import { ReactNode } from 'react'
 
-import { t } from '@lingui/macro'
+import { formatPercent } from '@cowprotocol/common-utils'
+import { Percent } from '@cowprotocol/currency'
+import { Loader, HoverTooltip } from '@cowprotocol/ui'
+
+import { t } from '@lingui/core/macro'
 import styled from 'styled-components/macro'
 
 import { PriceImpact } from 'legacy/hooks/usePriceImpact'
-import { warningSeverity } from 'legacy/utils/prices'
+
+import { BRIDGE_PRICE_IMPACT_THRESHOLD, PRICE_IMPACT_THRESHOLD } from '../../constants/priceImpact'
 
 import type { DefaultTheme } from 'styled-components'
 
@@ -15,33 +18,31 @@ const LoaderStyled = styled(Loader)`
   vertical-align: bottom;
 `
 
+const PriceImpactWrapper = styled.span<{ priceImpact$: Percent; isBridging$: boolean }>`
+  color: ${({ theme, priceImpact$, isBridging$ }) => getPriceImpactColor(theme, priceImpact$, isBridging$)};
+`
+
 export interface PriceImpactIndicatorProps {
+  isBridging?: boolean
   priceImpactParams?: PriceImpact
 }
 
-function getPriceImpactColor(theme: DefaultTheme, priceImpact: Percent): string {
-  const severity = warningSeverity(priceImpact)
-
-  if (severity === -1) return theme.success
-  if (severity < 1) return theme.text
-  if (severity < 3) return theme.danger
-
-  return theme.danger
-}
-
-const PriceImpactWrapper = styled.span<{ priceImpact$: Percent }>`
-  color: ${({ theme, priceImpact$ }) => getPriceImpactColor(theme, priceImpact$)};
-`
-
-export function PriceImpactIndicator(props: PriceImpactIndicatorProps) {
-  const { priceImpact, loading: priceImpactLoading } = props.priceImpactParams || {}
+export function PriceImpactIndicator({ priceImpactParams, isBridging = false }: PriceImpactIndicatorProps): ReactNode {
+  const { priceImpact, loading: priceImpactLoading } = priceImpactParams || {}
 
   return (
-    <span>
-      {priceImpact ? (
-        <PriceImpactWrapper priceImpact$={priceImpact}>
+    <span data-testid="price-impact">
+      {priceImpact && !priceImpactLoading ? (
+        <PriceImpactWrapper priceImpact$={priceImpact} isBridging$={isBridging}>
           {' '}
-          <HoverTooltip wrapInContainer content={t`Price impact due to current liquidity levels`}>
+          <HoverTooltip
+            wrapInContainer
+            content={
+              isBridging
+                ? t`Price impact due to current liquidity levels and estimated swap fees and costs`
+                : t`Price impact due to current liquidity levels`
+            }
+          >
             ({formatPercent(priceImpact.multiply(-1))}%)
           </HoverTooltip>
         </PriceImpactWrapper>
@@ -49,4 +50,14 @@ export function PriceImpactIndicator(props: PriceImpactIndicatorProps) {
       {priceImpactLoading && <LoaderStyled size="14px" />}
     </span>
   )
+}
+
+function getPriceImpactColor(theme: DefaultTheme, priceImpact: Percent, isBridging: boolean): string {
+  const lowThreshold = (isBridging ? BRIDGE_PRICE_IMPACT_THRESHOLD : PRICE_IMPACT_THRESHOLD).low
+
+  if (priceImpact.greaterThan(lowThreshold)) return theme.danger
+
+  if (priceImpact.lessThan(0)) return theme.success
+
+  return theme.text
 }

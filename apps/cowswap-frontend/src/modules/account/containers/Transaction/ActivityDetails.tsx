@@ -1,170 +1,77 @@
-import { ReactNode, useMemo } from 'react'
+import { ReactElement, ReactNode, useMemo } from 'react'
 
-import { COW, V_COW, V_COW_CONTRACT_ADDRESS } from '@cowprotocol/common-const'
+import { i18n } from '@lingui/core'
+
+import { COW_TOKEN_TO_CHAIN, V_COW, V_COW_CONTRACT_ADDRESS } from '@cowprotocol/common-const'
 import { ExplorerDataType, getExplorerLink, shortenAddress } from '@cowprotocol/common-utils'
-import { SupportedChainId } from '@cowprotocol/cow-sdk'
+import { areAddressesEqual, SupportedChainId } from '@cowprotocol/cow-sdk'
+import { CurrencyAmount, Token } from '@cowprotocol/currency'
 import { useENS } from '@cowprotocol/ens'
+import { BridgeStatus } from '@cowprotocol/sdk-bridging'
 import { TokenLogo, useTokenBySymbolOrAddress } from '@cowprotocol/tokens'
 import { UiOrderType } from '@cowprotocol/types'
-import {
-  BannerOrientation,
-  CustomRecipientWarningBanner,
-  ExternalLink,
-  Icon,
-  IconType,
-  TokenAmount,
-  UI,
-} from '@cowprotocol/ui'
-import { CurrencyAmount } from '@uniswap/sdk-core'
+import { BannerOrientation, ExternalLink, Icon, IconType, TokenAmount, UI } from '@cowprotocol/ui'
 
-import { getActivityState } from 'legacy/hooks/useActivityDerivedState'
-import { ActivityStatus } from 'legacy/hooks/useRecentActivity'
+import { t } from '@lingui/core/macro'
+import { Trans } from '@lingui/react/macro'
+import { BRIDGING_FINAL_STATUSES, useBridgeOrderData } from 'entities/bridgeOrders'
+import { useInjectedWidgetParams } from 'entities/injectedWidget'
+import { useAddOrderToSurplusQueue } from 'entities/surplusModal'
+
+import { ActivityState, getActivityState } from 'legacy/hooks/useActivityDerivedState'
 import { OrderStatus } from 'legacy/state/orders/actions'
 
 import { useToggleAccountModal } from 'modules/account'
-import { useInjectedWidgetParams } from 'modules/injectedWidget'
-import { EthFlowStepper } from 'modules/swap/containers/EthFlowStepper'
+import { BridgeActivitySummary } from 'modules/bridge'
+import { EthFlowStepper } from 'modules/ethFlow'
+import { OrderFillability, useGetPendingOrdersPermitValidityState } from 'modules/ordersTable'
+import { ConfirmDetailsItem } from 'modules/trade'
 
 import { OrderHooksDetails } from 'common/containers/OrderHooksDetails'
 import { useCancelOrder } from 'common/hooks/useCancelOrder'
 import { isPending } from 'common/hooks/useCategorizeRecentActivity'
+import { useEnhancedActivityDerivedState } from 'common/hooks/useEnhancedActivityDerivedState'
 import { useGetSurplusData } from 'common/hooks/useGetSurplusFiatValue'
+import { useSwapAndBridgeContext } from 'common/hooks/useSwapAndBridgeContext'
+import { CurrencyLogoPair } from 'common/pure/CurrencyLogoPair'
+import { CustomRecipientWarningBanner } from 'common/pure/CustomRecipientWarningBanner'
+import { IconSpinner } from 'common/pure/IconSpinner'
 import { RateInfo, RateInfoParams } from 'common/pure/RateInfo'
 import { SafeWalletLink } from 'common/pure/SafeWalletLink'
+import { TransactionInnerDetail } from 'common/pure/TransactionInnerDetail'
 import {
   useHideReceiverWalletBanner,
   useIsReceiverWalletBannerHidden,
 } from 'common/state/receiverWalletBannerVisibility'
+import { ActivityDerivedState, ActivityStatus } from 'common/types/activity'
+import { getIsBridgeOrder } from 'common/utils/getIsBridgeOrder'
 import { getIsCustomRecipient } from 'utils/orderUtils/getIsCustomRecipient'
 import { getUiOrderType } from 'utils/orderUtils/getUiOrderType'
 
 import { StatusDetails } from './StatusDetails'
 import {
-  TransactionState as ActivityLink,
   ActivityVisual,
   CreationTimeText,
+  DangerText,
   FiatWrapper,
   StyledFiatAmount,
   Summary,
   SummaryInner,
   SummaryInnerRow,
   TextAlert,
-  TransactionInnerDetail,
+  TransactionState as ActivityLink,
 } from './styled'
 
-import { useAddOrderToSurplusQueue } from '../../../swap/state/surplusModal'
+import { useIsPartialApproveEnabledBySettings } from '../../hooks/useIsPartialApproveEnabledBySettings'
+import { OrderFillabilityWarning } from '../../pure/OrderFillabilityWarning'
 
-import { ActivityDerivedState } from './index'
+const progressBarVisibleStates = [ActivityState.OPEN]
 
 const DEFAULT_ORDER_SUMMARY = {
   from: '',
   to: '',
   limitPrice: '',
   validTo: '',
-}
-
-export function GnosisSafeTxDetails(props: {
-  chainId: number
-  activityDerivedState: ActivityDerivedState
-}): JSX.Element | null {
-  const { chainId, activityDerivedState } = props
-  const { gnosisSafeInfo, enhancedTransaction, status, isOrder, order, isExpired, isCancelled, isFailed } =
-    activityDerivedState
-  const gnosisSafeThreshold = gnosisSafeInfo?.threshold
-  const safeTransaction = enhancedTransaction?.safeTransaction || order?.presignGnosisSafeTx
-  const isReplaced = enhancedTransaction?.replacementType === 'replaced'
-
-  if (!gnosisSafeThreshold || !gnosisSafeInfo || !safeTransaction) {
-    return null
-  }
-
-  // The activity is executed Is tx mined or is the swap executed
-  const isExecutedActivity = isOrder
-    ? order?.fulfillmentTime !== undefined
-    : enhancedTransaction?.confirmedTime !== undefined
-
-  // Check if it's in a state where we don't need more signatures. We do this, because this state comes from Chameleon swap API, which
-  // sometimes can be faster getting the state than Gnosis Safe API (that would give us the pending signatures). We use
-  // this check to infer that we don't need to sign anything anymore
-  const alreadySigned = isOrder ? status !== ActivityStatus.PRESIGNATURE_PENDING : status !== ActivityStatus.PENDING
-
-  const { confirmations, nonce, isExecuted } = safeTransaction
-
-  const numConfirmations = confirmations?.length ?? 0
-  const pendingSignaturesCount = gnosisSafeThreshold - numConfirmations
-  const isPendingSignatures = pendingSignaturesCount > 0
-
-  let signaturesMessage: JSX.Element
-
-  const areIsMessage = pendingSignaturesCount > 1 ? 's are' : ' is'
-
-  if (isExecutedActivity) {
-    signaturesMessage = <span>Executed</span>
-  } else if (isCancelled) {
-    signaturesMessage = <span>Cancelled order</span>
-  } else if (isExpired) {
-    signaturesMessage = <span>Expired order</span>
-  } else if (isFailed) {
-    signaturesMessage = <span>Invalid order</span>
-  } else if (alreadySigned) {
-    signaturesMessage = <span>Enough signatures</span>
-  } else if (numConfirmations === 0) {
-    signaturesMessage = (
-      <>
-        <span>
-          <b>No signatures yet</b>
-        </span>
-        <TextAlert isPending={isPendingSignatures} isCancelled={isCancelled} isExpired={isExpired}>
-          {gnosisSafeThreshold} signature{areIsMessage} required
-        </TextAlert>
-      </>
-    )
-  } else if (numConfirmations >= gnosisSafeThreshold) {
-    signaturesMessage = isExecuted ? (
-      <span>
-        <b>Enough signatures</b>
-      </span>
-    ) : (
-      <>
-        {!isReplaced && (
-          <>
-            <span>
-              Enough signatures, <b>but not executed</b>
-            </span>
-            <TextAlert isPending={isPendingSignatures} isCancelled={isCancelled} isExpired={isExpired}>
-              Execute Safe transaction
-            </TextAlert>
-          </>
-        )}
-      </>
-    )
-  } else {
-    signaturesMessage = (
-      <>
-        <span>
-          Signed:{' '}
-          <b>
-            {numConfirmations} out of {gnosisSafeThreshold} signers
-          </b>
-        </span>
-        <TextAlert isPending={isPendingSignatures} isCancelled={isCancelled} isExpired={isExpired}>
-          {pendingSignaturesCount} more signature{areIsMessage} required
-        </TextAlert>
-      </>
-    )
-  }
-
-  return (
-    <TransactionInnerDetail>
-      <span>
-        Safe Nonce: <b>{nonce}</b>
-      </span>
-      {signaturesMessage}
-
-      {/* View in: Gnosis Safe */}
-      <SafeWalletLink chainId={chainId} safeTransaction={safeTransaction} asButton />
-    </TransactionInnerDetail>
-  )
 }
 
 interface OrderSummaryType {
@@ -175,18 +82,24 @@ interface OrderSummaryType {
   validTo: string | undefined
   fulfillmentTime?: string | undefined
   kind?: string
+  inputAmount?: CurrencyAmount<Token>
+  outputAmount?: CurrencyAmount<Token>
 }
 
+// TODO: Break down this large function into smaller functions
+// TODO: Reduce function complexity by extracting logic
+// eslint-disable-next-line max-lines-per-function, complexity
 export function ActivityDetails(props: {
   chainId: number
   activityDerivedState: ActivityDerivedState
   activityLinkUrl: string | undefined
   disableMouseActions: boolean | undefined
   creationTime?: string | undefined
-}) {
-  const { activityDerivedState, chainId, activityLinkUrl, disableMouseActions, creationTime } = props
-  const { id, isOrder, summary, order, enhancedTransaction, isCancelled, isExpired } = activityDerivedState
-  const activityState = getActivityState(activityDerivedState)
+  fillability?: OrderFillability
+}): ReactNode | null {
+  const { activityDerivedState, chainId, activityLinkUrl, disableMouseActions, creationTime, fillability } = props
+  const { id, isOrder, order, enhancedTransaction, isExpired, isCancelled, isFailed, isCancelling } =
+    activityDerivedState
   const tokenAddress =
     enhancedTransaction?.approval?.tokenAddress ||
     (enhancedTransaction?.claim && V_COW_CONTRACT_ADDRESS[chainId as SupportedChainId])
@@ -194,24 +107,55 @@ export function ActivityDetails(props: {
 
   const getShowCancellationModal = useCancelOrder()
 
-  const isSwap = order && getUiOrderType(order) === UiOrderType.SWAP
-  const appData = !!order && order.fullAppData
+  const uiOrderType = order ? getUiOrderType(order) : undefined
+  const isSwap = uiOrderType === UiOrderType.SWAP
+  const isPartialApproveEnabledBySettings = useIsPartialApproveEnabledBySettings(uiOrderType)
 
   const { disableProgressBar } = useInjectedWidgetParams()
 
-  const showProgressBar = activityState === 'open' && isSwap && order && !disableProgressBar
+  const skipBridgingDisplay = isExpired || isCancelled || isFailed || isCancelling
+  const isBridgeOrder = getIsBridgeOrder(order)
+
+  // Enhanced activity derived state that incorporates bridge status for bridge orders
+  const enhancedActivityDerivedState = useEnhancedActivityDerivedState(activityDerivedState, chainId)
+
+  // Use enhanced state to determine when to show progress bar for bridge orders
+  const enhancedActivityState = getActivityState(enhancedActivityDerivedState)
+  const showProgressBar =
+    progressBarVisibleStates.includes(enhancedActivityState) &&
+    (isSwap || isBridgeOrder) &&
+    order &&
+    !disableProgressBar
   const showCancellationModal = order ? getShowCancellationModal(order) : null
 
   const { surplusFiatValue, showFiatValue, surplusToken, surplusAmount } = useGetSurplusData(order)
 
-  const { name: receiverEnsName } = useENS(order?.receiver)
+  const { name: receiverEnsName } = useENS((order?.receiver ?? undefined) as `0x${string}` | undefined)
 
-  // Check if Custom Recipient Warning Banner should be visible
-  const isCustomRecipientWarningBannerVisible = !useIsReceiverWalletBannerHidden(id) && order && isPending(order)
   const hideCustomRecipientWarning = useHideReceiverWalletBanner()
   const setShowProgressBar = useAddOrderToSurplusQueue() // TODO: not exactly the proper tool, rethink this
   const toggleAccountModal = useToggleAccountModal()
 
+  const fullAppData = order?.apiAdditionalInfo?.fullAppData || order?.fullAppData
+
+  const { swapAndBridgeContext, swapResultContext, swapAndBridgeOverview, intermediateToken } = useSwapAndBridgeContext(
+    chainId,
+    isBridgeOrder ? order : undefined,
+    undefined,
+  )
+
+  const bridgeOrderData = useBridgeOrderData(order?.id)
+
+  const bridgingStatus = swapAndBridgeContext?.statusResult?.status
+  const isOrderPending = isBridgeOrder
+    ? bridgingStatus && bridgingStatus !== BridgeStatus.UNKNOWN
+      ? !BRIDGING_FINAL_STATUSES.includes(bridgingStatus)
+      : !!bridgeOrderData
+    : order && isPending(order)
+
+  const isCustomRecipientWarningBannerVisible = !useIsReceiverWalletBannerHidden(id) && order && isOrderPending
+
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const showProgressBarCallback = useMemo(() => {
     if (!showProgressBar) {
       return null
@@ -222,6 +166,9 @@ export function ActivityDetails(props: {
       toggleAccountModal()
     }
   }, [showProgressBar, setShowProgressBar, order?.id, toggleAccountModal])
+
+  const pendingOrdersPermitValidityState = useGetPendingOrdersPermitValidityState()
+  const hasValidPermit = order ? pendingOrdersPermitValidityState[order.id] : true
 
   if (!order && !enhancedTransaction) return null
 
@@ -248,8 +195,9 @@ export function ActivityDetails(props: {
       fulfillmentTime,
     } = order
 
+    const effectiveOutputToken = intermediateToken ?? outputToken
     const inputAmount = CurrencyAmount.fromRawAmount(inputToken, sellAmount.toString())
-    const outputAmount = CurrencyAmount.fromRawAmount(outputToken, buyAmount.toString())
+    const outputAmount = CurrencyAmount.fromRawAmount(effectiveOutputToken, buyAmount.toString())
     const feeAmount = CurrencyAmount.fromRawAmount(inputToken, feeAmountRaw.toString())
 
     isOrderFulfilled = !!order.apiAdditionalInfo && order.status === OrderStatus.FULFILLED
@@ -258,8 +206,9 @@ export function ActivityDetails(props: {
     const rateInputCurrencyAmount = isOrderFulfilled
       ? CurrencyAmount.fromRawAmount(inputToken, executedSellAmountBeforeFees?.toString() || '0')
       : inputAmount
+
     const rateOutputCurrencyAmount = isOrderFulfilled
-      ? CurrencyAmount.fromRawAmount(outputToken, executedBuyAmount?.toString() || '0')
+      ? CurrencyAmount.fromRawAmount(effectiveOutputToken, executedBuyAmount?.toString() || '0')
       : outputAmount
 
     rateInfoParams = {
@@ -275,31 +224,84 @@ export function ActivityDetails(props: {
       timeStyle: 'short',
     }
 
+    const orderKind = kind.toString()
+
     orderSummary = {
       ...DEFAULT_ORDER_SUMMARY,
       from: <TokenAmount amount={inputAmount.add(feeAmount)} tokenSymbol={inputAmount.currency} />,
       to: <TokenAmount amount={outputAmount} tokenSymbol={outputAmount.currency} />,
-      validTo: validTo ? new Date((validTo as number) * 1000).toLocaleString(undefined, DateFormatOptions) : undefined,
-      fulfillmentTime: fulfillmentTime
-        ? new Date(fulfillmentTime).toLocaleString(undefined, DateFormatOptions)
+      validTo: validTo
+        ? new Date((validTo as number) * 1000).toLocaleString(i18n.locale, DateFormatOptions)
         : undefined,
-      kind: kind.toString(),
+      fulfillmentTime: fulfillmentTime
+        ? new Date(fulfillmentTime).toLocaleString(i18n.locale, DateFormatOptions)
+        : undefined,
+      kind: orderKind === 'sell' ? t`sell` : orderKind === 'buy' ? t`buy` : orderKind,
+      inputAmount,
+      outputAmount,
     }
   } else {
     orderSummary = DEFAULT_ORDER_SUMMARY
   }
 
   const { kind, from, to, fulfillmentTime, validTo } = orderSummary
-  const activityName = isOrder ? `${kind} order` : 'Transaction'
+  const activityName = isOrder ? `${kind} ` + t`order` : t`Transaction`
   let inputToken = activityDerivedState?.order?.inputToken || null
   let outputToken = activityDerivedState?.order?.outputToken || null
 
   if (enhancedTransaction?.swapVCow || enhancedTransaction?.swapLockedGNOvCow) {
     inputToken = V_COW[chainId as SupportedChainId]
-    outputToken = COW[chainId as SupportedChainId]
+    outputToken = COW_TOKEN_TO_CHAIN[chainId as SupportedChainId]
   }
 
-  const isCustomRecipient = !!order && getIsCustomRecipient(order)
+  const recipient = isBridgeOrder ? swapAndBridgeOverview?.targetRecipient : order?.receiver
+  const isCustomRecipient =
+    !!order &&
+    (isBridgeOrder ? (recipient ? !areAddressesEqual(order.owner, recipient) : false) : getIsCustomRecipient(order))
+
+  const hooksDetails = fullAppData ? (
+    <OrderHooksDetails appData={fullAppData} margin="10px 0 0">
+      {(children) => (
+        <SummaryInnerRow>
+          <b>
+            <Trans>Hooks</Trans>
+          </b>
+          <i>{children}</i>
+        </SummaryInnerRow>
+      )}
+    </OrderHooksDetails>
+  ) : null
+
+  const orderBasicDetails = (
+    <>
+      <ConfirmDetailsItem withTimelineDot label={t`Limit price`}>
+        <span>
+          <RateInfo noLabel rateInfoParams={rateInfoParams} />
+        </span>
+      </ConfirmDetailsItem>
+      <ConfirmDetailsItem withTimelineDot label={t`Valid to`}>
+        <span>{validTo}</span>
+      </ConfirmDetailsItem>
+    </>
+  )
+
+  const showWarning = fillability
+    ? (!fillability.hasEnoughAllowance && !hasValidPermit) || !fillability.hasEnoughBalance
+    : false
+
+  const fillabilityWarning =
+    fillability && showWarning && orderSummary?.inputAmount ? (
+      <SummaryInnerRow>
+        <DangerText>Unfillable</DangerText>
+        <OrderFillabilityWarning
+          fillability={fillability}
+          inputAmount={orderSummary.inputAmount}
+          outputAmount={orderSummary.outputAmount}
+          enablePartialApproveBySettings={!!isPartialApproveEnabledBySettings}
+          orderId={order?.id}
+        />
+      </SummaryInnerRow>
+    ) : null
 
   return (
     <>
@@ -311,7 +313,6 @@ export function ActivityDetails(props: {
           onDismiss={() => hideCustomRecipientWarning(id)}
         />
       )}
-
       <Summary>
         <span>
           {creationTime && <CreationTimeText>{creationTime}</CreationTimeText>}
@@ -326,8 +327,38 @@ export function ActivityDetails(props: {
           {/* Order Currency Logo */}
           {inputToken && outputToken && (
             <ActivityVisual>
-              <TokenLogo token={inputToken} size={32} />
-              <TokenLogo token={outputToken} size={32} />
+              {isBridgeOrder && !skipBridgingDisplay && order ? (
+                (() => {
+                  const isLocalOrderCached = order.inputToken.chainId !== order.outputToken.chainId
+                  const hasConfirmedBridgeData = swapAndBridgeContext?.statusResult
+
+                  // For localStorage orders: use order.outputToken immediately (no API wait, no flash)
+                  if (isLocalOrderCached) {
+                    return <CurrencyLogoPair sellToken={inputToken} buyToken={order.outputToken} tokenSize={32} />
+                  }
+
+                  // For fresh sessions: only show CurrencyLogoPair when we have confirmed bridge data
+                  if (hasConfirmedBridgeData && swapAndBridgeOverview?.targetCurrency) {
+                    return (
+                      <CurrencyLogoPair
+                        sellToken={inputToken}
+                        buyToken={swapAndBridgeOverview.targetCurrency}
+                        tokenSize={32}
+                      />
+                    )
+                  }
+
+                  // Show spinner when waiting for API data in fresh sessions (don't use CurrencyLogoPair)
+                  return (
+                    <>
+                      <TokenLogo token={inputToken} size={32} />
+                      <IconSpinner spinnerWidth={1} margin="0 0 0 -4px" size={30} />
+                    </>
+                  )
+                })()
+              ) : (
+                <CurrencyLogoPair sellToken={inputToken} buyToken={outputToken} tokenSize={32} />
+              )}
             </ActivityVisual>
           )}
         </span>
@@ -335,83 +366,105 @@ export function ActivityDetails(props: {
         <SummaryInner>
           <b>{activityName}</b>
           {isOrder ? (
+            // Order
             <>
-              <SummaryInnerRow>
-                <b>From{kind === 'buy' && ' at most'}</b>
-                <i>{from}</i>
-              </SummaryInnerRow>
-              <SummaryInnerRow>
-                <b>To{kind === 'sell' && ' at least'}</b>
-                <i>{to}</i>
-              </SummaryInnerRow>
-              <SummaryInnerRow>
-                <b>{isOrderFulfilled ? 'Exec. price' : 'Limit price'}</b>
-                <i>
-                  <RateInfo noLabel={true} rateInfoParams={rateInfoParams} />
-                </i>
-              </SummaryInnerRow>
-              <SummaryInnerRow isCancelled={isCancelled} isExpired={isExpired}>
-                {fulfillmentTime ? (
-                  <>
-                    <b>Filled on</b>
-                    <i>{fulfillmentTime}</i>
-                  </>
-                ) : (
-                  <>
-                    <b>Valid to</b>
-                    <i>{validTo}</i>
-                  </>
-                )}
-              </SummaryInnerRow>
-
-              {order && isCustomRecipient && (
-                <SummaryInnerRow>
-                  <b>Recipient:</b>
-                  <i>
-                    {isCustomRecipientWarningBannerVisible && (
-                      <Icon image={IconType.ALERT} color={UI.COLOR_ALERT} description="Alert" size={18} />
+              {order && !skipBridgingDisplay && isBridgeOrder ? (
+                <>
+                  <BridgeActivitySummary
+                    isCustomRecipientWarning={!!isCustomRecipientWarningBannerVisible}
+                    order={order}
+                    swapAndBridgeContext={swapAndBridgeContext}
+                    swapResultContext={swapResultContext}
+                    swapAndBridgeOverview={swapAndBridgeOverview}
+                    orderBasicDetails={orderBasicDetails}
+                  >
+                    {hooksDetails}
+                  </BridgeActivitySummary>
+                  {fillabilityWarning}
+                </>
+              ) : (
+                // Regular order layout
+                <>
+                  <SummaryInnerRow>
+                    <b>
+                      <Trans>From</Trans> {kind === 'buy' && ' ' && <Trans>at most</Trans>}
+                    </b>
+                    <i>{from}</i>
+                  </SummaryInnerRow>
+                  <SummaryInnerRow>
+                    <b>
+                      <Trans>To</Trans> {kind === 'sell' && ' ' && <Trans>at least</Trans>}
+                    </b>
+                    <i>{to}</i>
+                  </SummaryInnerRow>
+                  <SummaryInnerRow>
+                    <b>{isOrderFulfilled ? <Trans>Exec. price</Trans> : <Trans>Limit price</Trans>}</b>
+                    <i>
+                      <RateInfo noLabel rateInfoParams={rateInfoParams} />
+                    </i>
+                  </SummaryInnerRow>
+                  <SummaryInnerRow isCancelled={isCancelled} isExpired={isExpired}>
+                    {fulfillmentTime ? (
+                      <>
+                        <b>
+                          <Trans>Filled on</Trans>
+                        </b>
+                        <i>{fulfillmentTime}</i>
+                      </>
+                    ) : (
+                      <>
+                        <b>
+                          <Trans>Valid to</Trans>
+                        </b>
+                        <i>{validTo}</i>
+                      </>
                     )}
-                    <ExternalLink
-                      href={getExplorerLink(chainId, order.receiver || order.owner, ExplorerDataType.ADDRESS)}
-                    >
-                      {receiverEnsName || shortenAddress(order.receiver || order.owner)} ↗
-                    </ExternalLink>
-                  </i>
-                </SummaryInnerRow>
-              )}
-
-              {surplusAmount?.greaterThan(0) && (
-                <SummaryInnerRow>
-                  <b>Surplus</b>
-                  <i>
-                    <TokenAmount amount={surplusAmount} tokenSymbol={surplusToken} />
-                    {showFiatValue && (
-                      <FiatWrapper>
-                        (<StyledFiatAmount amount={surplusFiatValue} />)
-                      </FiatWrapper>
-                    )}
-                  </i>
-                </SummaryInnerRow>
-              )}
-
-              {appData && (
-                <OrderHooksDetails appData={appData} margin="10px 0 0">
-                  {(children) => (
+                  </SummaryInnerRow>
+                  {order && isCustomRecipient && (
                     <SummaryInnerRow>
-                      <b>Hooks</b>
-                      <i>{children}</i>
+                      <b>
+                        <Trans>Recipient</Trans>:
+                      </b>
+                      <i>
+                        {isCustomRecipientWarningBannerVisible && (
+                          <Icon image={IconType.ALERT} color={UI.COLOR_ALERT} description={t`Alert`} size={18} />
+                        )}
+                        <ExternalLink
+                          href={getExplorerLink(chainId, order.receiver || order.owner, ExplorerDataType.ADDRESS)}
+                        >
+                          {receiverEnsName || shortenAddress(order.receiver || order.owner)} ↗
+                        </ExternalLink>
+                      </i>
                     </SummaryInnerRow>
                   )}
-                </OrderHooksDetails>
+                  {surplusAmount?.greaterThan(0) && (
+                    <SummaryInnerRow>
+                      <b>
+                        <Trans>Surplus</Trans>
+                      </b>
+                      <i>
+                        <TokenAmount amount={surplusAmount} tokenSymbol={surplusToken} />
+                        {showFiatValue && (
+                          <FiatWrapper>
+                            (<StyledFiatAmount amount={surplusFiatValue} />)
+                          </FiatWrapper>
+                        )}
+                      </i>
+                    </SummaryInnerRow>
+                  )}
+                  {hooksDetails}
+                  {fillabilityWarning}
+                </>
               )}
             </>
           ) : (
-            (summary ?? id)
+            // Transaction
+            (activityDerivedState.summary ?? id)
           )}
 
           {activityLinkUrl && enhancedTransaction?.replacementType !== 'replaced' && (
             <ActivityLink href={activityLinkUrl} disableMouseActions={disableMouseActions}>
-              View details ↗
+              <Trans>View details</Trans> ↗
             </ActivityLink>
           )}
           <GnosisSafeTxDetails chainId={chainId} activityDerivedState={activityDerivedState} />
@@ -421,12 +474,148 @@ export function ActivityDetails(props: {
         <StatusDetails
           chainId={chainId}
           showCancellationModal={showCancellationModal}
-          activityDerivedState={activityDerivedState}
+          activityDerivedState={enhancedActivityDerivedState}
           showProgressBar={showProgressBarCallback}
         />
       </Summary>
 
       <EthFlowStepper order={order} />
     </>
+  )
+}
+
+// TODO: Break down this large function into smaller functions
+// TODO: Reduce function complexity by extracting logic
+// eslint-disable-next-line max-lines-per-function, complexity
+export function GnosisSafeTxDetails(props: {
+  chainId: number
+  activityDerivedState: ActivityDerivedState
+}): ReactElement | null {
+  const { chainId, activityDerivedState } = props
+  const { gnosisSafeInfo, enhancedTransaction, status, isOrder, order, isExpired, isCancelled, isFailed } =
+    activityDerivedState
+  const gnosisSafeThreshold = gnosisSafeInfo?.threshold
+  const safeTransaction = enhancedTransaction?.safeTransaction || order?.presignGnosisSafeTx
+  const isReplaced = enhancedTransaction?.replacementType === 'replaced'
+
+  if (!gnosisSafeThreshold || !gnosisSafeInfo || !safeTransaction) {
+    return null
+  }
+
+  // The activity is executed Is tx mined or is the swap executed
+  const isExecutedActivity = isOrder
+    ? order?.fulfillmentTime !== undefined
+    : enhancedTransaction?.confirmedTime !== undefined
+
+  // Check if it's in a state where we don't need more signatures. We do this, because this state comes from CoW Swap API, which
+  // sometimes can be faster getting the state than Gnosis Safe API (that would give us the pending signatures). We use
+  // this check to infer that we don't need to sign anything anymore
+  const alreadySigned = isOrder ? status !== ActivityStatus.PRESIGNATURE_PENDING : status !== ActivityStatus.PENDING
+
+  const { confirmations, nonce, isExecuted } = safeTransaction
+
+  const numConfirmations = confirmations?.length ?? 0
+  const pendingSignaturesCount = gnosisSafeThreshold - numConfirmations
+  const isPendingSignatures = pendingSignaturesCount > 0
+
+  let signaturesMessage: ReactElement
+
+  if (isExecutedActivity) {
+    signaturesMessage = (
+      <span>
+        <Trans>Executed</Trans>
+      </span>
+    )
+  } else if (isCancelled) {
+    signaturesMessage = (
+      <span>
+        <Trans>Cancelled order</Trans>
+      </span>
+    )
+  } else if (isExpired) {
+    signaturesMessage = (
+      <span>
+        <Trans>Expired order</Trans>
+      </span>
+    )
+  } else if (isFailed) {
+    signaturesMessage = (
+      <span>
+        <Trans>Invalid order</Trans>
+      </span>
+    )
+  } else if (alreadySigned) {
+    signaturesMessage = (
+      <span>
+        <Trans>Enough signatures</Trans>
+      </span>
+    )
+  } else if (numConfirmations === 0) {
+    signaturesMessage = (
+      <>
+        <span>
+          <b>
+            <Trans>No signatures yet</Trans>
+          </b>
+        </span>
+        <TextAlert isPending={isPendingSignatures} isCancelled={isCancelled} isExpired={isExpired}>
+          {gnosisSafeThreshold} {gnosisSafeThreshold === 1 ? t`signature is` : t`signatures are`} {t`required`}
+        </TextAlert>
+      </>
+    )
+  } else if (numConfirmations >= gnosisSafeThreshold) {
+    signaturesMessage = isExecuted ? (
+      <span>
+        <b>
+          <Trans>Enough signatures</Trans>
+        </b>
+      </span>
+    ) : (
+      <>
+        {!isReplaced && (
+          <>
+            <span>
+              <Trans>
+                Enough signatures, <b>but not executed</b>
+              </Trans>
+            </span>
+            <TextAlert isPending={isPendingSignatures} isCancelled={isCancelled} isExpired={isExpired}>
+              <Trans>Execute Safe transaction</Trans>
+            </TextAlert>
+          </>
+        )}
+      </>
+    )
+  } else {
+    signaturesMessage = (
+      <>
+        <span>
+          <Trans>
+            Signed:{' '}
+            <b>
+              {numConfirmations} out of {gnosisSafeThreshold} signers
+            </b>
+          </Trans>
+        </span>
+        <TextAlert isPending={isPendingSignatures} isCancelled={isCancelled} isExpired={isExpired}>
+          {pendingSignaturesCount} {pendingSignaturesCount === 1 ? t`more signature is` : t`more signatures are`}{' '}
+          {t`required`}
+        </TextAlert>
+      </>
+    )
+  }
+
+  return (
+    <TransactionInnerDetail>
+      <span>
+        <Trans>
+          Safe Nonce: <b>{nonce}</b>
+        </Trans>
+      </span>
+      {signaturesMessage}
+
+      {/* View in: Gnosis Safe */}
+      <SafeWalletLink chainId={chainId} safeTransaction={safeTransaction} asButton />
+    </TransactionInnerDetail>
   )
 }

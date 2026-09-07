@@ -1,18 +1,19 @@
 'use client'
 
-import { ThemeProvider as StyledComponentsThemeProvider } from 'styled-components/macro'
-import { baseTheme } from '@cowprotocol/ui'
-import { THEME_MODE } from '@/components/Layout/const'
 import { PropsWithChildren, useMemo } from 'react'
 
-import './types'
+import { baseTheme } from '@cowprotocol/ui'
 
-function getCowfiTheme() {
-  return baseTheme(THEME_MODE)
-}
+import { ThemeProvider as StyledComponentsThemeProvider } from 'styled-components/macro'
+
+import { THEME_MODE } from '@/components/Layout/const'
 
 export function ThemeProvider(props: PropsWithChildren) {
   const theme = useMemo(() => getCowfiTheme(), [])
 
   return <StyledComponentsThemeProvider theme={theme}>{props.children}</StyledComponentsThemeProvider>
+}
+
+function getCowfiTheme() {
+  return baseTheme(THEME_MODE)
 }

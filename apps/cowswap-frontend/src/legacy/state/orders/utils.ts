@@ -1,19 +1,19 @@
-import type { LatestAppDataDocVersion } from '@cowprotocol/app-data'
 import { ONE_HUNDRED_PERCENT, PENDING_ORDERS_BUFFER, ZERO_FRACTION } from '@cowprotocol/common-const'
 import { bpsToPercent, buildPriceFromCurrencyAmounts, getWrappedToken, isSellOrder } from '@cowprotocol/common-utils'
-import { EnrichedOrder, OrderKind, OrderStatus } from '@cowprotocol/cow-sdk'
+import type { LatestAppDataDocVersion } from '@cowprotocol/cow-sdk'
+import { EnrichedOrder, getPartnerFeeBps, OrderKind, OrderStatus } from '@cowprotocol/cow-sdk'
+import { Currency, CurrencyAmount, Percent, Price, Token } from '@cowprotocol/currency'
 import { UiOrderType } from '@cowprotocol/types'
-import { Currency, CurrencyAmount, Percent, Price, Token } from '@uniswap/sdk-core'
 
 import BigNumber from 'bignumber.js'
 import JSBI from 'jsbi'
 
 import { decodeAppData } from 'modules/appData/utils/decodeAppData'
 
+import { GenericOrder } from 'common/types'
 import { getIsComposableCowParentOrder } from 'utils/orderUtils/getIsComposableCowParentOrder'
 import { getOrderSurplus } from 'utils/orderUtils/getOrderSurplus'
 import { getUiOrderType } from 'utils/orderUtils/getUiOrderType'
-import { ParsedOrder } from 'utils/orderUtils/parseOrder'
 
 import { Order, updateOrder, UpdateOrderParams as UpdateOrderParamsAction } from './actions'
 import { OUT_OF_MARKET_PRICE_DELTA_PERCENTAGE } from './consts'
@@ -30,63 +30,6 @@ export type OrderTransitionStatus =
   | 'presignaturePending'
   | 'presigned'
   | 'pending'
-
-/**
- * An order is considered fulfilled if all sellAmount has been sold, for sell orders
- * or all buyAmount has been bought, for buy orders
- */
-export function isOrderFulfilled(
-  order: Pick<
-    EnrichedOrder,
-    'buyAmount' | 'sellAmount' | 'executedBuyAmount' | 'executedSellAmountBeforeFees' | 'kind'
-  >,
-): boolean {
-  const { buyAmount, sellAmount, executedBuyAmount, executedSellAmountBeforeFees, kind } = order
-
-  if (isSellOrder(kind)) {
-    return sellAmount === executedSellAmountBeforeFees
-  } else {
-    return buyAmount === executedBuyAmount
-  }
-}
-
-/**
- * An order is considered cancelled if the `invalidated` flag is `true` and
- * it has been at least `PENDING_ORDERS_BUFFER` since it has been created.
- * The buffer is used to take into account race conditions where a solver might
- * execute a transaction after the backend changed the order status.
- *
- * We assume the order is not fulfilled.
- */
-export function isOrderCancelled(order: Pick<EnrichedOrder, 'creationDate' | 'invalidated' | 'status'>): boolean {
-  const creationTime = new Date(order.creationDate).getTime()
-  return order.invalidated && Date.now() - creationTime > PENDING_ORDERS_BUFFER
-}
-
-export function isTwapOrderCancelled(order: EnrichedOrder): boolean {
-  return order.status === OrderStatus.CANCELLED
-}
-
-/**
- * An order is considered expired if it has been at least `PENDING_ORDERS_BUFFER` after `validTo`.
- * The buffer is used to take into account race conditions where a solver might
- * execute a transaction after the backend changed the order status.
- */
-export function isOrderExpired(order: Pick<EnrichedOrder, 'validTo'>, threshold = PENDING_ORDERS_BUFFER): boolean {
-  const validToTime = order.validTo * 1000 // validTo is in seconds
-  return Date.now() - validToTime > threshold
-}
-
-function isPresignPending(order: Pick<EnrichedOrder, 'status'>): boolean {
-  return order.status === 'presignaturePending'
-}
-
-/**
- * An order is considered presigned, when it transitions from "presignaturePending" to just "pending"
- */
-function isOrderPresigned(order: Pick<EnrichedOrder, 'signingScheme' | 'status'>): boolean {
-  return order.signingScheme === 'presign' && order.status === 'open'
-}
 
 export function classifyOrder(
   order: Pick<
@@ -123,6 +66,78 @@ export function classifyOrder(
 }
 
 /**
+ * Builds order market price, based on quoted amount and fee
+ *
+ * Discounts the fee from sell amount (for sell orders)
+ * @param order
+ * @param quotedAmount
+ * @param feeAmount
+ */
+export function getOrderMarketPrice(
+  order: GenericOrder,
+  quotedAmount: string,
+  feeAmount: string,
+): Price<Currency, Currency> {
+  // We get the remainder as the order might have already been partially filled
+  const remainingAmount = getRemainderAmount(order.kind, order)
+
+  if (isSellOrder(order.kind)) {
+    return new Price(
+      order.inputToken,
+      order.outputToken,
+      // For sell orders, the market price has the fee subtracted from the sell amount
+      JSBI.subtract(JSBI.BigInt(remainingAmount), JSBI.BigInt(feeAmount)),
+      quotedAmount,
+    )
+  }
+
+  // For buy orders, the market price uses the quotedAmount which comes without the fee amount
+  return new Price(order.inputToken, order.outputToken, quotedAmount, remainingAmount)
+}
+
+/**
+ * An order is considered cancelled if the `invalidated` flag is `true` and
+ * it has been at least `PENDING_ORDERS_BUFFER` since it has been created.
+ * The buffer is used to take into account race conditions where a solver might
+ * execute a transaction after the backend changed the order status.
+ *
+ * We assume the order is not fulfilled.
+ */
+export function isOrderCancelled(order: Pick<EnrichedOrder, 'creationDate' | 'invalidated' | 'status'>): boolean {
+  const creationTime = new Date(order.creationDate).getTime()
+  return order.invalidated && Date.now() - creationTime > PENDING_ORDERS_BUFFER
+}
+
+/**
+ * An order is considered expired if it has been at least `PENDING_ORDERS_BUFFER` after `validTo`.
+ * The buffer is used to take into account race conditions where a solver might
+ * execute a transaction after the backend changed the order status.
+ */
+export function isOrderExpired(order: Pick<EnrichedOrder, 'validTo'>, threshold = PENDING_ORDERS_BUFFER): boolean {
+  const validToTime = order.validTo * 1000 // validTo is in seconds
+  return Date.now() - validToTime > threshold
+}
+
+/**
+ * An order is considered fulfilled if all sellAmount has been sold, for sell orders
+ * or all buyAmount has been bought, for buy orders
+ */
+export function isOrderFulfilled(
+  order: Pick<
+    EnrichedOrder,
+    'buyAmount' | 'sellAmount' | 'executedBuyAmount' | 'executedSellAmountBeforeFees' | 'kind'
+  >,
+): boolean {
+  const { buyAmount, sellAmount, executedBuyAmount, executedSellAmountBeforeFees, kind } = order
+
+  if (isSellOrder(kind)) {
+    return sellAmount === executedSellAmountBeforeFees
+  } else {
+    return buyAmount === executedBuyAmount
+  }
+}
+
+/**
  * Based on the order and current price, returns `true` if order is out of the market.
  * Out of the market means the price difference between original and current to be positive
  * and greater than OUT_OF_MARKET_PRICE_DELTA_PERCENTAGE.
@@ -135,7 +150,7 @@ export function classifyOrder(
  * @param executionPrice
  */
 export function isOrderUnfillable(
-  order: Order,
+  order: GenericOrder,
   orderPrice: Price<Currency, Currency>,
   executionPrice: Price<Currency, Currency>,
 ): boolean {
@@ -161,30 +176,19 @@ export function isOrderUnfillable(
   return percentageDifference.greaterThan(OUT_OF_MARKET_PRICE_DELTA_PERCENTAGE)
 }
 
+export function isTwapOrderCancelled(order: Omit<EnrichedOrder, 'settlementContract'>): boolean {
+  return order.status === OrderStatus.CANCELLED
+}
+
 /**
- * Builds order market price, based on quoted amount and fee
- *
- * Discounts the fee from sell amount (for sell orders)
- * @param order
- * @param quotedAmount
- * @param feeAmount
+ * An order is considered presigned, when it transitions from "presignaturePending" to just "pending"
  */
-export function getOrderMarketPrice(order: Order, quotedAmount: string, feeAmount: string): Price<Currency, Currency> {
-  // We get the remainder as the order might have already been partially filled
-  const remainingAmount = getRemainderAmount(order.kind, order)
+function isOrderPresigned(order: Pick<EnrichedOrder, 'signingScheme' | 'status'>): boolean {
+  return order.signingScheme === 'presign' && order.status === 'open'
+}
 
-  if (isSellOrder(order.kind)) {
-    return new Price(
-      order.inputToken,
-      order.outputToken,
-      // For sell orders, the market price has the fee subtracted from the sell amount
-      JSBI.subtract(JSBI.BigInt(remainingAmount), JSBI.BigInt(feeAmount)),
-      quotedAmount,
-    )
-  }
-
-  // For buy orders, the market price uses the quotedAmount which comes without the fee amount
-  return new Price(order.inputToken, order.outputToken, quotedAmount, remainingAmount)
+function isPresignPending(order: Pick<EnrichedOrder, 'status'>): boolean {
+  return order.status === 'presignaturePending'
 }
 
 /**
@@ -193,6 +197,7 @@ export function getOrderMarketPrice(order: Order, quotedAmount: string, feeAmoun
 const EXECUTION_PRICE_FEE_COEFFICIENT = new Percent(5, 100)
 const FEE_AMOUNT_MULTIPLIER = 1_000
 
+type LimitPriceOrder = Pick<Order, 'inputToken' | 'outputToken' | 'sellAmount' | 'buyAmount' | 'kind' | 'fullAppData'>
 /**
  * Calculates the estimated execution price based on order params, before the order is placed
  *
@@ -223,7 +228,7 @@ export function getEstimatedExecutionPrice(
  * @param fee Estimated fee in inputToken atoms, as string
  */
 export function getEstimatedExecutionPrice(
-  order: Order | ParsedOrder,
+  order: GenericOrder,
   fillPrice: Price<Currency, Currency>,
   fee: string,
 ): Price<Currency, Currency> | null
@@ -255,8 +260,11 @@ export function getEstimatedExecutionPrice(
  * IF (Kind = Partial)
  *        EEP = MAX(FEP, FBOP)
  */
+// TODO: Break down this large function into smaller functions
+// TODO: Reduce function complexity by extracting logic
+// eslint-disable-next-line complexity
 export function getEstimatedExecutionPrice(
-  order: Order | ParsedOrder | undefined,
+  order: GenericOrder | undefined,
   fillPrice: Price<Currency, Currency>,
   fee: string,
   inputAmount?: CurrencyAmount<Currency>,
@@ -344,7 +352,7 @@ export function getEstimatedExecutionPrice(
     const denominator = remainingSellAmount.subtract(feeWithMargin)
 
     // Just in case when the denominator is <= 0 after subtracting the fee
-    if (!denominator.greaterThan(ZERO_FRACTION)) {
+    if (denominator.quotient <= 0n) {
       // numerator and denominator are inverted!!!
       // https://github.com/Uniswap/sdk-core/blob/9997e88/src/entities/fractions/price.ts#L26
       return new Price(inputToken, outputToken, '1', '0')
@@ -366,6 +374,51 @@ export function getEstimatedExecutionPrice(
   return fillPrice.greaterThan(feasibleExecutionPrice) ? fillPrice : feasibleExecutionPrice
 }
 
+export function getOrderLimitPriceWithPartnerFee(order: LimitPriceOrder): Price<Currency, Currency> {
+  const inputAmount = CurrencyAmount.fromRawAmount(order.inputToken, order.sellAmount.toString())
+  const outputAmount = CurrencyAmount.fromRawAmount(order.outputToken, order.buyAmount.toString())
+
+  const { inputCurrencyAmount, outputCurrencyAmount } = getOrderAmountsWithPartnerFee(
+    order.fullAppData,
+    inputAmount,
+    outputAmount,
+    isSellOrder(order.kind),
+  )
+
+  return buildPriceFromCurrencyAmounts(inputCurrencyAmount, outputCurrencyAmount)
+}
+
+export function getOrderVolumeFee(fullAppData: EnrichedOrder['fullAppData']): number | undefined {
+  const appData = decodeAppData(fullAppData) as LatestAppDataDocVersion
+
+  return getPartnerFeeBps(appData?.metadata?.partnerFee)
+}
+
+/**
+ * Get the remainder `kind` amount, based on executed amounts from the `apiAdditionalInfo`, if any
+ *
+ * For the sell amount, uses the variants that do not consider the fee:
+ * `sellAmountBeforeFee` and `executedSellAmountBeforeFees`
+ *
+ * @param kind The kind of remainder
+ * @param order The order object
+ */
+export function getRemainderAmount(kind: OrderKind, order: GenericOrder): string {
+  const buyAmount = order.buyAmount.toString()
+
+  const { sellAmount, executedSellAmount, executedBuyAmount } = getExecutedAmounts(order)
+
+  const fullAmount = isSellOrder(kind) ? sellAmount : buyAmount
+
+  if (!executedSellAmount || !executedBuyAmount || executedSellAmount === '0' || executedBuyAmount === '0') {
+    return fullAmount
+  }
+
+  const executedAmount = JSBI.BigInt((isSellOrder(kind) ? executedSellAmount : executedBuyAmount) || 0)
+
+  return JSBI.subtract(JSBI.BigInt(fullAmount), executedAmount).toString()
+}
+
 /**
  * Gets the remainder amounts for both sell and buy, already discounting for surplus, if any surplus or matches
  *
@@ -381,27 +434,19 @@ export function getEstimatedExecutionPrice(
  * In both cases, the sell and buy remainders can be returned in full
  * @param order
  */
-export function getRemainderAmountsWithoutSurplus(order: Order | ParsedOrder): {
+export function getRemainderAmountsWithoutSurplus(order: GenericOrder): {
   buyAmount: string
   sellAmount: string
 } {
   const sellRemainder = getRemainderAmount(OrderKind.SELL, order)
   const buyRemainder = getRemainderAmount(OrderKind.BUY, order)
-
-  let surplusAmountBigNumber: BigNumber
-  if ('executionData' in order) {
-    // ParsedOrder
-    surplusAmountBigNumber = order.executionData.surplusAmount
-  } else {
-    // Order
-    surplusAmountBigNumber = getOrderSurplus(order).amount
-  }
+  const surplusAmountBigNumber = getSurplusAmountBigNumber(order)
 
   if (surplusAmountBigNumber.isZero()) {
     return { sellAmount: sellRemainder, buyAmount: buyRemainder }
   }
 
-  const surplusAmount = JSBI.BigInt(surplusAmountBigNumber.decimalPlaces(0).toString())
+  const surplusAmount = JSBI.BigInt(`0x${surplusAmountBigNumber.decimalPlaces(0).toString(16)}`)
 
   if (isSellOrder(order.kind)) {
     const buyAmount = JSBI.subtract(JSBI.BigInt(buyRemainder), surplusAmount).toString()
@@ -414,42 +459,17 @@ export function getRemainderAmountsWithoutSurplus(order: Order | ParsedOrder): {
   }
 }
 
-/**
- * Get the remainder `kind` amount, based on executed amounts from the `apiAdditionalInfo`, if any
- *
- * For the sell amount, uses the variants that do not consider the fee:
- * `sellAmountBeforeFee` and `executedSellAmountBeforeFees`
- *
- * @param kind The kind of remainder
- * @param order The order object
- */
-export function getRemainderAmount(kind: OrderKind, order: Order | ParsedOrder): string {
-  const buyAmount = order.buyAmount.toString()
-  let sellAmount: string
-  let executedSellAmount: string | undefined
-  let executedBuyAmount: string | undefined
-
-  if ('executionData' in order) {
-    // ParsedOrder
-    sellAmount = order.sellAmount
-    executedSellAmount = order.executionData.executedSellAmount.toString()
-    executedBuyAmount = order.executionData.executedBuyAmount.toString()
-  } else {
-    // Order
-    sellAmount = order.sellAmountBeforeFee.toString()
-    executedSellAmount = order.apiAdditionalInfo?.executedSellAmountBeforeFees
-    executedBuyAmount = order.apiAdditionalInfo?.executedBuyAmount
+export function partialOrderUpdate({ chainId, order, isSafeWallet }: UpdateOrderParams, dispatch: AppDispatch): void {
+  const params: UpdateOrderParamsAction = {
+    chainId,
+    order: {
+      ...order,
+      ...(order.inputToken && { inputToken: serializeToken(order.inputToken) }),
+      ...(order.outputToken && { outputToken: serializeToken(order.outputToken) }),
+    } as UpdateOrderParamsAction['order'],
+    isSafeWallet,
   }
-
-  const fullAmount = isSellOrder(kind) ? sellAmount : buyAmount
-
-  if (!executedSellAmount || !executedBuyAmount || executedSellAmount === '0' || executedBuyAmount === '0') {
-    return fullAmount
-  }
-
-  const executedAmount = JSBI.BigInt((isSellOrder(kind) ? executedSellAmount : executedBuyAmount) || 0)
-
-  return JSBI.subtract(JSBI.BigInt(fullAmount), executedAmount).toString()
+  dispatch(updateOrder(params))
 }
 
 function extrapolatePriceBasedOnFeeAmount<T extends Currency>(
@@ -475,41 +495,26 @@ function extrapolatePriceBasedOnFeeAmount<T extends Currency>(
   return undefined
 }
 
-export function partialOrderUpdate({ chainId, order, isSafeWallet }: UpdateOrderParams, dispatch: AppDispatch): void {
-  const params: UpdateOrderParamsAction = {
-    chainId,
-    order: {
-      ...order,
-      ...(order.inputToken && { inputToken: serializeToken(order.inputToken) }),
-      ...(order.outputToken && { outputToken: serializeToken(order.outputToken) }),
-    } as UpdateOrderParamsAction['order'],
-    isSafeWallet,
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+function getExecutedAmounts(order: GenericOrder) {
+  let sellAmount: string
+  let executedSellAmount: string | undefined
+  let executedBuyAmount: string | undefined
+
+  if ('executionData' in order) {
+    // ParsedOrder
+    sellAmount = order.sellAmount
+    executedSellAmount = order.executionData.executedSellAmount.toString()
+    executedBuyAmount = order.executionData.executedBuyAmount.toString()
+  } else {
+    // Order
+    sellAmount = order.sellAmountBeforeFee.toString()
+    executedSellAmount = order.apiAdditionalInfo?.executedSellAmountBeforeFees
+    executedBuyAmount = order.apiAdditionalInfo?.executedBuyAmount
   }
-  dispatch(updateOrder(params))
-}
 
-export function getOrderVolumeFee(
-  fullAppData: EnrichedOrder['fullAppData'],
-): LatestAppDataDocVersion['metadata']['partnerFee'] | undefined {
-  const appData = decodeAppData(fullAppData) as LatestAppDataDocVersion
-
-  return appData?.metadata?.partnerFee
-}
-
-type LimitPriceOrder = Pick<Order, 'inputToken' | 'outputToken' | 'sellAmount' | 'buyAmount' | 'kind' | 'fullAppData'>
-
-export function getOrderLimitPriceWithPartnerFee(order: LimitPriceOrder): Price<Currency, Currency> {
-  const inputAmount = CurrencyAmount.fromRawAmount(order.inputToken, order.sellAmount.toString())
-  const outputAmount = CurrencyAmount.fromRawAmount(order.outputToken, order.buyAmount.toString())
-
-  const { inputCurrencyAmount, outputCurrencyAmount } = getOrderAmountsWithPartnerFee(
-    order.fullAppData,
-    inputAmount,
-    outputAmount,
-    isSellOrder(order.kind),
-  )
-
-  return buildPriceFromCurrencyAmounts(inputCurrencyAmount, outputCurrencyAmount)
+  return { sellAmount, executedSellAmount, executedBuyAmount }
 }
 
 function getOrderAmountsWithPartnerFee(
@@ -527,7 +532,7 @@ function getOrderAmountsWithPartnerFee(
     }
   }
 
-  const partnerFeePercent = bpsToPercent(volumeFee.bps)
+  const partnerFeePercent = bpsToPercent(volumeFee)
 
   if (isSellOrder) {
     return {
@@ -540,4 +545,13 @@ function getOrderAmountsWithPartnerFee(
     inputCurrencyAmount: sellAmount.divide(ONE_HUNDRED_PERCENT.add(partnerFeePercent)),
     outputCurrencyAmount: buyAmount,
   }
+}
+
+function getSurplusAmountBigNumber(order: GenericOrder): BigNumber {
+  if ('executionData' in order) {
+    // ParsedOrder
+    return order.executionData.surplusAmount
+  }
+  // Order
+  return getOrderSurplus(order).amount
 }

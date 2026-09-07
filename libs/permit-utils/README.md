@@ -5,7 +5,7 @@ Collection of utils for handling token permits.
 ## Installation
 
 ```bash
-yarn add @cowprotocol/permit-utils
+npm install @cowprotocol/permit-utils
 ```
 
 ## Usage
@@ -26,10 +26,10 @@ const permitInfo = await getTokenPermitInfo({
 import { getPermitUtilsInstance } from "@cowprotocol/permit-utils"
 
 // Using a static account defined in the library
-const staticEip2612PermitUtils = getPermitUtilsInstance(chainId, provider)
+const staticEip2612PermitUtils = await getPermitUtilsInstance(chainId, provider)
 
 // Using a provided account address
-const accountEip2612PermitUtils = getPermitUtilsInstance(chainId, provider, account)
+const accountEip2612PermitUtils = await getPermitUtilsInstance(chainId, provider, account)
 ```
 
 ### `generatePermitHook`
@@ -43,7 +43,7 @@ const hookData = await generatePermitHook({
   spender,
   provider,
   permitInfo,
-  eip2162Utils,
+  eip2612Utils,
   account,
   nonce
 })
@@ -57,7 +57,7 @@ import { checkIsCallDataAValidPermit } from "@cowprotocol/permit-utils"
 const isCallDataAValidPermit = await checkIsCallDataAValidPermit(
   account,
   chainId,
-  eip2612Utils, 
+  eip2612Utils,
   tokenAddress,
   tokenName,
   callData,
@@ -76,8 +76,7 @@ To illustrate, we'll show the flow of placing an order with a permit hook using 
 
 ```typescript
 import { checkIsCallDataAValidPermit, generatePermitHook, getPermitUtilsInstance, getTokenPermitInfo } from '@cowprotocol/permit-utils'
-import { stringifyDeterministic } from '@cowprotocol/app-data'
-import { OrderBookApi } from '@cowprotocol/cow-sdk'
+import { stringifyDeterministic, OrderBookApi } from '@cowprotocol/cow-sdk'
 
 
 // Check whether token is permittable.
@@ -94,10 +93,10 @@ if (!permitInfo) {
 }
 
 // Pass in an account address as we'll need the user to sign the actual permit
-const eip2612Utils = getPermitUtilsInstance(chainId, provider, account)
+const eip2612Utils = await getPermitUtilsInstance(chainId, provider, account)
 
 // Need to know what the current permit nonce is
-const nonce = await eip2162Utils.getTokenNonce(inputToken.address, account)
+const nonce = await eip2612Utils.getTokenNonce(inputToken.address, account)
 
 // Calling this fn should trigger the signature in the user's wallet
 const hookData = await generatePermitHook({
@@ -112,7 +111,7 @@ const hookData = await generatePermitHook({
 })
 
 // Add the hookData to the order's appData
-// See the full reference on https://github.com/cowprotocol/app-data/
+// See the full reference on https://www.npmjs.com/package/@cowprotocol/sdk-app-data?activeTab=code
 const appData = { version: '0.10.0', metadata: { hooks: { pre: [hookData] } } }
 
 // The order expects the stringified JSON doc

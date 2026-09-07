@@ -6,38 +6,50 @@ This is the website for CoW Protocol
 ## Setup
 ```bash
 # Install dependencies
-yarn
+pnpm install
 ```
 
 ## Dev server
 ```bash
 # Run server
-yarn dev
+pnpm run dev
 ```
+
+## Environment selection
+
+`cow-fi` environment selection is configured explicitly via `NEXT_PUBLIC_ENVIRONMENT`.
+Supported values are:
+
+- `local`
+- `development`
+- `pr`
+- `production`
+
+Copy [`.env.example`](./.env.example) if you need a local starting point.
 
 ## Lint
 ```bash
 # Run eslint
-yarn lint
+pnpm run lint
 ```
 
 
 ## Build
 ```bash
-yarn build
+pnpm run build
 ```
 
 # Run server
 ```bash
 # Run app
-yarn start
+pnpm run start
 ```
 
 # Internationalization
 ```bash
 # Extract internationalization literals from the code
-yarn i18n:extract
+pnpm run i18n:extract
 
 # Generate JS files for the language file
-yarn i18n:compile
+pnpm run i18n:compile
 ```

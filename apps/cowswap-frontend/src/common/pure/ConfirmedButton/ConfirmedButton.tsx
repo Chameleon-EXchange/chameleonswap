@@ -1,9 +1,9 @@
 import { ChangeEventHandler, KeyboardEventHandler, ReactNode, useCallback, useState } from 'react'
 
 import { Command } from '@cowprotocol/types'
-import { ButtonError } from '@cowprotocol/ui'
-import { UI } from '@cowprotocol/ui'
+import { ButtonError, UI } from '@cowprotocol/ui'
 
+import { Trans } from '@lingui/react/macro'
 import styled from 'styled-components/macro'
 
 const Container = styled.div``
@@ -20,7 +20,6 @@ const Input = styled.input`
   margin-top: 0;
   padding: 10px;
   border-radius: 12px;
-  outline: none;
   font-size: 15px;
   font-weight: bold;
 
@@ -35,10 +34,7 @@ interface ConfirmedButtonProps {
   action: string
   confirmWord: string
   skipInput?: boolean
-}
-
-function isValidConfirm(value: string, confirmWord: string): boolean {
-  return typeof value === 'string' && value.toLowerCase().trim() === confirmWord
+  bottomContent?: ReactNode
 }
 
 export function ConfirmedButton({
@@ -47,8 +43,9 @@ export function ConfirmedButton({
   children,
   action,
   confirmWord,
+  bottomContent,
   skipInput = false,
-}: ConfirmedButtonProps) {
+}: ConfirmedButtonProps): ReactNode {
   const [inputValue, setInputValue] = useState('')
   const onInputChange: ChangeEventHandler<HTMLInputElement> = (event) => setInputValue(event.target.value ?? '')
   const shouldShowInput = !skipInput
@@ -61,17 +58,23 @@ export function ConfirmedButton({
 
       onConfirm()
     },
-    [onConfirm, shouldButtonBeDisabled]
+    [onConfirm, shouldButtonBeDisabled],
   )
 
   return (
     <Container className={className} onKeyDown={onKeyDown}>
       {shouldShowInput ? (
         <Instruction>
-          Please type the word <strong>"{confirmWord}"</strong> to {action}.
+          <Trans>
+            Please type the word <strong>"{confirmWord}"</strong> to {action}.
+          </Trans>
         </Instruction>
+      ) : typeof bottomContent !== undefined ? (
+        bottomContent
       ) : (
-        <Instruction>Please click confirm to {action}.</Instruction>
+        <Instruction>
+          <Trans>Please click confirm to {action}.</Trans>
+        </Instruction>
       )}
       {shouldShowInput && <Input id="confirm-modal-input" onChange={onInputChange} />}
       <ButtonError
@@ -85,4 +88,8 @@ export function ConfirmedButton({
       </ButtonError>
     </Container>
   )
+}
+
+function isValidConfirm(value: string, confirmWord: string): boolean {
+  return typeof value === 'string' && value.toLowerCase().trim() === confirmWord
 }

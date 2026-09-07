@@ -1,20 +1,21 @@
 import { ReactNode, useCallback, useMemo } from 'react'
 
+import { MessageDescriptor } from '@lingui/core'
+
 import { LpToken } from '@cowprotocol/common-const'
 import { getCurrencyAddress } from '@cowprotocol/common-utils'
+import { getAddressKey } from '@cowprotocol/cow-sdk'
 import { LpTokenProvider } from '@cowprotocol/types'
 import { useWalletInfo } from '@cowprotocol/wallet'
+
+import { msg, t } from '@lingui/core/macro'
+import { useLingui } from '@lingui/react/macro'
+import { useInjectedWidgetParams } from 'entities/injectedWidget'
 
 import { Field } from 'legacy/state/types'
 
 import { SelectTokenWidget } from 'modules/tokensList'
-import {
-  TradeWidget,
-  TradeWidgetSlots,
-  useReceiveAmountInfo,
-  useTradeConfirmState,
-  useTradePriceImpact,
-} from 'modules/trade'
+import { TradeWidget, TradeWidgetSlots, useGetReceiveAmountInfo, useTradePriceImpact } from 'modules/trade'
 import { BulletListItem, UnlockWidgetScreen } from 'modules/trade/pure/UnlockWidgetScreen'
 import { useHandleSwap } from 'modules/tradeFlow'
 import { useTradeQuote } from 'modules/tradeQuote'
@@ -42,22 +43,33 @@ import { TradeButtons } from '../TradeButtons'
 import { Warnings } from '../Warnings'
 import { YieldConfirmModal } from '../YieldConfirmModal'
 
-const YIELD_BULLET_LIST_CONTENT: BulletListItem[] = [
-  { content: 'Maximize your yield on existing LP positions' },
-  { content: 'Seamlessly swap your tokens into CoW AMM pools' },
-  { content: 'Earn higher returns with reduced impermanent loss' },
-  { content: 'Leverage advanced strategies for optimal growth' },
+const YIELD_BULLET_LIST_CONTENT_MSG: Array<{ content: MessageDescriptor }> = [
+  { content: msg`Maximize your yield on existing LP positions` },
+  { content: msg`Seamlessly swap your tokens into CoW AMM pools` },
+  { content: msg`Earn higher returns with reduced impermanent loss` },
+  { content: msg`Leverage advanced strategies for optimal growth` },
 ]
 
-const YIELD_UNLOCK_SCREEN = {
-  id: 'yield-widget',
-  title: 'Unlock Enhanced Yield Features',
-  subtitle: 'Boooost your current LP positions with CoW AMM’s pools.',
-  orderType: 'yield',
-  buttonText: 'Start boooosting your yield!',
+const YIELD_UNLOCK_SCREEN: {
+  id: string
+  title: MessageDescriptor
+  subtitle: MessageDescriptor
+  orderType: MessageDescriptor
+  buttonText: MessageDescriptor
+} = {
+  id: `yield-widget`,
+  title: msg`Unlock Enhanced Yield Features`,
+  subtitle: msg`Boooost your current LP positions with CoW AMM’s pools.`,
+  orderType: msg`yield`,
+  buttonText: msg`Start boooosting your yield!`,
 }
 
+// TODO: Break down this large function into smaller functions
+// TODO: Add proper return type annotation
+// TODO: Reduce function complexity by extracting logic
+// eslint-disable-next-line max-lines-per-function, @typescript-eslint/explicit-function-return-type, complexity
 export function YieldWidget() {
+  const { i18n } = useLingui()
   const { chainId, account } = useWalletInfo()
   const { showRecipient } = useYieldSettings()
   const deadlineState = useYieldDeadlineState()
@@ -65,12 +77,12 @@ export function YieldWidget() {
   const [isUnlocked, setIsUnlocked] = useYieldUnlockState()
   const { isLoading: isRateLoading } = useTradeQuote()
   const priceImpact = useTradePriceImpact()
-  const { isOpen: isConfirmOpen } = useTradeConfirmState()
   const widgetActions = useYieldWidgetActions()
-  const receiveAmountInfo = useReceiveAmountInfo()
+  const receiveAmountInfo = useGetReceiveAmountInfo()
   const poolsInfo = usePoolsInfo()
   const vampireAttackContext = useVampireAttack()
   const vampireAttackTarget = useVampireAttackFirstTarget()
+  const { disableCustomRecipient } = useInjectedWidgetParams()
 
   const {
     inputCurrency,
@@ -82,19 +94,20 @@ export function YieldWidget() {
     inputCurrencyFiatAmount,
     outputCurrencyFiatAmount,
     recipient,
+    recipientAddress,
   } = useYieldDerivedState()
   const doTrade = useHandleSwap(useSafeMemoObject({ deadline: deadlineState[0] }), widgetActions)
 
   const inputPoolState = useMemo(() => {
     if (!poolsInfo || !inputCurrency) return null
 
-    return poolsInfo[getCurrencyAddress(inputCurrency).toLowerCase()]
+    return poolsInfo[getAddressKey(getCurrencyAddress(inputCurrency))]
   }, [inputCurrency, poolsInfo])
 
   const outputPoolState = useMemo(() => {
     if (!poolsInfo || !outputCurrency) return null
 
-    return poolsInfo[getCurrencyAddress(outputCurrency).toLowerCase()]
+    return poolsInfo[getAddressKey(getCurrencyAddress(outputCurrency))]
   }, [outputCurrency, poolsInfo])
 
   const isOutputLpToken = Boolean(outputCurrency && outputCurrency instanceof LpToken)
@@ -105,6 +118,10 @@ export function YieldWidget() {
     inputCurrency instanceof LpToken &&
     outputCurrency instanceof LpToken &&
     inputCurrency.tokens.every((token) => outputCurrency.tokens.includes(token))
+
+  const YIELD_BULLET_LIST_CONTENT = YIELD_BULLET_LIST_CONTENT_MSG.map(
+    ({ content }) => ({ content: i18n._(content) }) as BulletListItem,
+  )
 
   const inputCurrencyInfo: CurrencyInfo = {
     field: Field.INPUT,
@@ -153,18 +170,17 @@ export function YieldWidget() {
     amount: inputCurrencyInfo.amount,
     fiatAmount: inputCurrencyInfo.fiatAmount,
     balance: inputCurrencyInfo.balance,
-    label: 'Sell amount',
+    label: t`Sell amount`,
   }
 
   const outputCurrencyPreviewInfo = {
     amount: outputCurrencyInfo.amount,
     fiatAmount: outputCurrencyInfo.fiatAmount,
     balance: outputCurrencyInfo.balance,
-    label: 'Receive (before fees)',
+    label: t`Receive (before fees)`,
   }
 
   const rateInfoParams = useRateInfoParams(inputCurrencyInfo.amount, outputCurrencyInfo.amount)
-
   const slots: TradeWidgetSlots = {
     topContent: vampireAttackContext ? (
       <CoWAmmInlineBanner token={vampireAttackTarget?.target.token} apyDiff={vampireAttackTarget?.apyDiff} />
@@ -172,7 +188,13 @@ export function YieldWidget() {
       <CoWAmmInlineBanner token={undefined} apyDiff={undefined} />
     ) : null,
     selectTokenWidget: <SelectTokenWidget displayLpTokenLists />,
-    settingsWidget: <SettingsTab recipientToggleState={recipientToggleState} deadlineState={deadlineState} />,
+    settingsWidget: (
+      <SettingsTab
+        recipientToggleState={recipientToggleState}
+        deadlineState={deadlineState}
+        isRecipientToggleHidden={disableCustomRecipient}
+      />
+    ),
     bottomContent: useCallback(
       (tradeWarnings: ReactNode | null) => {
         return (
@@ -196,10 +218,10 @@ export function YieldWidget() {
         id={YIELD_UNLOCK_SCREEN.id}
         items={YIELD_BULLET_LIST_CONTENT}
         handleUnlock={() => setIsUnlocked(true)}
-        title={YIELD_UNLOCK_SCREEN.title}
-        subtitle={YIELD_UNLOCK_SCREEN.subtitle}
-        orderType={YIELD_UNLOCK_SCREEN.orderType}
-        buttonText={YIELD_UNLOCK_SCREEN.buttonText}
+        title={i18n._(YIELD_UNLOCK_SCREEN.title)}
+        subtitle={i18n._(YIELD_UNLOCK_SCREEN.subtitle)}
+        orderType={i18n._(YIELD_UNLOCK_SCREEN.orderType)}
+        buttonText={i18n._(YIELD_UNLOCK_SCREEN.buttonText)}
       />
     ) : undefined,
   }
@@ -213,7 +235,6 @@ export function YieldWidget() {
     showRecipient,
     isTradePriceUpdating: isRateLoading,
     priceImpact,
-    disableQuotePolling: isConfirmOpen,
     customSelectTokenButton: SelectAPoolButton,
   }
 
@@ -226,15 +247,14 @@ export function YieldWidget() {
       inputCurrencyInfo={inputCurrencyInfo}
       outputCurrencyInfo={outputCurrencyInfo}
       confirmModal={
-        doTrade.contextIsReady ? (
-          <YieldConfirmModal
-            doTrade={doTrade.callback}
-            recipient={recipient}
-            priceImpact={priceImpact}
-            inputCurrencyInfo={inputCurrencyPreviewInfo}
-            outputCurrencyInfo={outputCurrencyPreviewInfo}
-          />
-        ) : null
+        <YieldConfirmModal
+          doTrade={doTrade.callback}
+          recipient={recipient}
+          recipientAddress={recipientAddress}
+          priceImpact={priceImpact}
+          inputCurrencyInfo={inputCurrencyPreviewInfo}
+          outputCurrencyInfo={outputCurrencyPreviewInfo}
+        />
       }
     />
   )

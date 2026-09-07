@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import Cytoscape, { EdgeDataDefinition, ElementDefinition, NodeDataDefinition, Stylesheet } from 'cytoscape'
+import { useWindowSize } from '@cowprotocol/common-hooks'
+import { getAddressKey } from '@cowprotocol/cow-sdk'
+
+import Cytoscape, { EdgeDataDefinition, ElementDefinition, NodeDataDefinition, StylesheetCSS } from 'cytoscape'
 
 import { LAYOUTS } from './layouts'
 import { buildContractViewNodes, buildTokenViewNodes, getTokenAddress } from './nodesBuilder'
@@ -10,11 +13,10 @@ import { bindPopper, removePopper, updateLayout } from './utils'
 
 import { Order } from '../../../api/operator'
 import { traceToTransfersAndTrades } from '../../../api/tenderly'
-import UnknownToken from '../../../assets/img/question1.svg'
+import svgQuestion1Src from '../../../assets/img/question1.svg'
 import { useMultipleErc20 } from '../../../hooks/useErc20'
 import { useQuery, useUpdateQueryString } from '../../../hooks/useQuery'
 import { useTransactionData } from '../../../hooks/useTransactionData'
-import useWindowSizes from '../../../hooks/useWindowSizes'
 import { Network } from '../../../types'
 import { getImageUrl } from '../../../utils'
 import { HEIGHT_HEADER_FOOTER } from '../../const'
@@ -34,9 +36,11 @@ export type UseCytoscapeReturn = {
   layout: CustomLayoutOptions
   setLayout: (layout: CustomLayoutOptions) => void
   cyPopperRef: React.MutableRefObject<PopperInstance | null>
-  tokensStylesheets: Cytoscape.Stylesheet[]
+  tokensStylesheets: StylesheetCSS[]
 }
 
+// TODO: Break down this large function into smaller functions
+// eslint-disable-next-line max-lines-per-function
 export function useCytoscape(params: UseCytoscapeParams): UseCytoscapeReturn {
   const {
     txBatchData: { error, isLoading, txSettlement },
@@ -48,10 +52,10 @@ export function useCytoscape(params: UseCytoscapeParams): UseCytoscapeReturn {
   const cyPopperRef = useRef<PopperInstance | null>(null)
   const [resetZoom, setResetZoom] = useState<boolean | null>(null)
   const [layout, setLayout] = useState(LAYOUTS.grid)
-  const { innerHeight } = useWindowSizes()
-  const heightSize = innerHeight && innerHeight - HEIGHT_HEADER_FOOTER
+  const { height } = useWindowSize()
+  const heightSize = height && height - HEIGHT_HEADER_FOOTER
   const [failedToLoadGraph, setFailedToLoadGraph] = useState(false)
-  const [tokensStylesheets, setTokensStylesheets] = useState<Cytoscape.Stylesheet[]>([])
+  const [tokensStylesheets, setTokensStylesheets] = useState<StylesheetCSS[]>([])
 
   const setCytoscape = useCallback(
     (ref: Cytoscape.Core | null) => {
@@ -64,17 +68,29 @@ export function useCytoscape(params: UseCytoscapeParams): UseCytoscapeReturn {
         })
       }
     },
-    [layout.name]
+    [layout.name],
   )
 
   const stableTxSettlement = JSON.stringify(txSettlement)
 
+  // eslint-disable-next-line complexity
   useEffect(() => {
     try {
       setFailedToLoadGraph(false)
       const cy = cytoscapeRef.current
       setElements([])
-      if (error || isLoading || !networkId || !heightSize || !cy || !txSettlement) return
+      if (
+        error ||
+        isLoading ||
+        !networkId ||
+        !heightSize ||
+        !cy ||
+        !txSettlement ||
+        !txSettlement.trades.length ||
+        !txSettlement.transfers.length
+      ) {
+        return
+      }
 
       const getNodesFn = txSettlement.contractTrades ? buildTokenViewNodes : buildContractViewNodes
       const nodes = getNodesFn(txSettlement, networkId, heightSize, layout.name)
@@ -164,26 +180,26 @@ export function useCytoscape(params: UseCytoscapeParams): UseCytoscapeReturn {
       cyPopperRef,
       elements,
       tokensStylesheets,
-    ]
+    ],
   )
 }
 
 function getStylesheets(
-  nodes: ElementDefinition[]
+  nodes: ElementDefinition[],
   // networkId: SupportedChainId,
-): Stylesheet[] {
-  const stylesheets: Stylesheet[] = []
+): StylesheetCSS[] {
+  const stylesheets: StylesheetCSS[] = []
 
   nodes.forEach((node) => {
     if (node.data.type === 'token') {
       // Right now unknown token image will only be used when the address is undefined
       // which is not likely
       // A way to deal with this would be to first fetch the image and when it fails set the fallback image
-      const image = getImageUrl(node.data.address) || UnknownToken
+      const image = getImageUrl(node.data.address) || svgQuestion1Src
 
       stylesheets.push({
         selector: `node[id="${node.data.id}"]`,
-        style: {
+        css: {
           // It's in theory possible to pass multiple images as a fallback, but when that's done,
           // the image sizes are broken, going over the image bounds
           'background-image': `url("${image}")`,
@@ -205,22 +221,16 @@ const DEFAULT_VIEW_NAME = ViewType[DEFAULT_VIEW_TYPE]
 
 const VISUALIZATION_PARAM_NAME = 'vis'
 
-function useQueryViewParams(): string {
-  const query = useQuery()
-  return query.get(VISUALIZATION_PARAM_NAME)?.toUpperCase() || DEFAULT_VIEW_NAME
-}
-
-function useUpdateVisQuery(): (vis: string) => void {
-  const updateQueryString = useUpdateQueryString()
-
-  return useCallback((vis: string) => updateQueryString(VISUALIZATION_PARAM_NAME, vis), [updateQueryString])
+type UseVisualizationReturn = {
+  visualization: ViewType
+  onChangeVisualization: (vis: ViewType) => void
 }
 
 export function useTxBatchData(
   networkId: Network | undefined,
   orders: Order[] | undefined,
   txHash: string,
-  visualization: ViewType
+  visualization: ViewType,
 ): GetTxBatchTradesResult {
   // Fetch data from tenderly
   const txData = useTransactionData(networkId, txHash)
@@ -238,12 +248,12 @@ export function useTxBatchData(
   const orderTokens = useMemo(
     () =>
       orders?.reduce((acc, order) => {
-        if (order.sellToken) acc[order.sellToken.address.toLowerCase()] = order.sellToken
-        if (order.buyToken) acc[order.buyToken.address.toLowerCase()] = order.buyToken
+        if (order.sellToken) acc[getAddressKey(order.sellToken.address)] = order.sellToken
+        if (order.buyToken) acc[getAddressKey(order.buyToken.address)] = order.buyToken
 
         return acc
       }, {}) || {},
-    [orders]
+    [orders],
   )
 
   // Collect addresses of missing tokens which were not part of any order
@@ -285,14 +295,11 @@ export function useTxBatchData(
 
   return useMemo(
     () => ({ txSettlement, error: txData.error, isLoading: txData.isLoading || areTokensLoading }),
-    [txSettlement, txData.error, txData.isLoading, areTokensLoading]
+    [txSettlement, txData.error, txData.isLoading, areTokensLoading],
   )
 }
 
-type UseVisualizationReturn = {
-  visualization: ViewType
-  onChangeVisualization: (vis: ViewType) => void
-}
+// TODO: Break down this large function into smaller functions
 
 export function useVisualization(): UseVisualizationReturn {
   const visualization = useQueryViewParams()
@@ -300,7 +307,7 @@ export function useVisualization(): UseVisualizationReturn {
   const updateVisQuery = useUpdateVisQuery()
 
   const [visualizationViewSelected, setVisualizationViewSelected] = useState<ViewType>(
-    ViewType[visualization] || DEFAULT_VIEW_TYPE
+    ViewType[visualization] || DEFAULT_VIEW_TYPE,
   )
 
   const onChangeVisualization = useCallback((viewName: ViewType) => setVisualizationViewSelected(viewName), [])
@@ -310,4 +317,15 @@ export function useVisualization(): UseVisualizationReturn {
   }, [updateVisQuery, visualizationViewSelected])
 
   return { visualization: visualizationViewSelected, onChangeVisualization }
+}
+
+function useQueryViewParams(): string {
+  const query = useQuery()
+  return query.get(VISUALIZATION_PARAM_NAME)?.toUpperCase() || DEFAULT_VIEW_NAME
+}
+
+function useUpdateVisQuery(): (vis: string) => void {
+  const updateQueryString = useUpdateQueryString()
+
+  return useCallback((vis: string) => updateQueryString(VISUALIZATION_PARAM_NAME, vis), [updateQueryString])
 }

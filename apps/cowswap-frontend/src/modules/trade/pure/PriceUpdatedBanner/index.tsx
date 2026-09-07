@@ -1,7 +1,8 @@
-import { UI } from '@cowprotocol/ui'
-import { InlineBanner } from '@cowprotocol/ui'
+import { ReactNode } from 'react'
 
-import { Trans } from '@lingui/macro'
+import { UI, InlineBanner } from '@cowprotocol/ui'
+
+import { Trans } from '@lingui/react/macro'
 import styled from 'styled-components/macro'
 
 const Wrapper = styled.div`
@@ -25,12 +26,8 @@ const StyledBanner = styled(InlineBanner)`
 const AcceptButton = styled.button`
   background: var(${UI.COLOR_PRIMARY});
   color: var(${UI.COLOR_BUTTON_TEXT});
-  cursor: pointer;
   font-size: 16px;
   font-weight: 600;
-  border: none;
-  box-shadow: none;
-  outline: none;
   padding: 10px 20px;
   border-radius: 8px;
   margin: 0 0 0 auto;
@@ -40,7 +37,7 @@ const AcceptButton = styled.button`
   }
 `
 
-export function PriceUpdatedBanner({ onClick }: { onClick(): void }) {
+export function PriceUpdatedBanner({ onClick }: { onClick(): void }): ReactNode {
   return (
     <StyledBanner>
       <Wrapper>

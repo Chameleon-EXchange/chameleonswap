@@ -1,20 +1,62 @@
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValue } from 'jotai'
 
-import { useWalletCapabilities } from './hooks/useWalletCapabilities'
-import { gnosisSafeInfoAtom, walletDetailsAtom, walletDisplayedAddress, walletInfoAtom } from './state'
+import { useConnection } from 'wagmi'
+
 import {
-  multiInjectedProvidersAtom,
-  selectedEip6963ProviderAtom,
-  selectedEip6963ProviderRdnsAtom,
-} from './state/multiInjectedProvidersAtom'
+  gnosisSafeInfoAtom,
+  walletDetailsAtom,
+  walletDisplayedAddress,
+  walletInfoAtom,
+  isEagerConnectInProgressAtom,
+} from './state'
+import { isAtomicBatchSupportedAtom } from './state/walletCapabilitiesAtom'
 import { ConnectionType, GnosisSafeInfo, WalletDetails, WalletInfo } from './types'
 
-import { METAMASK_RDNS, RABBY_RDNS, WATCH_ASSET_SUPPORED_WALLETS } from '../constants'
-import { useConnectionType } from '../web3-react/hooks/useConnectionType'
-import { useIsSafeApp, useIsSafeViaWc } from '../web3-react/hooks/useWalletMetadata'
+import { BRAVE_WALLET_RDNS, METAMASK_RDNS, RABBY_RDNS, WATCH_ASSET_SUPPORED_WALLETS } from '../constants'
 
-export function useWalletInfo(): WalletInfo {
-  return useAtomValue(walletInfoAtom)
+export function useGnosisSafeInfo(): GnosisSafeInfo | undefined {
+  return useAtomValue(gnosisSafeInfoAtom)
+}
+
+export function useIsAssetWatchingSupported(): boolean {
+  const { connector } = useConnection()
+
+  const rdns = connector?.id
+
+  return !!rdns && WATCH_ASSET_SUPPORED_WALLETS.includes(rdns)
+}
+
+export function useIsBraveWallet(): boolean {
+  const { connector } = useConnection()
+
+  return connector?.id === BRAVE_WALLET_RDNS
+}
+
+export function useIsEagerConnectInProgress(): boolean {
+  return useAtomValue(isEagerConnectInProgressAtom)
+}
+
+export function useIsMetamaskBrowserExtensionWallet(): boolean {
+  const { connector } = useConnection()
+
+  const isMetamaskConnection = connector?.name.toLowerCase().trim() === 'MetaMask'.toLowerCase().trim()
+  const isInjectedConnection = connector?.type === ConnectionType.INJECTED
+
+  if (isMetamaskConnection) return true
+
+  if (!connector || !isInjectedConnection) return false
+
+  return METAMASK_RDNS === connector.id
+}
+
+export function useIsRabbyWallet(): boolean {
+  const { connector } = useConnection()
+
+  return connector?.id === RABBY_RDNS
+}
+
+export function useIsTxBundlingSupported(): boolean | null {
+  return useAtomValue(isAtomicBatchSupportedAtom)
 }
 
 export function useWalletDetails(): WalletDetails {
@@ -25,63 +67,6 @@ export function useWalletDisplayedAddress(): string {
   return useAtomValue(walletDisplayedAddress)
 }
 
-export function useGnosisSafeInfo(): GnosisSafeInfo | undefined {
-  return useAtomValue(gnosisSafeInfoAtom)
-}
-
-// TODO: if you want to test TWAP with others EIP-5792 wallets - keep only atomicBatch.supported
-export function useIsTxBundlingSupported(): boolean | null {
-  const { data: capabilities, isLoading: isCapabilitiesLoading } = useWalletCapabilities()
-  const isSafeApp = useIsSafeApp()
-  const isSafeViaWc = useIsSafeViaWc()
-
-  if (isCapabilitiesLoading) return null
-
-  return isSafeApp || (isSafeViaWc && !!capabilities?.atomicBatch?.supported)
-}
-
-export function useMultiInjectedProviders() {
-  return useAtomValue(multiInjectedProvidersAtom)
-}
-
-export function useSetEip6963Provider() {
-  return useSetAtom(selectedEip6963ProviderRdnsAtom)
-}
-
-export function useSelectedEip6963ProviderRdns() {
-  return useAtomValue(selectedEip6963ProviderRdnsAtom)
-}
-
-export function useSelectedEip6963ProviderInfo() {
-  return useAtomValue(selectedEip6963ProviderAtom)
-}
-
-export function useIsAssetWatchingSupported(): boolean {
-  const connectionType = useConnectionType()
-  const info = useSelectedEip6963ProviderInfo()
-
-  if (!info || connectionType !== ConnectionType.INJECTED) return false
-
-  // TODO: check other wallets and extend the array
-  return WATCH_ASSET_SUPPORED_WALLETS.includes(info.info.rdns)
-}
-
-export function useIsRabbyWallet(): boolean {
-  const connectionType = useConnectionType()
-  const info = useSelectedEip6963ProviderInfo()
-
-  if (!info || connectionType !== ConnectionType.INJECTED) return false
-
-  return RABBY_RDNS === info.info.rdns
-}
-
-export function useIsMetamaskBrowserExtensionWallet(): boolean {
-  const connectionType = useConnectionType()
-  const info = useSelectedEip6963ProviderInfo()
-
-  if (connectionType === ConnectionType.METAMASK) return true
-
-  if (!info || connectionType !== ConnectionType.INJECTED) return false
-
-  return METAMASK_RDNS === info.info.rdns
+export function useWalletInfo(): WalletInfo {
+  return useAtomValue(walletInfoAtom)
 }

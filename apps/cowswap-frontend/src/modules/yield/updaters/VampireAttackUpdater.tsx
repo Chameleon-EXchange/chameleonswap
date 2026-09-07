@@ -1,6 +1,7 @@
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useMemo } from 'react'
 
+import { getAddressKey } from '@cowprotocol/cow-sdk'
 import { LP_TOKEN_LIST_COW_AMM_ONLY, useAllLpTokens } from '@cowprotocol/tokens'
 import { LpTokenProvider } from '@cowprotocol/types'
 import { useWalletInfo } from '@cowprotocol/wallet'
@@ -9,10 +10,12 @@ import { useLpTokensWithBalances, usePoolsInfo } from 'modules/yield/shared'
 import { POOLS_AVERAGE_DATA_MOCK } from 'modules/yield/updaters/PoolsInfoUpdater/mockPoolInfo'
 
 import { useSafeMemoObject } from 'common/hooks/useSafeMemo'
-import { areLpBalancesLoadedAtom } from 'common/updaters/LpBalancesAndAllowancesUpdater'
+import { areLpBalancesLoadedAtom } from 'common/updaters/lpBalancesState'
 
 import { vampireAttackAtom } from '../state/vampireAttackAtom'
 import { TokenWithAlternative, TokenWithSuperiorAlternative } from '../types'
+
+// TODO: Break down this large function into smaller functions
 
 export function VampireAttackUpdater(): null {
   const { account } = useWalletInfo()
@@ -26,6 +29,8 @@ export function VampireAttackUpdater(): null {
     if (lpTokensWithBalancesCount === 0) return null
 
     const result = Object.keys(lpTokensWithBalances).reduce(
+      // TODO: Reduce function complexity by extracting logic
+
       (acc, tokenAddress) => {
         const { token: lpToken, balance: tokenBalance } = lpTokensWithBalances[tokenAddress]
         const alternative = cowAmmLpTokens.find((cowAmmLpToken) => {
@@ -33,8 +38,8 @@ export function VampireAttackUpdater(): null {
         })
 
         if (alternative) {
-          const tokenPoolInfo = poolsInfo?.[lpToken.address.toLowerCase()]?.info
-          const alternativePoolInfo = poolsInfo?.[alternative.address.toLowerCase()]?.info
+          const tokenPoolInfo = poolsInfo?.[getAddressKey(lpToken.address)]?.info
+          const alternativePoolInfo = poolsInfo?.[getAddressKey(alternative.address)]?.info
 
           // When CoW AMM pool has better APY
           if (alternativePoolInfo?.apy && tokenPoolInfo?.apy && alternativePoolInfo.apy > tokenPoolInfo.apy) {
@@ -66,10 +71,12 @@ export function VampireAttackUpdater(): null {
         return b.tokenPoolInfo.apy - a.tokenPoolInfo.apy
       }),
       alternatives: result.alternatives.sort((a, b) => {
-        const aBalance = lpTokensWithBalances[a.token.address.toLowerCase()].balance
-        const bBalance = lpTokensWithBalances[b.token.address.toLowerCase()].balance
+        const aBalance = lpTokensWithBalances[getAddressKey(a.token.address)].balance
+        const bBalance = lpTokensWithBalances[getAddressKey(b.token.address)].balance
 
-        return +bBalance.sub(aBalance).toString()
+        if (aBalance === bBalance) return 0
+
+        return aBalance > bBalance ? -1 : 1
       }),
     }
   }, [lpTokensWithBalancesCount, lpTokensWithBalances, cowAmmLpTokens, poolsInfo])

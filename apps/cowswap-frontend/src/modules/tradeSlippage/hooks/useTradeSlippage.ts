@@ -1,22 +1,44 @@
-import { useAtomValue } from 'jotai/index'
+import { useAtomValue } from 'jotai'
+import { useMemo } from 'react'
 
 import { bpsToPercent } from '@cowprotocol/common-utils'
-import { Percent } from '@uniswap/sdk-core'
+import { Percent } from '@cowprotocol/currency'
+
+import { useSmartSlippageFromQuote } from 'modules/tradeQuote'
 
 import {
-  defaultSlippageAtom,
-  smartTradeSlippageAtom,
-  tradeSlippagePercentAtom,
+  SlippageType,
+  currentUserSlippageAtom,
+  shouldUseAutoSlippageAtom,
+  slippageConfigAtom,
 } from '../state/slippageValueAndTypeAtom'
 
+export function useDefaultTradeSlippage(): Percent {
+  return bpsToPercent(useAtomValue(slippageConfigAtom).defaultValue)
+}
+
 export function useTradeSlippage(): Percent {
-  return useAtomValue(tradeSlippagePercentAtom)
+  const { value } = useTradeSlippageValueAndType()
+
+  return useMemo(() => bpsToPercent(value), [value])
 }
 
-export function useDefaultTradeSlippage() {
-  return bpsToPercent(useAtomValue(defaultSlippageAtom))
-}
+export function useTradeSlippageValueAndType(): { type: SlippageType; value: number } {
+  const currentUserSlippage = useAtomValue(currentUserSlippageAtom)
+  const { defaultValue, max } = useAtomValue(slippageConfigAtom)
+  const smartSlippageFromQuote = useSmartSlippageFromQuote()
 
-export function useSmartTradeSlippage() {
-  return useAtomValue(smartTradeSlippageAtom)
+  const shouldUseAutoSlippage = useAtomValue(shouldUseAutoSlippageAtom)
+
+  return useMemo(() => {
+    if (typeof currentUserSlippage === 'number') {
+      return { type: 'user', value: currentUserSlippage }
+    }
+
+    if (shouldUseAutoSlippage && smartSlippageFromQuote && smartSlippageFromQuote > 0) {
+      return { type: 'smart', value: Math.min(smartSlippageFromQuote, max) }
+    }
+
+    return { type: 'default', value: defaultValue }
+  }, [currentUserSlippage, defaultValue, smartSlippageFromQuote, shouldUseAutoSlippage, max])
 }

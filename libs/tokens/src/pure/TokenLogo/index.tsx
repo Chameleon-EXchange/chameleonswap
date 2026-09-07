@@ -1,95 +1,35 @@
 import { atom, useAtom } from 'jotai'
-import { useCallback, useMemo } from 'react'
+import { ReactNode, useCallback, useMemo } from 'react'
 
-import { cowprotocolTokenLogoUrl, LpToken, NATIVE_CURRENCY_ADDRESS, TokenWithLogo } from '@cowprotocol/common-const'
+import {
+  BaseChainInfo,
+  cowprotocolTokenLogoUrl,
+  getChainInfo,
+  LpToken,
+  NATIVE_CURRENCY_ADDRESS,
+  TokenWithLogo,
+} from '@cowprotocol/common-const'
 import { uriToHttp } from '@cowprotocol/common-utils'
 import { SupportedChainId } from '@cowprotocol/cow-sdk'
-import { Media, UI } from '@cowprotocol/ui'
-import { Currency, NativeCurrency } from '@uniswap/sdk-core'
+import { Currency, NativeCurrency } from '@cowprotocol/currency'
 
 import { Slash } from 'react-feather'
-import styled, { css } from 'styled-components/macro'
 
 import { SingleLetterLogo } from './SingleLetterLogo'
+import * as Styled from './styled'
 
+import { useNetworkLogo } from '../../hooks/tokens/useNetworkLogo'
 import { useTokensByAddressMap } from '../../hooks/tokens/useTokensByAddressMap'
 import { getTokenLogoUrls } from '../../utils/getTokenLogoUrls'
 
+export { TokenLogoWrapper, TokenImageWrapper } from './styled'
+
+const BORDER_WIDTH_MIN = 1.8
+const BORDER_WIDTH_MAX = 2.5
+const BORDER_WIDTH_RATIO = 0.15
 const invalidUrlsAtom = atom<{ [url: string]: boolean }>({})
-const defaultSize = 42
-
-export const TokenLogoWrapper = styled.div<{ size?: number; sizeMobile?: number }>`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(${UI.COLOR_DARK_IMAGE_PAPER});
-  color: var(${UI.COLOR_DARK_IMAGE_PAPER_TEXT});
-  border-radius: ${({ size = defaultSize }) => size}px;
-  width: ${({ size = defaultSize }) => size}px;
-  height: ${({ size = defaultSize }) => size}px;
-  min-width: ${({ size = defaultSize }) => size}px;
-  min-height: ${({ size = defaultSize }) => size}px;
-  font-size: ${({ size = defaultSize }) => size}px;
-  overflow: hidden;
-
-  > img,
-  > svg {
-    width: 100%;
-    height: 100%;
-    border-radius: ${({ size }) => size ?? defaultSize}px;
-    object-fit: contain;
-  }
-
-  ${Media.upToSmall()} {
-    ${({ sizeMobile }) =>
-      sizeMobile
-        ? css`
-            border-radius: ${sizeMobile}px;
-            width: ${sizeMobile}px;
-            height: ${sizeMobile}px;
-            min-width: ${sizeMobile}px;
-            min-height: ${sizeMobile}px;
-            font-size: ${sizeMobile}px;
-
-            > img,
-            > svg {
-              border-radius: ${sizeMobile}px;
-            }
-          `
-        : ''}
-  }
-`
-
-const LpTokenWrapper = styled.div<{ size?: number }>`
-  width: 100%;
-  height: 100%;
-  position: relative;
-
-  > div {
-    width: 50%;
-    height: 100%;
-    overflow: hidden;
-    position: absolute;
-  }
-
-  > div:last-child {
-    right: -1px;
-  }
-
-  > div:last-child > img,
-  > div:last-child > svg {
-    right: 100%;
-    position: relative;
-  }
-
-  > div > img,
-  > div > svg {
-    width: ${({ size = defaultSize }) => size}px;
-    height: ${({ size = defaultSize }) => size}px;
-    min-width: ${({ size = defaultSize }) => size}px;
-    min-height: ${({ size = defaultSize }) => size}px;
-  }
-`
+const getBorderWidth = (size: number): number =>
+  Math.max(BORDER_WIDTH_MIN, Math.min(BORDER_WIDTH_MAX, size * BORDER_WIDTH_RATIO))
 
 export interface TokenLogoProps {
   token?: TokenWithLogo | LpToken | Currency | null
@@ -98,32 +38,68 @@ export interface TokenLogoProps {
   size?: number
   sizeMobile?: number
   noWrap?: boolean
+  hideNetworkBadge?: boolean
 }
 
-export function TokenLogo({ logoURI, token, className, size = 36, sizeMobile, noWrap }: TokenLogoProps) {
+type LpTokenLogoProps = Omit<TokenLogoProps, 'token'> & { token: LpToken }
+
+type StandardTokenLogoProps = TokenLogoProps & { token?: TokenWithLogo | Currency | null }
+
+interface TokenLogoContentProps {
+  currentUrl?: string
+  onError: () => void
+  token?: TokenWithLogo | Currency | null
+  initial?: string
+}
+
+interface TokenLogoUrlOptions {
+  token?: TokenWithLogo | Currency | null
+  logoURI?: string
+  invalidUrls: Record<string, boolean>
+}
+
+export function TokenLogo(props: TokenLogoProps): ReactNode {
+  const { token } = props
+
+  if (token instanceof LpToken) {
+    return <LpTokenLogo {...props} token={token} />
+  }
+
+  return <StandardTokenLogo {...props} />
+}
+
+function LpTokenLogo({ token, className, size = 36, sizeMobile }: LpTokenLogoProps): ReactNode {
   const tokensByAddress = useTokensByAddressMap()
 
+  return (
+    <Styled.TokenLogoWrapper className={className} size={size} sizeMobile={sizeMobile}>
+      <Styled.LpTokenWrapper size={size}>
+        <div>
+          <TokenLogo noWrap token={tokensByAddress[token.tokens?.[0]]} size={size} sizeMobile={sizeMobile} />
+        </div>
+        <div>
+          <TokenLogo noWrap token={tokensByAddress[token.tokens?.[1]]} size={size} sizeMobile={sizeMobile} />
+        </div>
+      </Styled.LpTokenWrapper>
+    </Styled.TokenLogoWrapper>
+  )
+}
+
+function StandardTokenLogo({
+  logoURI,
+  token,
+  className,
+  size = 36,
+  sizeMobile,
+  noWrap,
+  hideNetworkBadge,
+}: StandardTokenLogoProps): ReactNode {
   const [invalidUrls, setInvalidUrls] = useAtom(invalidUrlsAtom)
-  const isLpToken = token instanceof LpToken
 
-  const urls = useMemo(() => {
-    if (token instanceof LpToken) return
+  const { currentUrl, initial } = useTokenLogoUrl({ token, logoURI, invalidUrls })
 
-    // TODO: get rid of Currency usage and remove type casting
-    if (token) {
-      if (token instanceof NativeCurrency) {
-        return [cowprotocolTokenLogoUrl(NATIVE_CURRENCY_ADDRESS.toLowerCase(), token.chainId as SupportedChainId)]
-      }
-
-      return getTokenLogoUrls(token as TokenWithLogo)
-    }
-
-    return logoURI ? uriToHttp(logoURI) : []
-  }, [logoURI, token])
-
-  const validUrls = useMemo(() => urls && urls.filter((url) => !invalidUrls[url]), [urls, invalidUrls])
-
-  const currentUrl = validUrls?.[0]
+  const networkLogoUrl = useNetworkLogo(token?.chainId)
+  const showNetworkBadge = networkLogoUrl && !hideNetworkBadge
 
   const onError = useCallback(() => {
     if (!currentUrl) return
@@ -131,36 +107,107 @@ export function TokenLogo({ logoURI, token, className, size = 36, sizeMobile, no
     setInvalidUrls((state) => ({ ...state, [currentUrl]: true }))
   }, [currentUrl, setInvalidUrls])
 
-  const initial = token?.symbol?.[0] || token?.name?.[0]
+  const actualTokenContent = (
+    <TokenLogoContent currentUrl={currentUrl} onError={onError} token={token} initial={initial} />
+  )
 
-  if (isLpToken) {
+  if (noWrap) {
+    return actualTokenContent
+  }
+
+  const chainInfo: BaseChainInfo | undefined = getChainInfo(token?.chainId as SupportedChainId)
+  const chainName = chainInfo?.label || ''
+
+  // This is the size of the chain logo
+  // 2.2 is the ratio of smaller chain logo size vs bigger token logo (makes chain logo ~45% of token logo size)
+  const chainLogoSizeForCalc = size / 2.2
+  // This is the thickness of the cutout around the chain logo
+  const cutThicknessForCalc = getBorderWidth(chainLogoSizeForCalc)
+
+  return (
+    <Styled.TokenLogoWrapper
+      className={className}
+      size={size}
+      sizeMobile={sizeMobile}
+      $hasNetworkBadge={!!showNetworkBadge}
+    >
+      <>
+        {showNetworkBadge ? (
+          <Styled.ClippedTokenContentWrapper
+            parentSize={size}
+            chainLogoSize={chainLogoSizeForCalc}
+            cutThickness={cutThicknessForCalc}
+            hasImage={!!currentUrl}
+          >
+            {actualTokenContent}
+          </Styled.ClippedTokenContentWrapper>
+        ) : (
+          actualTokenContent
+        )}
+        {showNetworkBadge && (
+          <Styled.ChainLogoWrapper size={chainLogoSizeForCalc}>
+            <img src={networkLogoUrl} alt={`${chainName} network logo`} />
+          </Styled.ChainLogoWrapper>
+        )}
+      </>
+    </Styled.TokenLogoWrapper>
+  )
+}
+
+function TokenLogoContent({ currentUrl, onError, token, initial }: TokenLogoContentProps): ReactNode {
+  const address = token && 'address' in token ? token.address : ''
+
+  if (currentUrl) {
     return (
-      <TokenLogoWrapper className={className} size={size} sizeMobile={sizeMobile}>
-        <LpTokenWrapper size={size}>
-          <div>
-            <TokenLogo noWrap token={tokensByAddress[token.tokens?.[0]]} size={size} sizeMobile={sizeMobile} />
-          </div>
-          <div>
-            <TokenLogo noWrap token={tokensByAddress[token.tokens?.[1]]} size={size} sizeMobile={sizeMobile} />
-          </div>
-        </LpTokenWrapper>
-      </TokenLogoWrapper>
+      <Styled.TokenImageWrapper>
+        <img
+          data-address={address}
+          alt={`${token?.symbol || ''} ${token?.name ? `(${token.name})` : ''} token logo`}
+          src={currentUrl}
+          onError={onError}
+        />
+      </Styled.TokenImageWrapper>
     )
   }
 
-  const content = currentUrl ? (
-    <img alt="token logo" src={currentUrl} onError={onError} />
-  ) : initial ? (
-    <SingleLetterLogo initial={initial} />
-  ) : (
-    <Slash />
-  )
-
-  if (noWrap) return content
+  if (initial) {
+    return (
+      <Styled.TokenImageWrapper>
+        <SingleLetterLogo address={address} initial={initial} />
+      </Styled.TokenImageWrapper>
+    )
+  }
 
   return (
-    <TokenLogoWrapper className={className} size={size} sizeMobile={sizeMobile}>
-      {content}
-    </TokenLogoWrapper>
+    <Styled.TokenImageWrapper>
+      <Slash />
+    </Styled.TokenImageWrapper>
   )
+}
+
+function useTokenLogoUrl({ token, logoURI, invalidUrls }: TokenLogoUrlOptions): {
+  currentUrl?: string
+  initial?: string
+} {
+  const urls = useMemo(() => {
+    if (token instanceof LpToken) {
+      return []
+    }
+
+    if (token instanceof NativeCurrency) {
+      return [cowprotocolTokenLogoUrl(NATIVE_CURRENCY_ADDRESS.toLowerCase(), token.chainId as SupportedChainId)]
+    }
+
+    if (token) {
+      return getTokenLogoUrls(token as TokenWithLogo)
+    }
+
+    return logoURI ? uriToHttp(logoURI) : []
+  }, [logoURI, token])
+
+  const validUrls = useMemo(() => urls && urls.filter((url) => !invalidUrls[url]), [urls, invalidUrls])
+  const currentUrl = validUrls?.[0]
+  const initial = token?.symbol?.[0] || token?.name?.[0]
+
+  return { currentUrl, initial }
 }

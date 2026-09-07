@@ -1,15 +1,21 @@
 'use client'
 
-import { Color, ProductLogo, ProductVariant } from '@cowprotocol/ui'
-import IMG_ICON_CROWN_COW from '@cowprotocol/assets/images/icon-crown-cow.svg'
-import IMG_ICON_BULB_COW from '@cowprotocol/assets/images/icon-bulb-cow.svg'
-import IMG_COWAMM_HERO from '@cowprotocol/assets/images/image-cowamm-hero.svg'
-import IMG_COWAMM_RAISING from '@cowprotocol/assets/images/image-cowamm-raising.svg'
-import IMG_COWAMM_PASSIVE from '@cowprotocol/assets/images/image-cowamm-passive.svg'
-import IMG_COWAMM_REKT from '@cowprotocol/assets/images/image-cowamm-rekt.svg'
-import FAQ from '@/components/FAQ'
-import { Link, LinkType } from '@/components/Link'
+import { useCowAnalytics } from '@cowprotocol/analytics'
+import iconBulbCowSrc from '@cowprotocol/assets/images/icon-bulb-cow.svg'
+import iconCrownCowSrc from '@cowprotocol/assets/images/icon-crown-cow.svg'
+import iconFaqSrc from '@cowprotocol/assets/images/icon-faq.svg'
+import svgCowammHeroSrc from '@cowprotocol/assets/images/image-cowamm-hero.svg'
+import svgCowammPassiveSrc from '@cowprotocol/assets/images/image-cowamm-passive.svg'
+import svgCowammRaisingSrc from '@cowprotocol/assets/images/image-cowamm-raising.svg'
+import svgCowammRektSrc from '@cowprotocol/assets/images/image-cowamm-rekt.svg'
+import { Color, ProductLogo, ProductVariant, UI } from '@cowprotocol/ui'
 
+import { CowFiCategory } from 'src/common/analytics/types'
+
+import FAQ from '@/components/FAQ'
+import LazySVG from '@/components/LazySVG'
+import { Link, LinkType } from '@/components/Link'
+import { COW_AMM_CONTENT, FAQ_DATA, LVR_CONTENT, QUOTES } from '@/data/cow-amm/const'
 import {
   ContainerCard,
   ContainerCardSection,
@@ -34,73 +40,81 @@ import {
   TopicTitle,
 } from '@/styles/styled'
 
-import LazySVG from '@/components/LazySVG'
-import IMG_ICON_FAQ from '@cowprotocol/assets/images/icon-faq.svg'
-
-import { COW_AMM_CONTENT, FAQ_DATA, LVR_CONTENT, QUOTES } from '@/data/cow-amm/const'
-import { clickOnCowAmm } from '../../../modules/analytics'
-
 export default function Page() {
+  const analytics = useCowAnalytics()
+
   return (
     <PageWrapper>
       <HeroContainer variant="secondary" maxWidth={1300}>
         <HeroContent variant="secondary">
-          <HeroSubtitle color={'#194D05'}>CoW AMM</HeroSubtitle>
+          <HeroSubtitle color={Color.cowamm_dark_green}>CoW AMM</HeroSubtitle>
           <HeroTitle>The first MEV-capturing AMM, now live on Balancer</HeroTitle>
           <HeroDescription>
             CoW AMM protects LPs from LVR so they can provide liquidity with less risk and more return
           </HeroDescription>
           <Link
-            bgColor={'#194D05'}
-            color={'#BCEC79'}
+            bgColor={Color.cowamm_dark_green}
+            color={Color.cowamm_green}
             href="https://balancer.fi/pools/cow"
             external
             linkType={LinkType.HeroButton}
             utmContent={'cow-amm-hero-button-lp-on-cow-amm'}
-            onClick={() => clickOnCowAmm('click-lp-on-cow-amm')}
+            onClick={() =>
+              analytics.sendEvent({
+                category: CowFiCategory.COWAMM,
+                action: 'Click LP on CoW AMM',
+                label: 'hero-button',
+              })
+            }
           >
             LP on CoW AMM ↗
           </Link>
         </HeroContent>
-        <HeroImage width={470} height={470} color={'#194D05'} marginMobile="24px auto 56px">
-          <LazySVG src={IMG_COWAMM_HERO} />
+        <HeroImage width={470} height={470} color={Color.cowamm_dark_green} marginMobile="24px auto 56px">
+          <LazySVG src={svgCowammHeroSrc} />
         </HeroImage>
       </HeroContainer>
 
-      <MetricsCard bgColor={Color.neutral100} color="#194D05" columns={3} touchFooter>
-        <MetricsItem dividerColor="#9BD955">
+      <MetricsCard bgColor={`var(${UI.COLOR_NEUTRAL_100})`} color={Color.cowamm_dark_green} columns={3} touchFooter>
+        <MetricsItem dividerColor={Color.cowamm_green_light}>
           <h2>4.75%</h2>
           <p>more TVL achieved than reference pool (beta phase)</p>
         </MetricsItem>
-        <MetricsItem dividerColor="#9BD955">
-          <h2>$11M+</h2>
+        <MetricsItem dividerColor={Color.cowamm_green_light}>
+          <h2>$18M+</h2>
           <p>liquidity protected from LVR</p>
         </MetricsItem>
         <MetricsItem>
-          <h2>$90K+</h2>
+          <h2>$1.2M+</h2>
           <p>surplus captured for LPs (beta phase)</p>
         </MetricsItem>
 
         <Link
           bgColor="transparent"
-          color="#194D05"
+          color={Color.cowamm_dark_green}
           margin="56px auto 0"
           gridFullWidth
           href="https://dune.com/cowprotocol/cow-amms-v2"
           external
           linkType={LinkType.SectionTitleButton}
           utmContent={'cow-amm-metrics-button-view-all'}
-          onClick={() => clickOnCowAmm('click-view-all-metrics')}
+          onClick={() =>
+            analytics.sendEvent({
+              category: CowFiCategory.COWAMM,
+              action: 'Click View All Metrics',
+              label: 'dune-analytics',
+            })
+          }
         >
           View all metrics on DUNE &#8599;
         </Link>
       </MetricsCard>
 
-      <ContainerCard bgColor={Color.neutral10}>
+      <ContainerCard bgColor={`var(${UI.COLOR_NEUTRAL_10})`}>
         <ContainerCardSection>
-          <SectionTitleWrapper color={Color.neutral100} maxWidth={1100} gap={56}>
-            <SectionTitleIcon size={98}>
-              <LazySVG src={IMG_ICON_CROWN_COW} />
+          <SectionTitleWrapper color={`var(${UI.COLOR_NEUTRAL_100})`} maxWidth={1100} gap={56}>
+            <SectionTitleIcon $size={98}>
+              <LazySVG src={iconCrownCowSrc} />
             </SectionTitleIcon>
             <SectionTitleText>AMMs don&apos;t want you to know about LVR</SectionTitleText>
           </SectionTitleWrapper>
@@ -118,10 +132,10 @@ export default function Page() {
                 paddingMobile="0"
               >
                 <TopicCardInner contentAlign="left">
-                  <TopicDescription fontSize={28} color={Color.neutral95}>
+                  <TopicDescription fontSize={28} color={`var(${UI.COLOR_NEUTRAL_95})`}>
                     {content.description1}
                   </TopicDescription>
-                  <TopicDescription fontSize={21} color={Color.neutral50}>
+                  <TopicDescription fontSize={21} color={`var(${UI.COLOR_NEUTRAL_50})`}>
                     <sup>1</sup> {content.description2}
                   </TopicDescription>
                 </TopicCardInner>
@@ -144,9 +158,14 @@ export default function Page() {
 
       <ContainerCard bgColor={'transparent'}>
         <ContainerCardSection>
-          <SectionTitleWrapper padding="150px 0 0" marginMobile="0 auto" maxWidth={1170} color={Color.neutral10}>
-            <SectionTitleIcon size={128}>
-              <LazySVG src={IMG_ICON_BULB_COW} />
+          <SectionTitleWrapper
+            padding="150px 0 0"
+            marginMobile="0 auto"
+            maxWidth={1170}
+            color={`var(${UI.COLOR_NEUTRAL_10})`}
+          >
+            <SectionTitleIcon $size={128}>
+              <LazySVG src={iconBulbCowSrc} />
             </SectionTitleIcon>
             <SectionTitleText textAlign="center">Finally, an AMM designed with LPs in mind</SectionTitleText>
             <SectionTitleDescription textAlign="center">
@@ -187,11 +206,11 @@ export default function Page() {
         </ContainerCardSection>
       </ContainerCard>
 
-      <ContainerCard bgColor={Color.neutral100}>
+      <ContainerCard bgColor={`var(${UI.COLOR_NEUTRAL_100})`}>
         <ContainerCardSection>
-          <SectionTitleWrapper color={Color.neutral10} maxWidth={1100} gap={56}>
-            <SectionTitleIcon size={98}>
-              <LazySVG src={IMG_ICON_CROWN_COW} />
+          <SectionTitleWrapper color={`var(${UI.COLOR_NEUTRAL_10})`} maxWidth={1100} gap={56}>
+            <SectionTitleIcon $size={98}>
+              <LazySVG src={iconCrownCowSrc} />
             </SectionTitleIcon>
             <SectionTitleText>
               Raising the <s>bar</s> curve
@@ -210,11 +229,12 @@ export default function Page() {
             >
               <TopicCardInner contentAlign="left">
                 <TopicDescription fontSize={28}>
-                  CoW AMM LPs don't have to worry about LVR, which costs CF-AMM LPs 5-7% of their liquidity, on average.
+                  CoW AMM LPs don&apos;t have to worry about LVR, which costs CF-AMM LPs 5-7% of their liquidity, on
+                  average.
                   <br />
                   <br />
                   Backtesting research conducted over 6 months in 2023 shows that CoW AMM returns would have equalled or
-                  outperformed CF-AMM returns for 10 of the 11 most liquid, non-stablecoin pairs.
+                  outperformed CF-AMM returns for 10 of the 11 most liquid, non-stablecoin pairs
                 </TopicDescription>
               </TopicCardInner>
               <TopicImage
@@ -226,7 +246,7 @@ export default function Page() {
                 orderReverseTablet
                 borderRadius={32}
               >
-                <LazySVG src={IMG_COWAMM_RAISING} />
+                <LazySVG src={svgCowammRaisingSrc} />
               </TopicImage>
             </TopicCard>
           </TopicList>
@@ -235,9 +255,9 @@ export default function Page() {
 
       <ContainerCard bgColor={'transparent'}>
         <ContainerCardSection>
-          <SectionTitleWrapper color={Color.neutral10} maxWidth={1100} gap={56}>
-            <SectionTitleIcon size={128}>
-              <LazySVG src={IMG_ICON_BULB_COW} />
+          <SectionTitleWrapper color={`var(${UI.COLOR_NEUTRAL_10})`} maxWidth={1100} gap={56}>
+            <SectionTitleIcon $size={128}>
+              <LazySVG src={iconBulbCowSrc} />
             </SectionTitleIcon>
             <SectionTitleText>CoW AMM benefits LPs of all types</SectionTitleText>
           </SectionTitleWrapper>
@@ -261,14 +281,14 @@ export default function Page() {
                 orderReverseTablet
                 borderRadius={32}
               >
-                <LazySVG src={IMG_COWAMM_REKT} />
+                <LazySVG src={svgCowammRektSrc} />
               </TopicImage>
               <TopicCardInner contentAlign="left">
                 <TopicTitle fontSize={52}>Provide liquidity for your token without getting rekt</TopicTitle>
-                <TopicDescription fontSize={24} color={Color.neutral50}>
+                <TopicDescription fontSize={24} color={`var(${UI.COLOR_NEUTRAL_50})`}>
                   Healthy liquidity for DAO tokens reduces price impact, encourages investment and discourages
                   volatility. But DAOs can be reluctant to provide liquidity with treasury funds when their pools can be
-                  exploited by arbitrageurs. CoW AMM makes providing liquidity more attractive to DAOs of all sizes.
+                  exploited by arbitrageurs. CoW AMM makes providing liquidity more attractive to DAOs of all sizes
                 </TopicDescription>
               </TopicCardInner>
             </TopicCard>
@@ -284,11 +304,11 @@ export default function Page() {
             >
               <TopicCardInner contentAlign="left">
                 <TopicTitle fontSize={52}>Unlock the power of passive income while reducing risk</TopicTitle>
-                <TopicDescription fontSize={24} color={Color.neutral50}>
+                <TopicDescription fontSize={24} color={`var(${UI.COLOR_NEUTRAL_50})`}>
                   With LVR in the rear view mirror, providing liquidity becomes identical to running a passive
                   investment strategy: solvers rebalance the pool at the correct market price to keep the value of its
                   reserves equal, thereby keeping portfolios balanced and reducing risk. On top of that, liquidity
-                  providers earn surplus when they trade with CoW Protocol traders.
+                  providers earn surplus when they trade with CoW Protocol traders
                 </TopicDescription>
               </TopicCardInner>
               <TopicImage
@@ -300,17 +320,17 @@ export default function Page() {
                 orderReverseTablet
                 borderRadius={32}
               >
-                <LazySVG src={IMG_COWAMM_PASSIVE} />
+                <LazySVG src={svgCowammPassiveSrc} />
               </TopicImage>
             </TopicCard>
           </TopicList>
         </ContainerCardSection>
       </ContainerCard>
 
-      <ContainerCard bgColor={Color.neutral10} color={Color.neutral98}>
+      <ContainerCard bgColor={`var(${UI.COLOR_NEUTRAL_10})`} color={`var(${UI.COLOR_NEUTRAL_98})`}>
         <ContainerCardSection>
           <SectionTitleWrapper padding="150px 0 56px">
-            <SectionTitleIcon size={82}>
+            <SectionTitleIcon $size={82}>
               <ProductLogo variant={ProductVariant.CowProtocol} theme="dark" logoIconOnly />
             </SectionTitleIcon>
             <SectionTitleText>Trust the experts</SectionTitleText>
@@ -338,11 +358,11 @@ export default function Page() {
         </ContainerCardSection>
       </ContainerCard>
 
-      <ContainerCard bgColor={Color.neutral90} color={Color.neutral10} touchFooter>
+      <ContainerCard bgColor={`var(${UI.COLOR_NEUTRAL_90})`} color={`var(${UI.COLOR_NEUTRAL_10})`} touchFooter>
         <ContainerCardSection padding={'0 0 100px'}>
           <SectionTitleWrapper>
-            <SectionTitleIcon size={62}>
-              <LazySVG src={IMG_ICON_FAQ} />
+            <SectionTitleIcon $size={62}>
+              <LazySVG src={iconFaqSrc} />
             </SectionTitleIcon>
             <SectionTitleText>FAQs</SectionTitleText>
           </SectionTitleWrapper>

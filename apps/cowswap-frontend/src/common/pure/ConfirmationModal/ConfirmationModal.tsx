@@ -1,6 +1,8 @@
+import { ReactNode } from 'react'
+
 import { Command } from '@cowprotocol/types'
 
-import { Trans } from '@lingui/macro'
+import { Trans } from '@lingui/react/macro'
 import styled from 'styled-components/macro'
 
 import { ContentWrapper, Modal } from 'common/pure/Modal'
@@ -27,13 +29,14 @@ const Warning = styled.strong`
 export interface ConfirmationModalProps {
   isOpen: boolean
   title: string
-  description?: string
+  description?: ReactNode
   warning?: string
   callToAction?: string
   onDismiss: Command
   onEnable: Command
   confirmWord: string
   action: string
+  bottomContent?: ReactNode
   skipInput?: boolean
 }
 
@@ -42,36 +45,35 @@ export function ConfirmationModal({
   title,
   description,
   warning,
-  callToAction = 'Confirm',
+  callToAction,
   onDismiss,
   onEnable,
   action,
   confirmWord,
+  bottomContent,
   skipInput = false,
-}: ConfirmationModalProps) {
+}: ConfirmationModalProps): ReactNode {
   const shouldShowDescription = !!description
   const shouldShowWarning = !!warning
 
   return (
     <Modal isOpen={isOpen} onDismiss={onDismiss} maxHeight={100}>
       <ModalContentWrapper>
-        <ConfirmationModalHeader onCloseClick={onDismiss}>
-          <Trans>{title}</Trans>
-        </ConfirmationModalHeader>
-        {shouldShowDescription && (
-          <Description>
-            <Trans>{description}</Trans>
-          </Description>
-        )}
+        <ConfirmationModalHeader onCloseClick={onDismiss}>{title}</ConfirmationModalHeader>
+        {shouldShowDescription && <Description>{description}</Description>}
         {shouldShowWarning && (
           <Description>
-            <Warning>
-              <Trans>{warning}</Trans>
-            </Warning>
+            <Warning>{warning}</Warning>
           </Description>
         )}
-        <ConfirmedButton skipInput={skipInput} action={action} confirmWord={confirmWord} onConfirm={onEnable}>
-          <Trans>{callToAction}</Trans>
+        <ConfirmedButton
+          skipInput={skipInput}
+          action={action}
+          confirmWord={confirmWord}
+          onConfirm={onEnable}
+          bottomContent={bottomContent}
+        >
+          {callToAction ? callToAction : <Trans>Confirm</Trans>}
         </ConfirmedButton>
       </ModalContentWrapper>
     </Modal>

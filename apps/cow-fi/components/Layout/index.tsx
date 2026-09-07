@@ -1,23 +1,30 @@
 'use client'
 
-import { PropsWithChildren } from 'react'
-import Link from 'next/link'
-import { Footer, GlobalCoWDAOStyles, Media, MenuBar } from '@cowprotocol/ui'
-import styled, { createGlobalStyle, css } from 'styled-components/macro'
-import { CoWDAOFonts } from '@/styles/CoWDAOFonts'
-import { NAV_ADDITIONAL_BUTTONS, NAV_ITEMS, PAGE_MAX_WIDTH, PRODUCT_VARIANT } from './const'
-import { useSetupPage } from '../../hooks/useSetupPage'
+import { PropsWithChildren, ReactNode } from 'react'
 
-const LinkComponent = (props: PropsWithChildren<{ href: string }>) => {
+import { useFeatureFlags } from '@cowprotocol/common-hooks'
+import { Footer, Media, MenuBar, baseTheme, getGlobalFooterNavItems } from '@cowprotocol/ui'
+
+import Link from 'next/link'
+import styled, { createGlobalStyle, css, ThemeProvider } from 'styled-components/macro'
+
+import { getNavItems, NAV_ADDITIONAL_BUTTONS, PAGE_MAX_WIDTH, PRODUCT_VARIANT } from './const'
+
+import { useSetupPage } from '../../hooks/useSetupPage'
+import { CowSaucerScene } from '../CowSaucerScene'
+
+const darkTheme = baseTheme('dark')
+
+const LinkComponent = (props: PropsWithChildren<{ href: string }>): ReactNode => {
   const external = props.href.startsWith('http')
 
   return <Link {...props} target={external ? '_blank' : '_self'} rel={external ? 'noopener noreferrer' : undefined} />
 }
 
-const Wrapper = styled.div`
+const Wrapper = styled.div<{ minHeight?: string }>`
   display: flex;
   flex-direction: column;
-  min-height: 60vh;
+  min-height: ${({ minHeight }) => minHeight ?? '60vh'};
   max-width: ${PAGE_MAX_WIDTH}px;
   margin: 0 auto;
   padding: 0 60px;
@@ -28,15 +35,16 @@ const Wrapper = styled.div`
 `
 
 interface LayoutProps {
-  children: React.ReactNode
+  children: ReactNode
   bgColor?: string
   host?: string
+  showCowSaucer?: boolean
+  contentMinHeight?: string
 }
 
-export function Layout({ children, bgColor, host }: Readonly<LayoutProps>) {
+export function Layout({ children, bgColor, host, showCowSaucer, contentMinHeight }: Readonly<LayoutProps>): ReactNode {
   useSetupPage()
-
-  const GlobalStyles = GlobalCoWDAOStyles(CoWDAOFonts)
+  const { isSolversEnabled } = useFeatureFlags()
 
   const LocalStyles = createGlobalStyle(
     () => css`
@@ -48,24 +56,31 @@ export function Layout({ children, bgColor, host }: Readonly<LayoutProps>) {
 
   return (
     <>
-      <GlobalStyles />
       <LocalStyles />
-      <MenuBar
-        navItems={NAV_ITEMS}
-        productVariant={PRODUCT_VARIANT}
-        additionalNavButtons={NAV_ADDITIONAL_BUTTONS}
-        padding="10px 60px"
-        maxWidth={PAGE_MAX_WIDTH}
-        LinkComponent={LinkComponent}
-      />
-      <Wrapper>{children}</Wrapper>
-      <Footer
-        maxWidth={PAGE_MAX_WIDTH}
-        productVariant={PRODUCT_VARIANT}
-        host={host ?? process.env.NEXT_PUBLIC_SITE_URL!}
-        expanded
-        hasTouchFooter
-      />
+      {/* Override global light theme to force dark mode for MenuBar only */}
+      <ThemeProvider theme={darkTheme}>
+        <MenuBar
+          navItems={getNavItems(!!isSolversEnabled)}
+          productVariant={PRODUCT_VARIANT}
+          additionalNavButtons={NAV_ADDITIONAL_BUTTONS}
+          padding="10px 60px"
+          maxWidth={PAGE_MAX_WIDTH}
+          LinkComponent={LinkComponent}
+        />
+      </ThemeProvider>
+      <Wrapper minHeight={contentMinHeight}>{children}</Wrapper>
+      {showCowSaucer ? <CowSaucerScene /> : null}
+      {/* Override global light theme to force dark mode for Footer only */}
+      <ThemeProvider theme={darkTheme}>
+        <Footer
+          maxWidth={PAGE_MAX_WIDTH}
+          productVariant={PRODUCT_VARIANT}
+          navItems={getGlobalFooterNavItems()}
+          host={host ?? process.env.NEXT_PUBLIC_SITE_URL!}
+          expanded
+          hasTouchFooter
+        />
+      </ThemeProvider>
     </>
   )
 }

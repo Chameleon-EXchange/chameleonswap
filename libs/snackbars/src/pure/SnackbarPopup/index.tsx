@@ -1,5 +1,6 @@
 import { ReactNode, useCallback, useEffect } from 'react'
 
+import { TEST_IDS } from '@cowprotocol/test-ids'
 import { UI } from '@cowprotocol/ui'
 
 import { animated, useSpring } from '@react-spring/web'
@@ -61,8 +62,9 @@ export interface SnackbarPopupProps {
   onExpire(id: string): void
 }
 
-export function SnackbarPopup(props: SnackbarPopupProps) {
+export function SnackbarPopup(props: SnackbarPopupProps): ReactNode {
   const { id, children, duration, icon, onExpire } = props
+  const hasDuration = duration > 0
 
   const faderStyle = useSpring({
     from: { width: '100%' },
@@ -75,19 +77,27 @@ export function SnackbarPopup(props: SnackbarPopupProps) {
   }, [id, onExpire])
 
   useEffect(() => {
+    if (!hasDuration) return
+
     const timeout = setTimeout(removeSelf, duration)
 
     return () => clearTimeout(timeout)
-  }, [duration, removeSelf])
+  }, [duration, hasDuration, removeSelf])
 
   return (
-    <Wrapper>
-      <StyledClose onClick={removeSelf} />
+    <Wrapper data-testid={TEST_IDS.snackbarPopup}>
+      <StyledClose
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation()
+          removeSelf()
+        }}
+      />
       <ContentWrapper>
         {icon && <div>{icon}</div>}
         <div>{children}</div>
       </ContentWrapper>
-      <AnimatedFader style={faderStyle} />
+      {hasDuration && <AnimatedFader style={faderStyle} />}
     </Wrapper>
   )
 }

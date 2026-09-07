@@ -1,14 +1,18 @@
 import { RADIX_DECIMAL } from '@cowprotocol/common-const'
 import { OrderClass, OrderKind, SigningScheme } from '@cowprotocol/cow-sdk'
-import { Token } from '@uniswap/sdk-core'
+import { Token } from '@cowprotocol/currency'
 
 import { Order, OrderStatus } from './actions'
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 const randomNumberInRange = (min: number, max: number) => {
   return Math.random() * (max - min) + min
 }
 
 // Infinity to not trigger condition
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 const randomIntInRangeExcept = (min: number, max: number, exception = Infinity) => {
   let num = Math.floor(randomNumberInRange(min, max))
   // >= because we Math.floor
@@ -25,26 +29,23 @@ interface GenerateOrderParams extends Pick<Order, 'owner'> {
 
 // increment for OrderId
 let orderN = 1
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 const generateOrderId = (ind: number) => {
   return `OrderId_${ind}_`.padEnd(56 * 2, 'X')
 }
 
 export const generateOrder = ({ owner, sellToken, buyToken }: GenerateOrderParams): Order => {
-  const sellAmount = randomNumberInRange(0.5, 5) * 10 ** sellToken.decimals // in atoms
-  const buyAmount = randomNumberInRange(0.5, 5) * 10 ** buyToken.decimals // in atoms
+  const sellAmount = Math.floor(randomNumberInRange(0.5, 5) * 10 ** sellToken.decimals) // in atoms (integer)
+  const buyAmount = Math.floor(randomNumberInRange(0.5, 5) * 10 ** buyToken.decimals) // in atoms (integer)
 
   const kind = orderN % 2 ? OrderKind.BUY : OrderKind.SELL
-
-  const summary = `Order ${kind.toUpperCase()} ${(sellAmount / 10 ** sellToken.decimals).toFixed(2)} ${
-    sellToken.symbol
-  } for ${(buyAmount / 10 ** buyToken.decimals).toFixed(2)} ${buyToken.symbol}`
 
   return {
     id: generateOrderId(orderN), // Unique identifier for the order: 56 bytes encoded as hex without 0x
     owner: owner.replace('0x', ''),
     status: OrderStatus.PENDING,
     creationTime: new Date().toISOString(),
-    summary, // for dapp use only, readable by user
     inputToken: sellToken,
     outputToken: buyToken,
     sellToken: sellToken.address?.replace('0x', ''), // address, without '0x' prefix

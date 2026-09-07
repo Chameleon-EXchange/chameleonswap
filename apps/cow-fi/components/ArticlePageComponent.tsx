@@ -1,10 +1,23 @@
 'use client'
 
+import type { ImgHTMLAttributes, ReactNode } from 'react'
+
+import { useCowAnalytics } from '@cowprotocol/analytics'
+import { Media, UI } from '@cowprotocol/ui'
+
+import { usePathname } from 'next/navigation'
+import ReactMarkdown from 'react-markdown'
+import { CowFiCategory } from 'src/common/analytics/types'
+import styled from 'styled-components/macro'
+
 import { Article, SharedRichTextComponent } from '../services/cms'
-import { stripHtmlTags } from '@/util/stripHTMLTags'
-import useWebShare from '../hooks/useWebShare'
+
 import { CategoryLinks } from '@/components/CategoryLinks'
+import { CmsImage } from '@/components/CmsImage'
+import { LazyImage } from '@/components/LazyImage'
+import { Link } from '@/components/Link'
 import { SearchBar } from '@/components/SearchBar'
+import { ShareBlock } from '@/components/ShareBlock'
 import {
   ArticleCard,
   ArticleContent,
@@ -21,177 +34,91 @@ import {
   ContainerCardSectionTop,
   ContainerCardSectionTopTitle,
   RelatedArticles,
-  SectionTitleDescription,
   StickyMenu,
 } from '@/styles/styled'
-import { clickOnKnowledgeBase } from '../modules/analytics'
-import { Link, LinkType } from '@/components/Link'
-import { CmsImage, Color, Media } from '@cowprotocol/ui'
-import styled from 'styled-components/macro'
 import { formatDate } from '@/util/formatDate'
-import { useLazyLoadImages } from '../hooks/useLazyLoadImages'
-import { useMemo } from 'react'
-import ReactMarkdown from 'react-markdown'
-import rehypeRaw from 'rehype-raw'
+import { remarkAllowedHtmlImages, sanitizeCmsMarkdown } from '@/util/markdownHtmlImages'
+
+const SITE_ORIGIN = process.env.NEXT_PUBLIC_SITE_URL || ''
+
+type ArticleAttributes = NonNullable<Article['attributes']>
+type ArticleCategories = ArticleAttributes['categories']
 
 interface ArticlePageProps {
   article: Article
-  articles: Article[]
   randomArticles: Article[]
   featuredArticles: Article[]
   allCategories: { name: string; slug: string }[]
 }
 
 export function ArticlePageComponent({
-  articles,
   article,
   randomArticles,
   featuredArticles,
   allCategories,
-}: ArticlePageProps) {
-  const attributes: {
-    title?: string
-    description?: string
-    blocks?: SharedRichTextComponent[]
-    publishedAt?: string
-    publishDate?: string
-    publishDateVisible?: boolean
-    categories?: any
-    cover?: any
-  } = article.attributes || {}
-  const { title, blocks, publishedAt, categories } = attributes
-  const publishDate = attributes.publishDate || null
-  const publishDateVisible = attributes.publishDateVisible ?? true
+}: ArticlePageProps): ReactNode {
+  const attributes = article.attributes
+  const title = attributes?.title
+  const blocks = attributes?.blocks
+  const publishedAt = attributes?.publishedAt
+  const categories = attributes?.categories
+  const publishDate = attributes?.publishDate || null
+  const publishDateVisible = attributes?.publishDateVisible ?? true
   const content =
     blocks?.map((block: SharedRichTextComponent) => (isRichTextComponent(block) ? block.body : '')).join(' ') || ''
-  const plainContent = stripHtmlTags(content)
+  const pathname = usePathname()
+  const fallbackUrl = buildFallbackUrl(pathname)
+  const shareTitle = title || 'CoW DAO Article'
 
-  const { share, message } = useWebShare()
-
-  const handleShareClick = () => {
-    share({
-      title: title || 'CoW DAO Article',
-      text: plainContent.split(' ').slice(0, 50).join(' ') + '...',
-      url: window.location.href,
+  const analytics = useCowAnalytics()
+  const sendAnalyticsEvent = (action: string, label?: string): void => {
+    analytics.sendEvent({
+      category: CowFiCategory.KNOWLEDGEBASE,
+      action,
+      label,
     })
   }
+
+  const handleShareClick = (): void => sendAnalyticsEvent('Share article', shareTitle)
+  const handleBreadcrumbClick = (label: string): void => sendAnalyticsEvent('Click breadcrumb', label)
+  const handleCategoryClick = (label: string): void => sendAnalyticsEvent('Click category', label)
+  const handleFeaturedClick = (label: string): void => sendAnalyticsEvent('Click featured article', label)
+  const handleReadMoreClick = (label: string): void => sendAnalyticsEvent('Click read more', label)
 
   return (
     <Wrapper>
       <CategoryLinks allCategories={allCategories} />
 
-      <SearchBar articles={articles} />
+      <SearchBar />
       <ContainerCard gap={62} gapMobile={42} margin="0 auto" centerContent>
         <ArticleContent>
-          <Breadcrumbs>
-            <Link href="/" onClick={() => clickOnKnowledgeBase('click-breadcrumbs-home')}>
-              Home
-            </Link>
-            <Link href="/learn" onClick={() => clickOnKnowledgeBase('click-breadcrumbs-knowledge-base')}>
-              Knowledge Base
-            </Link>
-            <span>{title}</span>
-          </Breadcrumbs>
-
-          {categories && Array.isArray(categories.data) && categories.data.length > 0 && (
-            <CategoryTags>
-              {categories.data.map((category: { id: string; attributes?: { slug?: string; name?: string } }) => (
-                <Link
-                  key={category.id}
-                  href={`/learn/topic/${category.attributes?.slug ?? ''}`}
-                  onClick={() => clickOnKnowledgeBase(`click-category-${category.attributes?.name}`)}
-                >
-                  {category.attributes?.name ?? ''}
-                </Link>
-              ))}
-            </CategoryTags>
-          )}
-
-          <ArticleMainTitle>{title}</ArticleMainTitle>
-
-          <ArticleSubtitle dateIso={(publishDate || publishedAt)!} dateVisible={publishDateVisible} content={content} />
-          <BodyContent>
-            {blocks &&
-              blocks.map((block: SharedRichTextComponent) =>
-                isRichTextComponent(block) ? (
-                  <ArticleSharedRichTextComponent key={block.id} sharedRichText={block} />
-                ) : null,
-              )}
-
-            <br />
-            <Link
-              onClick={handleShareClick}
-              asButton
-              linkType={LinkType.SectionTitleButton}
-              color={Color.neutral98}
-              bgColor={Color.neutral10}
-            >
-              Share article
-            </Link>
-
-            {message && (
-              <SectionTitleDescription textAlign="left" margin="16px 0 0" fontSize={21}>
-                {message}
-              </SectionTitleDescription>
-            )}
-          </BodyContent>
+          <ArticleHeader
+            title={title}
+            categories={categories}
+            dateIso={publishDate || publishedAt || ''}
+            dateVisible={publishDateVisible}
+            content={content}
+            onBreadcrumbClick={handleBreadcrumbClick}
+            onCategoryClick={handleCategoryClick}
+          />
+          <ArticleBody blocks={blocks} shareTitle={shareTitle} shareUrl={fallbackUrl} onShare={handleShareClick} />
         </ArticleContent>
 
-        <StickyMenu>
-          <b>Featured Articles</b>
-          <RelatedArticles>
-            <ul>
-              {featuredArticles.map((article) => (
-                <li key={article.id}>
-                  <Link
-                    href={`/learn/${article.attributes?.slug}`}
-                    onClick={() => clickOnKnowledgeBase(`click-related-article-${article.attributes?.title}`)}
-                  >
-                    {article.attributes?.title}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </RelatedArticles>
-        </StickyMenu>
+        <FeaturedArticlesMenu articles={featuredArticles} onClick={handleFeaturedClick} />
       </ContainerCard>
 
-      {/* Read More Section */}
-      <ContainerCard bgColor={Color.neutral98} touchFooter>
-        <ContainerCardSection>
-          <ContainerCardSectionTop>
-            <ContainerCardSectionTopTitle>Read more</ContainerCardSectionTopTitle>
-          </ContainerCardSectionTop>
-          <ArticleList>
-            {randomArticles.map((article) => {
-              const coverData = article.attributes?.cover?.data
-              const imageUrl = coverData?.attributes?.url
-
-              return (
-                <ArticleCard
-                  key={article.id}
-                  href={`/learn/${article.attributes?.slug}`}
-                  onClick={() => clickOnKnowledgeBase(`click-read-more-${article.attributes?.title}`)}
-                >
-                  {imageUrl && (
-                    <ArticleImage>
-                      <CmsImage
-                        src={imageUrl}
-                        alt={`Cover image for article: ${article.attributes?.title}`}
-                        width={700}
-                        height={200}
-                      />
-                    </ArticleImage>
-                  )}
-                  <ArticleTitle>{article.attributes?.title}</ArticleTitle>
-                </ArticleCard>
-              )
-            })}
-          </ArticleList>
-        </ContainerCardSection>
-      </ContainerCard>
+      <ReadMoreSection articles={randomArticles} onClick={handleReadMoreClick} />
     </Wrapper>
   )
+}
+
+function buildFallbackUrl(pathname: string): string {
+  if (!SITE_ORIGIN) return ''
+  try {
+    return new URL(pathname, SITE_ORIGIN).toString()
+  } catch {
+    return ''
+  }
 }
 
 const Wrapper = styled.div`
@@ -210,6 +137,116 @@ const Wrapper = styled.div`
   }
 `
 
+interface ArticleBodyProps {
+  blocks?: SharedRichTextComponent[]
+  shareUrl: string
+  shareTitle: string
+  onShare: () => void
+}
+
+interface ArticleCategoriesProps {
+  categories?: ArticleCategories
+  onCategoryClick: (label: string) => void
+}
+
+interface ArticleHeaderProps {
+  title?: string
+  categories?: ArticleCategories
+  dateIso: string
+  dateVisible: boolean
+  content: string
+  onBreadcrumbClick: (label: string) => void
+  onCategoryClick: (label: string) => void
+}
+
+interface FeaturedArticlesMenuProps {
+  articles: Article[]
+  onClick: (title: string) => void
+}
+
+interface ReadMoreSectionProps {
+  articles: Article[]
+  onClick: (title: string) => void
+}
+
+function ArticleBody({ blocks, shareUrl, shareTitle, onShare }: ArticleBodyProps): ReactNode {
+  return (
+    <BodyContent>
+      {blocks &&
+        blocks.map((block) =>
+          isRichTextComponent(block) ? <ArticleSharedRichTextComponent key={block.id} sharedRichText={block} /> : null,
+        )}
+      <ShareBlock url={shareUrl} title={shareTitle} onShare={onShare} />
+    </BodyContent>
+  )
+}
+
+function ArticleCategories({ categories, onCategoryClick }: ArticleCategoriesProps): ReactNode {
+  if (!categories || !Array.isArray(categories.data) || categories.data.length === 0) return null
+
+  return (
+    <CategoryTags>
+      {categories.data.map((category) => {
+        const categoryName = category.attributes?.name
+        const categorySlug = category.attributes?.slug
+        const categoryId = category.id ?? categorySlug ?? categoryName
+        if (!categoryName) return null
+        if (categoryId === undefined) return null
+
+        return (
+          <Link
+            key={categoryId}
+            href={`/learn/topic/${categorySlug ?? ''}`}
+            onClick={() => onCategoryClick(categoryName)}
+          >
+            {categoryName}
+          </Link>
+        )
+      })}
+    </CategoryTags>
+  )
+}
+
+function ArticleHeader({
+  title,
+  categories,
+  dateIso,
+  dateVisible,
+  content,
+  onBreadcrumbClick,
+  onCategoryClick,
+}: ArticleHeaderProps): ReactNode {
+  return (
+    <>
+      <Breadcrumbs>
+        <Link href="/" onClick={() => onBreadcrumbClick('home')}>
+          Home
+        </Link>
+        <Link href="/learn" onClick={() => onBreadcrumbClick('knowledge-base')}>
+          Knowledge Base
+        </Link>
+        <span>{title}</span>
+      </Breadcrumbs>
+
+      <ArticleCategories categories={categories} onCategoryClick={onCategoryClick} />
+
+      <ArticleMainTitle>{title}</ArticleMainTitle>
+
+      <ArticleSubtitle dateIso={dateIso} dateVisible={dateVisible} content={content} />
+    </>
+  )
+}
+
+function ArticleSharedRichTextComponent({ sharedRichText }: { sharedRichText: SharedRichTextComponent }): ReactNode {
+  const content = sanitizeCmsMarkdown(sharedRichText.body || '')
+
+  return (
+    <ReactMarkdown skipHtml remarkPlugins={[remarkAllowedHtmlImages]} components={{ img: MarkdownImage }}>
+      {content}
+    </ReactMarkdown>
+  )
+}
+
 function ArticleSubtitle({
   dateIso,
   content,
@@ -218,9 +255,11 @@ function ArticleSubtitle({
   dateIso: string
   content: string
   dateVisible: boolean
-}) {
-  const date = new Date(dateIso)
+}): ReactNode {
+  const date = dateIso ? new Date(dateIso) : null
   const readTime = calculateReadTime(content)
+  const showDate = Boolean(dateVisible && date && !Number.isNaN(date.getTime()))
+  const formattedDate = showDate && date ? formatDate(date) : null
 
   return (
     <ArticleSubtitleWrapper>
@@ -228,11 +267,11 @@ function ArticleSubtitle({
         <span>{readTime}</span>
       </div>
 
-      {dateVisible && (
+      {formattedDate && (
         <>
           <div>·</div>
           <div>
-            <span>Published {formatDate(date)}</span>
+            <span>Published {formattedDate}</span>
           </div>
         </>
       )}
@@ -247,27 +286,76 @@ function calculateReadTime(text: string): string {
   return `${time} min read`
 }
 
-function isRichTextComponent(block: any): block is SharedRichTextComponent {
-  return block.body !== undefined
+function FeaturedArticlesMenu({ articles, onClick }: FeaturedArticlesMenuProps): ReactNode {
+  return (
+    <StickyMenu>
+      <b>Featured Articles</b>
+      <RelatedArticles>
+        <ul>
+          {articles.map((article) => {
+            const articleTitle = article.attributes?.title
+            const articleSlug = article.attributes?.slug
+            if (!articleTitle || !articleSlug) return null
+
+            return (
+              <li key={article.id}>
+                <a href={`/learn/${articleSlug}`} onClick={() => onClick(articleTitle)}>
+                  {articleTitle}
+                </a>
+              </li>
+            )
+          })}
+        </ul>
+      </RelatedArticles>
+    </StickyMenu>
+  )
 }
 
-function ArticleSharedRichTextComponent({ sharedRichText }: { sharedRichText: SharedRichTextComponent }) {
-  const { replaceImageUrls, LazyImage } = useLazyLoadImages()
-
-  const processedContent = useMemo(() => {
-    return sharedRichText.body ? replaceImageUrls(sharedRichText.body) : ''
-  }, [sharedRichText.body, replaceImageUrls])
-
+function isRichTextComponent(block: unknown): block is SharedRichTextComponent {
   return (
-    <ReactMarkdown
-      rehypePlugins={[rehypeRaw]}
-      components={{
-        img: ({ src, alt, ...props }) => {
-          if (!src) return null
-          return <LazyImage src={src} alt={alt || ''} {...props} width={725} height={400} />
-        },
-      }}
-      children={processedContent}
-    />
+    typeof block === 'object' &&
+    block !== null &&
+    'body' in block &&
+    typeof (block as { body?: unknown }).body === 'string'
+  )
+}
+
+function MarkdownImage({ src, alt, ...props }: ImgHTMLAttributes<HTMLImageElement>): ReactNode {
+  const dataSrc = (props as Record<string, unknown>)['data-src']
+  const resolvedSrc = typeof dataSrc === 'string' ? dataSrc : src
+  if (!resolvedSrc) return null
+  return <LazyImage src={resolvedSrc} alt={alt || ''} {...props} width={725} height={400} />
+}
+
+function ReadMoreSection({ articles, onClick }: ReadMoreSectionProps): ReactNode {
+  return (
+    <ContainerCard bgColor={`var(${UI.COLOR_NEUTRAL_98})`} touchFooter>
+      <ContainerCardSection>
+        <ContainerCardSectionTop>
+          <ContainerCardSectionTopTitle>Read more</ContainerCardSectionTopTitle>
+        </ContainerCardSectionTop>
+        <ArticleList>
+          {articles.map((article) => {
+            const attrs = article.attributes
+            const title = attrs?.title
+            const slug = attrs?.slug
+            if (!title || !slug) return null
+            const coverData = attrs?.cover?.data
+            const imageUrl = coverData?.attributes?.url
+
+            return (
+              <ArticleCard key={article.id} href={`/learn/${slug}`} onClick={() => onClick(title)}>
+                {imageUrl && (
+                  <ArticleImage>
+                    <CmsImage src={imageUrl} alt={`Cover image for article: ${title}`} width={700} height={200} />
+                  </ArticleImage>
+                )}
+                <ArticleTitle>{title}</ArticleTitle>
+              </ArticleCard>
+            )
+          })}
+        </ArticleList>
+      </ContainerCardSection>
+    </ContainerCard>
   )
 }

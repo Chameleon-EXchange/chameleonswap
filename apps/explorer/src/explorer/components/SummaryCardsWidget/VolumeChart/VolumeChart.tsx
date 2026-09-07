@@ -13,7 +13,8 @@ import {
   Coordinate,
   LogicalRange,
 } from 'lightweight-charts'
-import { DefaultTheme, useTheme } from 'styled-components/macro'
+import { useTheme } from 'styled-components/macro'
+import { Color } from 'theme/styles/colours'
 
 import {
   ChartSkeleton,
@@ -34,6 +35,14 @@ import { numberFormatter } from '../utils'
 
 const DEFAULT_CHART_HEIGHT = 214 // px
 
+export interface VolumeChartProps {
+  volumeData: VolumeDataResponse | undefined
+  height?: number
+  width?: number
+  period?: VolumePeriod
+  logicalTimeScaleRange?: LogicalRange | undefined
+}
+
 export interface VolumeDataResponse {
   data?: HistogramData[]
   currentVolume?: number
@@ -41,12 +50,15 @@ export interface VolumeDataResponse {
   isLoading: boolean
 }
 
-export interface VolumeChartProps {
-  volumeData: VolumeDataResponse | undefined
-  height?: number
-  width?: number
-  period?: VolumePeriod
-  logicalTimeScaleRange?: LogicalRange | undefined
+interface CrossHairCoordinates {
+  top: Coordinate
+  left: number
+}
+
+interface CrossHairData {
+  time: UTCTimestamp
+  value: BarPrice
+  coordinates: CrossHairCoordinates
 }
 
 export function PeriodButton({
@@ -62,16 +74,7 @@ export function PeriodButton({
   )
 }
 
-function _formatAmount(amount: string): string {
-  return formatSmart({ amount, precision: 0, decimals: 0 })
-}
-
-function _buildChart(
-  chartContainer: HTMLDivElement,
-  width: number | undefined,
-  height: number,
-  theme: DefaultTheme
-): IChartApi {
+function _buildChart(chartContainer: HTMLDivElement, width: number | undefined, height: number): IChartApi {
   return createChart(chartContainer, {
     width,
     height,
@@ -79,7 +82,7 @@ function _buildChart(
     handleScale: false,
     layout: {
       backgroundColor: 'transparent',
-      textColor: theme.textPrimary1,
+      textColor: Color.neutral100,
     },
     rightPriceScale: {
       scaleMargins: {
@@ -109,28 +112,21 @@ function _buildChart(
         style: 3,
         width: 1,
         labelVisible: false,
-        color: theme.borderPrimary,
+        color: Color.explorer_borderPrimary,
       },
       vertLine: {
         visible: true,
         style: 3,
         width: 1,
-        color: theme.borderPrimary,
+        color: Color.explorer_borderPrimary,
         labelVisible: false,
       },
     },
   })
 }
 
-interface CrossHairCoordinates {
-  top: Coordinate
-  left: number
-}
-
-interface CrossHairData {
-  time: UTCTimestamp
-  value: BarPrice
-  coordinates: CrossHairCoordinates
+function _formatAmount(amount: string): string {
+  return formatSmart({ amount, precision: 0, decimals: 0 })
 }
 
 const PriceTooltip = ({
@@ -144,16 +140,9 @@ const PriceTooltip = ({
 }): React.ReactNode | null => {
   const { time, value, coordinates } = crossHairData || {}
   const isTopCoordinateValid = coordinates && coordinates.top > 1
-  const formattedDate = React.useMemo(() => {
-    if (!time) return ''
-
-    let _format = 'MMM d, yyyy'
-    if (period === VolumePeriod.DAILY) {
-      _format = 'MMM d HH:mm, yyyy'
-    }
-
-    return format(fromUnixTime(time), _format)
-  }, [period, time])
+  const formattedDate = time
+    ? format(fromUnixTime(time), period === VolumePeriod.DAILY ? 'MMM d HH:mm, yyyy' : 'MMM d, yyyy')
+    : ''
 
   if (!value || !containerWidth || !coordinates || !isTopCoordinateValid) return null
 
@@ -163,14 +152,14 @@ const PriceTooltip = ({
   const V_TOOLTIP_MARGIN = 60 // px
   const leftPosition = Math.max(
     H_TOOLTIP_MARGIN,
-    Math.min(containerWidth - (TOOLTIP_WIDTH + H_TOOLTIP_MARGIN), coordinates.left)
+    Math.min(containerWidth - (TOOLTIP_WIDTH + H_TOOLTIP_MARGIN), coordinates.left),
   )
   const topPosition =
     coordinates.top - TOOLTIP_HEIGHT - V_TOOLTIP_MARGIN > 0
       ? coordinates.top - TOOLTIP_HEIGHT - H_TOOLTIP_MARGIN
       : Math.max(
           V_TOOLTIP_MARGIN,
-          Math.min(containerWidth - TOOLTIP_HEIGHT - H_TOOLTIP_MARGIN, coordinates.top + H_TOOLTIP_MARGIN)
+          Math.min(containerWidth - TOOLTIP_HEIGHT - H_TOOLTIP_MARGIN, coordinates.top + H_TOOLTIP_MARGIN),
         )
 
   return (
@@ -180,6 +169,9 @@ const PriceTooltip = ({
     </WrapperTooltipPrice>
   )
 }
+
+// TODO: Break down this large function into smaller functions
+// TODO: Reduce function complexity by extracting logic
 
 export function VolumeChart({
   volumeData,
@@ -213,12 +205,12 @@ export function VolumeChart({
   useEffect(() => {
     if (chartCreated || !chartContainerRef.current || !items || isLoading) return
 
-    const chart = _buildChart(chartContainerRef.current, width, height, theme)
+    const chart = _buildChart(chartContainerRef.current, width, height)
     const series = chart.addAreaSeries({
       lineWidth: 1,
-      lineColor: theme.orange,
-      topColor: theme.orange,
-      bottomColor: theme.orangeOpacity,
+      lineColor: Color.explorer_orange1,
+      topColor: Color.explorer_orange1,
+      bottomColor: Color.explorer_orangeOpacity,
       priceLineVisible: false,
     })
 

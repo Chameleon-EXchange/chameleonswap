@@ -1,19 +1,20 @@
 import React from 'react'
 
-import ICON_NOTIFICATION from '@cowprotocol/assets/images/notification.svg'
+import svgNotificationSrc from '@cowprotocol/assets/images/notification.svg'
 import { Command } from '@cowprotocol/types'
 import { UI } from '@cowprotocol/ui'
 
 import SVG from 'react-inlinesvg'
 import styled from 'styled-components/macro'
 
+import { CowSwapAnalyticsCategory, toCowSwapGtmEvent } from 'common/analytics/types'
 
 const Icon = styled.div<{ hasNotification?: boolean }>`
   --size: 18px;
   width: var(--size);
   height: var(--size);
   position: relative;
-  display: ${({ theme }) => (theme.isInjectedWidgetMode ? 'none' : 'flex')};
+  display: ${({ theme }) => (theme.isWidget ? 'none' : 'flex')};
   align-items: center;
   justify-content: center;
   cursor: pointer;
@@ -61,10 +62,20 @@ interface NotificationBellProps {
   unreadCount: number
 }
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function NotificationBell({ onClick, unreadCount }: NotificationBellProps) {
   return (
-    <Icon hasNotification={unreadCount > 0} onClick={onClick}>
-      <SVG src={ICON_NOTIFICATION} />
+    <Icon
+      hasNotification={unreadCount > 0}
+      onClick={onClick}
+      data-click-event={toCowSwapGtmEvent({
+        category: CowSwapAnalyticsCategory.NOTIFICATIONS,
+        action: 'Toggle notifications panel',
+        label: `Unread count: ${unreadCount}`,
+      })}
+    >
+      <SVG src={svgNotificationSrc} />
     </Icon>
   )
 }

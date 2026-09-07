@@ -3,20 +3,23 @@ import { useEffect } from 'react'
 import { useAllTransactionsDetails } from 'legacy/state/enhancedTransactions/hooks'
 import { HashType } from 'legacy/state/enhancedTransactions/reducer'
 
-import { useCheckEthereumTransactions } from './hooks/useCheckEthereumTransactions'
+import { usePendingTransactionsContext } from './hooks/usePendingTransactionsContext'
 import { useShouldCheckPendingTx } from './hooks/useShouldCheckPendingTx'
 import { checkOnChainTransaction } from './services/checkOnChainTransaction'
 import { checkSafeTransaction } from './services/checkSafeTransaction'
+import { checkSolanaTransaction } from './services/checkSolanaTransaction'
 
 import { OnchainTransactionEventsUpdater } from '../OnchainTransactionEventsUpdater'
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function FinalizeTxUpdater() {
   // Get, from the pending transaction, the ones that we should re-check
   const shouldCheckFilter = useShouldCheckPendingTx()
 
   const transactions = useAllTransactionsDetails(shouldCheckFilter)
 
-  const params = useCheckEthereumTransactions()
+  const params = usePendingTransactionsContext(transactions.length > 0)
 
   useEffect(() => {
     if (!params) return
@@ -24,6 +27,8 @@ export function FinalizeTxUpdater() {
     const promiseCancellations = transactions.map((transaction) => {
       if (transaction.hashType === HashType.GNOSIS_SAFE_TX) {
         return checkSafeTransaction(transaction, params)
+      } else if (transaction.hashType === HashType.SOLANA_TX) {
+        return checkSolanaTransaction(transaction, params)
       } else {
         return checkOnChainTransaction(transaction, params)
       }

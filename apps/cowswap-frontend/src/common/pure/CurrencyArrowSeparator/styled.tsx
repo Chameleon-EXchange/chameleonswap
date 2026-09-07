@@ -8,11 +8,9 @@ import { loadingAnimationMixin } from './style-mixins'
 export const Box = styled.div<{
   isCollapsed: boolean
   hasSeparatorLine?: boolean
-  disabled: boolean
 }>`
   display: block;
   margin: ${({ isCollapsed }) => (isCollapsed ? '-13px auto' : '2px auto')};
-  cursor: ${({ disabled }) => (disabled ? 'inherit' : 'pointer')};
   color: inherit;
   position: relative;
   z-index: 2;
@@ -20,6 +18,7 @@ export const Box = styled.div<{
   height: 26px;
   justify-content: center;
   transition: width var(${UI.ANIMATION_DURATION}) ease-in-out;
+  pointer-events: none;
 
   ${({ hasSeparatorLine }) =>
     hasSeparatorLine &&
@@ -36,8 +35,9 @@ export const Box = styled.div<{
     `}
 `
 
-export const LoadingWrapper = styled.div<{ isLoading: boolean }>`
+export const LoadingWrapper = styled.button<{ $isLoading: boolean }>`
   --size: 26px;
+
   position: absolute;
   left: calc(50% - var(--size) / 2);
   top: 0;
@@ -47,19 +47,29 @@ export const LoadingWrapper = styled.div<{ isLoading: boolean }>`
   transform-style: preserve-3d;
   transform-origin: center right;
   transition: transform 0.25s;
-  border: 0;
   box-shadow: 0 0 0 3px var(${UI.COLOR_PAPER});
   background: var(${UI.COLOR_PAPER_DARKER});
   color: inherit;
   border-radius: 8px;
   width: var(--size);
   margin: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
 
-  &:hover {
-    transform: translateY(-2px);
+  &:disabled {
+    cursor: not-allowed;
   }
 
-  ${({ isLoading }) => isLoading && loadingAnimationMixin}
+  ${({ $isLoading }) =>
+    $isLoading
+      ? loadingAnimationMixin
+      : css`
+          &:not(:disabled):hover {
+            transform: translateY(-2px);
+          }
+        `}
 `
 
 export const ArrowDownIcon = styled(ArrowDown)<{ disabled: boolean }>`
@@ -70,7 +80,7 @@ export const ArrowDownIcon = styled(ArrowDown)<{ disabled: boolean }>`
   padding: 0;
   height: 100%;
   width: 20px;
-  cursor: ${({ disabled }) => (disabled ? 'inherit' : 'pointer')};
+  cursor: inherit;
   color: inherit;
 `
 
@@ -107,4 +117,3 @@ export const ChameleonLoader = styled.div`
     }
   }
 `
-

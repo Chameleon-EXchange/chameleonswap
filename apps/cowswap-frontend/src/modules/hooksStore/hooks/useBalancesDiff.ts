@@ -1,29 +1,15 @@
 import { useMemo } from 'react'
 
+import { getAddressKey } from '@cowprotocol/cow-sdk'
 import { useWalletInfo } from '@cowprotocol/wallet'
 
-import { BigNumber } from 'ethers'
+import { useHooks } from 'entities/orderHooks/useHooks'
+import { useOrderParams } from 'entities/orderHooks/useOrderParams'
 
 import { useTenderlyBundleSimulation } from 'modules/tenderly/hooks/useTenderlyBundleSimulation'
 import { BalancesDiff } from 'modules/tenderly/types'
 
-import { useHooks } from './useHooks'
-import { useOrderParams } from './useOrderParams'
-
 const EMPTY_BALANCE_DIFF: BalancesDiff = {}
-
-export function usePreHookBalanceDiff(): BalancesDiff {
-  const { data } = useTenderlyBundleSimulation()
-
-  const { preHooks } = useHooks()
-
-  return useMemo(() => {
-    if (!data || !preHooks.length) return EMPTY_BALANCE_DIFF
-
-    const lastPreHook = preHooks[preHooks.length - 1]
-    return data[lastPreHook?.uuid]?.cumulativeBalancesDiff || EMPTY_BALANCE_DIFF
-  }, [data, preHooks])
-}
 
 // Returns all the ERC20 Balance Diff of the current hook to be passed to the iframe context
 export function useHookBalancesDiff(isPreHook: boolean, hookToEditUid?: string): BalancesDiff {
@@ -40,12 +26,12 @@ export function useHookBalancesDiff(isPreHook: boolean, hookToEditUid?: string):
     const balanceDiff: Record<string, string> = {}
 
     if (orderParams?.buyAmount && orderParams.buyTokenAddress && account)
-      balanceDiff[orderParams.buyTokenAddress.toLowerCase()] = orderParams.buyAmount
+      balanceDiff[getAddressKey(orderParams.buyTokenAddress)] = orderParams.buyAmount
 
     if (orderParams?.sellAmount && orderParams.sellTokenAddress && account)
-      balanceDiff[orderParams.sellTokenAddress.toLowerCase()] = `-${orderParams.sellAmount}`
+      balanceDiff[getAddressKey(orderParams.sellTokenAddress)] = `-${orderParams.sellAmount}`
 
-    return { account: balanceDiff }
+    return { [getAddressKey(account)]: balanceDiff }
   }, [orderParams, account])
 
   const firstPostHookBalanceDiff = useMemo(() => {
@@ -60,6 +46,8 @@ export function useHookBalancesDiff(isPreHook: boolean, hookToEditUid?: string):
     return data[lastPostHook?.uuid]?.cumulativeBalancesDiff || firstPostHookBalanceDiff
   }, [data, firstPostHookBalanceDiff, postHooks])
 
+  // TODO: Reduce function complexity by extracting logic
+  // eslint-disable-next-line complexity
   const hookToEditBalanceDiff = useMemo(() => {
     if (!data || !hookToEditUid) return EMPTY_BALANCE_DIFF
 
@@ -86,6 +74,19 @@ export function useHookBalancesDiff(isPreHook: boolean, hookToEditUid?: string):
   }, [hookToEditBalanceDiff, hookToEditUid, isPreHook, postHookBalanceDiff, preHookBalanceDiff])
 }
 
+export function usePreHookBalanceDiff(): BalancesDiff {
+  const { data } = useTenderlyBundleSimulation()
+
+  const { preHooks } = useHooks()
+
+  return useMemo(() => {
+    if (!data || !preHooks.length) return EMPTY_BALANCE_DIFF
+
+    const lastPreHook = preHooks[preHooks.length - 1]
+    return data[lastPreHook?.uuid]?.cumulativeBalancesDiff || EMPTY_BALANCE_DIFF
+  }, [data, preHooks])
+}
+
 function mergeBalanceDiffs(first: BalancesDiff, second: BalancesDiff): BalancesDiff {
   const result: BalancesDiff = {}
 
@@ -110,7 +111,7 @@ function mergeBalanceDiffs(first: BalancesDiff, second: BalancesDiff): BalancesD
         } else {
           // If token exists, sum up the balances
           try {
-            result[address][token] = BigNumber.from(result[address][token]).add(second[address][token]).toString()
+            result[address][token] = (BigInt(result[address][token]) + BigInt(second[address][token])).toString()
           } catch (error) {
             console.error(`Error adding balances for address ${address} and token ${token}:`, error)
             throw error

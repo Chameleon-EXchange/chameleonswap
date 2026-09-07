@@ -1,5 +1,5 @@
 import { OrderClass } from '@cowprotocol/cow-sdk'
-import { SafeMultisigTransactionResponse } from '@safe-global/safe-core-sdk-types'
+import type { SafeMultisigTransactionResponse } from '@safe-global/types-kit'
 
 import { createReducer } from '@reduxjs/toolkit'
 
@@ -14,15 +14,10 @@ import {
   SerializableTransactionReceipt,
 } from './actions'
 
-export enum HashType {
-  ETHEREUM_TX = 'ETHEREUM_TX',
-  GNOSIS_SAFE_TX = 'GNOSIS_SAFE_TX',
-}
-
 export interface EnhancedTransactionDetails {
   hash: string // The hash of the transaction, normally Ethereum one, but not necessarily
   hashType: HashType // Transaction hash: could be Ethereum tx, or for multisigs could be some kind of hash identifying the order (i.e. Gnosis Safe)
-  transactionHash?: string // Transaction hash. For EOA this field is immediately available, however, other wallets go through a process of offchain signing before the transactionHash is available
+  transactionHash: string | null // Transaction hash. For EOA this field is immediately available, however, other wallets go through a process of offchain signing before the transactionHash is available
   nonce: number
 
   // Params using for polling handling
@@ -34,6 +29,8 @@ export interface EnhancedTransactionDetails {
   summary?: string
   confirmedTime?: number
   receipt?: SerializableTransactionReceipt // Ethereum transaction receipt
+  // TODO: Replace any with proper type definitions
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data?: any // any attached data type
 
   // Operations
@@ -68,10 +65,21 @@ export interface EnhancedTransactionState {
   }
 }
 
+export enum HashType {
+  ETHEREUM_TX = 'ETHEREUM_TX',
+  GNOSIS_SAFE_TX = 'GNOSIS_SAFE_TX',
+  /** Solana transaction signature. Unlike EVM, there is no nonce and no receipt to poll for. */
+  SOLANA_TX = 'SOLANA_TX',
+}
+
 export const initialState: EnhancedTransactionState = {}
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 const now = () => new Date().getTime()
 
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 function updateBlockNumber(tx: EnhancedTransactionDetails, blockNumber: number) {
   if (!tx.lastCheckedBlockNumber) {
     tx.lastCheckedBlockNumber = blockNumber
@@ -80,6 +88,8 @@ function updateBlockNumber(tx: EnhancedTransactionDetails, blockNumber: number) 
   }
 }
 
+// TODO: Break down this large function into smaller functions
+// eslint-disable-next-line max-lines-per-function
 export default createReducer(initialState, (builder) =>
   builder
     .addCase(
@@ -104,7 +114,7 @@ export default createReducer(initialState, (builder) =>
             ethFlow,
             onChainCancellation,
           },
-        }
+        },
       ) => {
         if (transactions[chainId]?.[hash]) {
           console.warn('[state::enhancedTransactions] Attempted to add existing transaction', hash)
@@ -114,7 +124,9 @@ export default createReducer(initialState, (builder) =>
         const txs = transactions[chainId] ?? {}
         txs[hash] = {
           hash,
-          transactionHash: hashType === HashType.ETHEREUM_TX ? hash : undefined,
+          // Only Safe transactions start life without a real on-chain hash: they are offchain-signed
+          // first, and the tx hash only appears once the Safe executes them.
+          transactionHash: hashType === HashType.GNOSIS_SAFE_TX ? null : hash,
           nonce,
           hashType,
           addedTime: now(),
@@ -133,7 +145,7 @@ export default createReducer(initialState, (builder) =>
           onChainCancellation,
         }
         transactions[chainId] = txs
-      }
+      },
     )
 
     .addCase(clearAllTransactions, (transactions, { payload: { chainId } }) => {
@@ -156,6 +168,10 @@ export default createReducer(initialState, (builder) =>
       }
       tx.receipt = receipt
       tx.confirmedTime = now()
+
+      if (receipt.status === 'reverted') {
+        tx.errorMessage = 'Transaction failed'
+      }
 
       if (tx.linkedTransactionHash) {
         delete transactions[chainId]?.[tx.linkedTransactionHash]
@@ -215,5 +231,5 @@ export default createReducer(initialState, (builder) =>
 
       // Update safe info
       tx.safeTransaction = safeTransaction
-    })
+    }),
 )

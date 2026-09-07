@@ -1,50 +1,9 @@
-import { useCallback, useMemo } from 'react'
+import { useAtomValue } from 'jotai'
 
-import { useAppDispatch } from 'legacy/state/hooks'
-import { replaceOnlyTradeRawState, ReplaceOnlyTradeRawStatePayload } from 'legacy/state/swap/actions'
+import { swapRawStateAtom } from '../state/swapRawStateAtom'
 
-import { ExtendedTradeRawState, TradeRawState } from 'modules/trade/types/TradeRawState'
-
-import { useSwapState } from './useSwapState'
-
-export function useSwapRawState(): TradeRawState {
-  const swapState = useSwapState()
-
-  return useMemo(
-    () => ({
-      chainId: swapState.chainId,
-      recipient: swapState.recipient,
-      recipientAddress: swapState.recipientAddress,
-      inputCurrencyId: swapState.INPUT.currencyId || null,
-      outputCurrencyId: swapState.OUTPUT.currencyId || null,
-    }),
-    [
-      swapState.chainId,
-      swapState.recipient,
-      swapState.recipientAddress,
-      swapState.INPUT.currencyId,
-      swapState.OUTPUT.currencyId,
-    ]
-  )
-}
-
-export function useUpdateSwapRawState(): (update: Partial<ExtendedTradeRawState>) => void {
-  const dispatch = useAppDispatch()
-
-  return useCallback(
-    (state: Partial<ExtendedTradeRawState>) => {
-      const newState: ReplaceOnlyTradeRawStatePayload = {
-        chainId: state.chainId ?? null,
-        recipient: state.recipient ?? null,
-        recipientAddress: state.recipientAddress ?? null,
-        inputCurrencyId: state.inputCurrencyId || undefined,
-        outputCurrencyId: state.outputCurrencyId || undefined,
-        inputCurrencyAmount: state.inputCurrencyAmount ?? undefined,
-        outputCurrencyAmount: state.outputCurrencyAmount ?? undefined,
-      }
-
-      dispatch(replaceOnlyTradeRawState(newState))
-    },
-    [dispatch]
-  )
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export function useSwapRawState() {
+  return useAtomValue(swapRawStateAtom)
 }

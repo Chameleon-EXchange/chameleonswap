@@ -1,110 +1,153 @@
-import { useAtomValue } from 'jotai'
-import { useLayoutEffect, useMemo } from 'react'
+import { useAtom, useAtomValue } from 'jotai'
+import { useLayoutEffect, useRef } from 'react'
 
-import { useDebounce } from '@cowprotocol/common-hooks'
-import { onlyResolvesLast } from '@cowprotocol/common-utils'
-import { OrderQuoteResponse, PriceQuality } from '@cowprotocol/cow-sdk'
-import { useAreUnsupportedTokens } from '@cowprotocol/tokens'
+import { useIsOnline, useIsWindowVisible, usePrevious } from '@cowprotocol/common-hooks'
+import { getCurrencyAddress } from '@cowprotocol/common-utils'
 
+import { captchaCanQuoteAtom } from 'entities/captcha/state/captchaCanQuoteAtom'
 import ms from 'ms.macro'
 
-import { useUpdateCurrencyAmount } from 'modules/trade/hooks/useUpdateCurrencyAmount'
-
-import { getQuote } from 'api/cowProtocol/api'
-import QuoteApiError, { QuoteApiErrorCodes } from 'api/cowProtocol/errors/QuoteError'
-
-import { useProcessUnsupportedTokenError } from './useProcessUnsupportedTokenError'
+import { usePollQuoteCallback } from './usePollQuoteCallback'
 import { useQuoteParams } from './useQuoteParams'
-import { useUpdateTradeQuote } from './useUpdateTradeQuote'
+import { useTradeQuote } from './useTradeQuote'
+import { useResetQuoteCounter } from './useTradeQuoteCounter'
+import { useTradeQuoteManager } from './useTradeQuoteManager'
 
-import { tradeQuoteParamsAtom } from '../state/tradeQuoteParamsAtom'
+import { QUOTE_POLLING_INTERVAL } from '../consts'
+import { tradeQuoteCounterAtom } from '../state/tradeQuoteCounterAtom'
+import { tradeQuoteInputAtom } from '../state/tradeQuoteInputAtom'
+import { TradeQuotePollingParameters } from '../types'
+import { isQuoteExpired } from '../utils/quoteDeadline'
 
-export const PRICE_UPDATE_INTERVAL = ms`30s`
-const AMOUNT_CHANGE_DEBOUNCE_TIME = ms`300`
+const ONE_SEC = 1000
+const QUOTE_VALIDATION_INTERVAL = ms`2s`
 
-// Solves the problem of multiple requests
-const getFastQuote = onlyResolvesLast<OrderQuoteResponse>(getQuote)
-const getOptimalQuote = onlyResolvesLast<OrderQuoteResponse>(getQuote)
+export function useTradeQuotePolling(quotePollingParams: TradeQuotePollingParameters): null {
+  const { isConfirmOpen, isQuoteUpdatePossible } = quotePollingParams
 
-export function useTradeQuotePolling() {
-  const { amount, fastQuote } = useAtomValue(tradeQuoteParamsAtom)
-  const amountStr = useDebounce(
-    useMemo(() => amount?.quotient.toString() || null, [amount]),
-    AMOUNT_CHANGE_DEBOUNCE_TIME,
-  )
-  const quoteParams = useQuoteParams(amountStr)
+  const canQuote = useAtomValue(captchaCanQuoteAtom)
+  const { amount, partiallyFillable } = useAtomValue(tradeQuoteInputAtom)
+  const [tradeQuotePolling, setTradeQuotePolling] = useAtom(tradeQuoteCounterAtom)
+  const resetQuoteCounter = useResetQuoteCounter()
+  const tradeQuote = useTradeQuote()
+  const prevIsConfirmOpen = usePrevious(isConfirmOpen)
+  const tradeQuoteRef = useRef(tradeQuote)
+  // eslint-disable-next-line react-hooks/refs
+  tradeQuoteRef.current = tradeQuote
 
-  const updateQuoteState = useUpdateTradeQuote()
-  const updateCurrencyAmount = useUpdateCurrencyAmount()
-  const getIsUnsupportedTokens = useAreUnsupportedTokens()
-  const processUnsupportedTokenError = useProcessUnsupportedTokenError()
+  const amountStr = amount?.quotient.toString()
+  const quoteParamsState = useQuoteParams(amountStr, partiallyFillable)
+  const { quoteParams, inputCurrency } = quoteParamsState || {}
 
+  const currentAmountRef = useRef<string | null>(null)
+  // eslint-disable-next-line react-hooks/refs
+  currentAmountRef.current = amountStr ?? null
+
+  const tradeQuoteManager = useTradeQuoteManager(inputCurrency && getCurrencyAddress(inputCurrency))
+
+  const isWindowVisible = useIsWindowVisible()
+  const isOnline = useIsOnline()
+  const isOnlineRef = useRef(isOnline)
+  // eslint-disable-next-line react-hooks/refs
+  isOnlineRef.current = isOnline
+
+  const pollQuote = usePollQuoteCallback(quotePollingParams, quoteParamsState, currentAmountRef)
+  const pollQuoteRef = useRef(pollQuote)
+  // eslint-disable-next-line react-hooks/refs
+  pollQuoteRef.current = pollQuote
+
+  /**
+   * Reset quote when window is not visible or sell amount has been cleared
+   */
   useLayoutEffect(() => {
-    if (!quoteParams) {
-      updateQuoteState({ response: null, isLoading: false })
-      return
+    // Do not reset the quote if the confirm modal is open
+    // Because we already have a quote and don't want to reset it
+    if (isConfirmOpen) return
+    if (!tradeQuoteManager) return
+
+    if (!isWindowVisible || !document.hasFocus() || !amountStr) {
+      tradeQuoteManager.reset()
+      setTradeQuotePolling(0)
+    }
+  }, [isWindowVisible, tradeQuoteManager, isConfirmOpen, amountStr, setTradeQuotePolling])
+
+  /**
+   * Fetch the quote instantly once the quote params are changed
+   */
+  useLayoutEffect(() => {
+    /**
+     * Quote params are not supposed to be changed once confirm screen is open
+     * So, we should not refetch quote
+     */
+    if (isConfirmOpen) return
+
+    if (pollQuoteRef.current(true)) {
+      resetQuoteCounter()
+    }
+  }, [canQuote, isConfirmOpen, isQuoteUpdatePossible, quoteParams, resetQuoteCounter])
+
+  /**
+   * Update quote once a QUOTE_POLLING_INTERVAL
+   */
+  useLayoutEffect(() => {
+    if (tradeQuotePolling !== 0) return
+
+    pollQuoteRef.current(false, true)
+  }, [tradeQuotePolling])
+
+  /**
+   * Reset counter and update quote each time when confirmation modal is closed
+   */
+  useLayoutEffect(() => {
+    if (prevIsConfirmOpen === isConfirmOpen) return
+
+    if (!isConfirmOpen) {
+      setTradeQuotePolling(0)
+    }
+  }, [setTradeQuotePolling, prevIsConfirmOpen, isConfirmOpen])
+
+  /**
+   * Tick quote polling counter
+   */
+  useLayoutEffect(() => {
+    const interval = setInterval(() => {
+      // Do not tick while quoting is blocked or a quote is loading
+      if (!canQuote || tradeQuoteRef.current.isLoading) return
+
+      setTradeQuotePolling((state) => {
+        const newState = state - ONE_SEC
+
+        if (newState < 0) {
+          return QUOTE_POLLING_INTERVAL
+        }
+
+        return newState
+      })
+    }, ONE_SEC)
+
+    return () => {
+      clearInterval(interval)
+    }
+  }, [canQuote, setTradeQuotePolling])
+
+  /**
+   * Once quote is expired - update quote
+   */
+  useLayoutEffect(() => {
+    function revalidateQuoteIfExpired(): void {
+      if (isQuoteExpired(tradeQuote)) {
+        setTradeQuotePolling(0)
+      }
     }
 
-    const isUnsupportedTokens = getIsUnsupportedTokens(quoteParams)
+    revalidateQuoteIfExpired()
 
-    // Don't fetch quote if token is not supported
-    if (isUnsupportedTokens) {
-      return
+    const interval = setInterval(revalidateQuoteIfExpired, QUOTE_VALIDATION_INTERVAL)
+
+    return () => {
+      clearInterval(interval)
     }
-
-    const fetchQuote = (hasParamsChanged: boolean, priceQuality: PriceQuality, fetchStartTimestamp: number) => {
-      updateQuoteState({ isLoading: true, hasParamsChanged })
-
-      const isOptimalQuote = priceQuality === PriceQuality.OPTIMAL
-      const requestParams = { ...quoteParams, priceQuality }
-      const request = isOptimalQuote ? getOptimalQuote(requestParams) : getFastQuote(requestParams)
-
-      return request
-        .then((response) => {
-          const { cancelled, data } = response
-
-          if (cancelled) {
-            return
-          }
-
-          updateQuoteState({
-            response: data,
-            quoteParams: requestParams,
-            ...(isOptimalQuote ? { isLoading: false } : null),
-            error: null,
-            hasParamsChanged: false,
-            fetchStartTimestamp,
-          })
-        })
-        .catch((error: QuoteApiError) => {
-          console.log('[useGetQuote]:: fetchQuote error', error)
-          updateQuoteState({ isLoading: false, error, hasParamsChanged: false })
-
-          if (error.type === QuoteApiErrorCodes.UnsupportedToken) {
-            processUnsupportedTokenError(error, requestParams)
-          }
-        })
-    }
-
-    const fetchStartTimestamp = Date.now()
-    if (fastQuote) fetchQuote(true, PriceQuality.FAST, fetchStartTimestamp)
-    fetchQuote(true, PriceQuality.OPTIMAL, fetchStartTimestamp)
-
-    const intervalId = setInterval(() => {
-      const fetchStartTimestamp = Date.now()
-      if (fastQuote) fetchQuote(false, PriceQuality.FAST, fetchStartTimestamp)
-      fetchQuote(false, PriceQuality.OPTIMAL, fetchStartTimestamp)
-    }, PRICE_UPDATE_INTERVAL)
-
-    return () => clearInterval(intervalId)
-  }, [
-    fastQuote,
-    quoteParams,
-    updateQuoteState,
-    updateCurrencyAmount,
-    processUnsupportedTokenError,
-    getIsUnsupportedTokens,
-  ])
+  }, [tradeQuote, setTradeQuotePolling])
 
   return null
 }

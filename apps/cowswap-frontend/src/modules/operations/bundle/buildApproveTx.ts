@@ -1,21 +1,23 @@
-import { Erc20 } from '@cowprotocol/abis'
-import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
-
-import { estimateApprove } from 'common/hooks/useApproveCallback'
+import { erc20Abi, encodeFunctionData, type TransactionRequest } from 'viem'
 
 export type BuildApproveTxParams = {
-  erc20Contract: Erc20
+  tokenAddress: string
   spender: string
-  amountToApprove: CurrencyAmount<Currency>
+  amountToApprove: bigint
 }
 
 /**
  * Builds the approval tx, without sending it
  */
-export async function buildApproveTx(params: BuildApproveTxParams) {
-  const { erc20Contract, spender, amountToApprove } = params
+export async function buildApproveTx(params: BuildApproveTxParams): Promise<TransactionRequest> {
+  const { tokenAddress, spender, amountToApprove } = params
 
-  const estimatedAmount = await estimateApprove(erc20Contract, spender, amountToApprove.quotient.toString())
-
-  return erc20Contract.populateTransaction.approve(spender, estimatedAmount.approveAmount)
+  return {
+    to: tokenAddress as `0x${string}`,
+    data: encodeFunctionData({
+      abi: erc20Abi,
+      functionName: 'approve',
+      args: [spender as `0x${string}`, amountToApprove],
+    }),
+  }
 }

@@ -1,71 +1,177 @@
+import { ReactNode } from 'react'
+
+import { i18n } from '@lingui/core'
+
 import {
   INPUT_OUTPUT_EXPLANATION,
   MINIMUM_ETH_FLOW_DEADLINE_SECONDS,
   MINIMUM_ETH_FLOW_SLIPPAGE,
   PERCENTAGE_PRECISION,
 } from '@cowprotocol/common-const'
-import { SupportedChainId } from '@cowprotocol/cow-sdk'
+import { SimpleStyledText } from '@cowprotocol/ui'
 
-import { Trans } from '@lingui/macro'
+import { t } from '@lingui/core/macro'
+import { Trans } from '@lingui/react/macro'
 
-export function getNativeOrderDeadlineTooltip(symbols: (string | undefined)[] | undefined) {
+export interface GetNonNativeSlippageTooltipParams {
+  isDynamic?: boolean
+  isSettingsModal?: boolean
+  slippageWarningParams?: null | SlippageWarningParams
+}
+
+export interface SlippageWarningParams {
+  tooHigh: boolean
+  tooLow: boolean
+  min: number
+  max: number
+  lowSlippageBound: number
+  highSlippageBound: number
+}
+
+export function getNativeOrderDeadlineTooltip(symbols: (string | undefined)[] | undefined): ReactNode {
+  const symbolName = symbols?.[0] || t`Native currency (e.g ETH)`
+  const minutes = MINIMUM_ETH_FLOW_DEADLINE_SECONDS / 60
+
   return (
-    <Trans>
-      {symbols?.[0] || 'Native currency (e.g ETH)'} orders require a minimum transaction expiration time threshold of{' '}
-      {MINIMUM_ETH_FLOW_DEADLINE_SECONDS / 60} minutes to ensure the best swapping experience.
-      <br />
-      <br />
-      Orders not matched after the threshold time are automatically refunded.
-    </Trans>
+    <SimpleStyledText>
+      <p>
+        <Trans>
+          {symbolName} orders require a minimum transaction expiration time threshold of {minutes} minutes to ensure the
+          best swapping experience.
+        </Trans>
+      </p>
+      <p>
+        <Trans>Orders not matched after the threshold time are automatically refunded.</Trans>
+      </p>
+    </SimpleStyledText>
   )
 }
 
-export function getNonNativeOrderDeadlineTooltip() {
+export function getNativeSlippageTooltip(
+  symbols: (string | undefined)[] | undefined,
+  slippageWarningParams?: null | SlippageWarningParams,
+): ReactNode {
+  const amountRange = slippageWarningParams ? ` (${slippageWarningParams?.min} - ${slippageWarningParams?.max}%)` : ''
+  const minimumETHFlowSlippage = MINIMUM_ETH_FLOW_SLIPPAGE.toSignificant(PERCENTAGE_PRECISION)
+  const aNativeCurrency = symbols?.[0] || t`a native currency`
+  const currencyNameCapitalized = symbols?.[0] || t`Native currency`
+  const currencyName = symbols?.[0] || t`native currency`
+
   return (
-    <Trans>
-      Your swap expires and will not execute if it is pending for longer than the selected duration.
-      <br />
-      <br />
-      {INPUT_OUTPUT_EXPLANATION}
-    </Trans>
+    <SimpleStyledText>
+      <p>
+        <Trans>
+          When selling {aNativeCurrency}, the minimum slippage tolerance is set to {minimumETHFlowSlippage}% or higher
+          {amountRange} to ensure a high likelihood of order matching, even in volatile market conditions.
+        </Trans>
+      </p>
+      <p>
+        <Trans>
+          {currencyNameCapitalized} orders can, in rare cases, be frontrun due to their on-chain component. For more
+          robust MEV protection, consider wrapping your {currencyName} before trading.
+        </Trans>
+      </p>
+    </SimpleStyledText>
   )
 }
 
-export const getNativeSlippageTooltip = (chainId: SupportedChainId, symbols: (string | undefined)[] | undefined) => (
-  <Trans>
-    When selling {symbols?.[0] || 'a native currency'}, the minimum slippage tolerance is set to{' '}
-    {MINIMUM_ETH_FLOW_SLIPPAGE[chainId].toSignificant(PERCENTAGE_PRECISION)}% to ensure a high likelihood of order
-    matching, even in volatile market conditions.
-    <br />
-    <br />
-    {symbols?.[0] || 'Native currency'} orders can, in rare cases, be frontrun due to their on-chain component. For more
-    robust MEV protection, consider wrapping your {symbols?.[0] || 'native currency'} before trading.
-  </Trans>
-)
+export function getNonNativeOrderDeadlineTooltip(): ReactNode {
+  return (
+    <SimpleStyledText>
+      <p>
+        <Trans>Your swap expires and will not execute if it is pending for longer than the selected duration.</Trans>
+      </p>
+      <p>{i18n._(INPUT_OUTPUT_EXPLANATION)}</p>
+    </SimpleStyledText>
+  )
+}
 
-export const getNonNativeSlippageTooltip = (params?: { isDynamic?: boolean; isSettingsModal?: boolean }) => (
-  <Trans>
-    {params?.isDynamic ? (
-      <>
-        Chameleon swap dynamically adjusts your slippage tolerance to ensure your trade executes quickly while still
-        getting the best price.{' '}
-        {params?.isSettingsModal ? (
+export function getNonNativeSlippageTooltip({
+  isDynamic,
+  isSettingsModal,
+  slippageWarningParams,
+}: GetNonNativeSlippageTooltipParams = {}): ReactNode {
+  const amountRange = slippageWarningParams ? ` (${slippageWarningParams?.min} - ${slippageWarningParams?.max}%)` : ''
+
+  if (isDynamic) {
+    return (
+      <SimpleStyledText>
+        <p>
+          <Trans>
+            CoW Swap has dynamically selected this slippage tolerance, accounting for current gas prices and trade size,
+            to ensure your trade executes quickly while still getting the best price.
+          </Trans>
+        </p>
+
+        {isSettingsModal ? (
           <>
-            To override this, enter your desired slippage amount.
-            <br />
-            <br />
-            Either way, your slippage is protected from MEV!
+            <p>
+              <Trans>
+                To override this, enter your desired slippage amount{amountRange}, but this may result in slower
+                execution.
+              </Trans>
+            </p>
+            <p>
+              <Trans>Either way, trades are protected from MEV, so your slippage can't be exploited!</Trans>
+            </p>
           </>
         ) : (
-          <>
-            <br />
-            <br />
-            Trades are protected from MEV, so your slippage can't be exploited!
-          </>
+          <p>
+            <Trans>Trades are protected from MEV, so your slippage can't be exploited!</Trans>
+          </p>
         )}
-      </>
-    ) : (
-      <>Chameleon swap trades are protected from MEV, so your slippage can't be exploited!</>
-    )}
-  </Trans>
-)
+      </SimpleStyledText>
+    )
+  }
+
+  /*
+  If at some point we want to show the specific ranges our validation logic considers:
+
+  if (slippageWarningParams) {
+    const manualSlippageDescription = (
+      <ul>
+        <li>
+          <Trans>
+            {slippageWarningParams.min.toFixed(2)} - {(slippageWarningParams.lowSlippageBound - 0.01).toFixed(2)}%: Low
+            slippage. Your transaction may expire.
+          </Trans>
+        </li>
+        <li>
+          <Trans>
+            {slippageWarningParams.lowSlippageBound.toFixed(2)} - {slippageWarningParams.highSlippageBound.toFixed(2)}%:
+            Recommended slippage tolerance.
+          </Trans>
+        </li>
+        <li>
+          <Trans>
+            {(slippageWarningParams.highSlippageBound + 0.01).toFixed(2)} - {slippageWarningParams.max.toFixed(2)}%:
+            High slippage. You may not get the best price.
+          </Trans>
+        </li>
+      </ul>
+    )
+  }
+  */
+
+  return (
+    <SimpleStyledText>
+      <p>
+        <Trans>Custom slippage amount set{amountRange}.</Trans>
+      </p>
+      {isSettingsModal ? (
+        <>
+          <p>
+            <Trans>To let Cow Swap automatically select the slippage tolerance, toggle the "Auto" option.</Trans>
+          </p>
+          <p>
+            <Trans>Either way, trades are protected from MEV, so your slippage can't be exploited!</Trans>
+          </p>
+        </>
+      ) : (
+        <p>
+          <Trans>Trades are protected from MEV, so your slippage can't be exploited!</Trans>
+        </p>
+      )}
+    </SimpleStyledText>
+  )
+}

@@ -1,10 +1,10 @@
 import { createStore } from 'jotai/vanilla'
 import { ReactNode } from 'react'
 
-import { COW as COWS, USDC_MAINNET } from '@cowprotocol/common-const'
+import { COW_TOKEN_TO_CHAIN, USDC_MAINNET } from '@cowprotocol/common-const'
 import { FractionUtils } from '@cowprotocol/common-utils'
 import { SupportedChainId } from '@cowprotocol/cow-sdk'
-import { Fraction, Token } from '@uniswap/sdk-core'
+import { Fraction, Token } from '@cowprotocol/currency'
 
 import { act, render, waitFor } from '@testing-library/react'
 import { SWRConfig } from 'swr'
@@ -17,6 +17,21 @@ import * as cowProtocolApi from '../apis/getCowProtocolUsdPrice'
 import * as defillamaApi from '../apis/getDefillamaUsdPrice'
 import * as services from '../services/fetchCurrencyUsdPrice'
 import { currenciesUsdPriceQueueAtom, UsdRawPrices, usdRawPricesAtom } from '../state/usdRawPricesAtom'
+import { getUsdPriceStateKey } from '../utils/usdPriceStateKey'
+
+jest.mock('common/hooks/useIsProviderNetworkUnsupported', () => {
+  return {
+    ...jest.requireActual('common/hooks/useIsProviderNetworkUnsupported'),
+    useIsProviderNetworkUnsupported: jest.fn().mockReturnValue(false),
+  }
+})
+
+// getWrappedToken converts ERC-20s on mainnet to WETH, which breaks identity checks
+// in the mock (currency === USDC). Return the token as-is so mock conditions are met.
+jest.mock('@cowprotocol/common-utils', () => ({
+  ...jest.requireActual('@cowprotocol/common-utils'),
+  getWrappedToken: (currency: unknown) => currency,
+}))
 
 const mockGetBffUsdPrice = jest.spyOn(bffUsdApi, 'getBffUsdPrice')
 const mockGetDefillamaUsdPrice = jest.spyOn(defillamaApi, 'getDefillamaUsdPrice')
@@ -24,16 +39,22 @@ const mockGetCowProtocolUsdPrice = jest.spyOn(cowProtocolApi, 'getCowProtocolUsd
 const mockFetchCurrencyUsdPrice = jest.spyOn(services, 'fetchCurrencyUsdPrice')
 
 const USDC = USDC_MAINNET
-const COW = COWS[SupportedChainId.MAINNET]
+const CowToken = COW_TOKEN_TO_CHAIN[SupportedChainId.MAINNET]
 
-const usdcAddress = USDC.address.toLowerCase()
-const cowAddress = COW.address.toLowerCase()
-
-const defaultQueue = {
-  [usdcAddress]: USDC,
-  [cowAddress]: COW,
+if (!CowToken) {
+  throw new Error(`COW token not found for chain ${SupportedChainId.MAINNET}`)
 }
 
+const usdcKey = getUsdPriceStateKey(USDC)
+const cowKey = getUsdPriceStateKey(CowToken)
+
+const defaultQueue = {
+  [usdcKey]: USDC,
+  [cowKey]: CowToken,
+}
+
+// TODO: Add proper return type annotation
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 function getWrapper() {
   const store = createStore()
   const initialValues = [[currenciesUsdPriceQueueAtom, { ...defaultQueue }]]
@@ -78,6 +99,8 @@ async function performTest(
   return store.get(usdRawPricesAtom)
 }
 
+// TODO: Break down this large function into smaller functions
+
 describe('UsdPricesUpdater', () => {
   afterEach(() => {
     jest.resetAllMocks()
@@ -89,8 +112,8 @@ describe('UsdPricesUpdater', () => {
       return new Promise(() => void 0)
     }, 0)
 
-    expect(state[usdcAddress].isLoading).toBe(true)
-    expect(state[cowAddress].isLoading).toBe(true)
+    expect(state[usdcKey].isLoading).toBe(true)
+    expect(state[cowKey].isLoading).toBe(true)
   })
 
   it('Should reset isLoading and value fields on fetching error', async () => {
@@ -101,8 +124,8 @@ describe('UsdPricesUpdater', () => {
       })
     }, 2)
 
-    expect(state[usdcAddress]).toEqual({ isLoading: false, price: null, currency: USDC })
-    expect(state[cowAddress]).toEqual({ isLoading: false, price: null, currency: COW })
+    expect(state[usdcKey]).toEqual({ isLoading: false, price: null, currency: USDC })
+    expect(state[cowKey]).toEqual({ isLoading: false, price: null, currency: CowToken })
   })
 
   it('Should set price value and isLoading=false on fetching success', async () => {
@@ -114,35 +137,35 @@ describe('UsdPricesUpdater', () => {
       return new Promise((resolve) => {
         if (currency === USDC) {
           resolve(usdcPrice)
-        } else if (currency === COW) {
+        } else if (currency === CowToken) {
           resolve(cowPrice)
         }
       })
     }, 2)
 
-    expect(state[usdcAddress]).toEqual({
-      isLoading: false,
-      price: usdcPrice,
-      currency: USDC,
-      updatedAt: expect.any(Number),
-    })
-    expect(state[cowAddress]).toEqual({
-      isLoading: false,
-      price: cowPrice,
-      currency: COW,
-      updatedAt: expect.any(Number),
-    })
+    // Use toBe for Fraction/Token fields — toEqual recurses into JSBI (extends Array)
+    // and triggers infinite recursion in Jest's sparseArrayEquality tester.
+    expect(state[usdcKey].isLoading).toBe(false)
+    expect(state[usdcKey].price).toBe(usdcPrice)
+    expect(state[usdcKey].currency).toBe(USDC)
+    expect(state[usdcKey].updatedAt).toEqual(expect.any(Number))
+
+    expect(state[cowKey].isLoading).toBe(false)
+    expect(state[cowKey].price).toBe(cowPrice)
+    expect(state[cowKey].currency).toBe(CowToken)
+    expect(state[cowKey].updatedAt).toEqual(expect.any(Number))
   })
 
   it('Should use BFF API by default', async () => {
     const price = FractionUtils.fromNumber(3.5)
 
+    mockFetchCurrencyUsdPrice.mockRestore()
     mockGetBffUsdPrice.mockImplementation(() => Promise.resolve(price))
 
     const state = await performTest()
 
-    expect(state[usdcAddress].price).toBe(price)
-    expect(state[cowAddress].price).toBe(price)
+    expect(state[usdcKey].price).toBe(price)
+    expect(state[cowKey].price).toBe(price)
 
     expect(mockGetBffUsdPrice).toHaveBeenCalledTimes(2)
     expect(mockGetCowProtocolUsdPrice).toHaveBeenCalledTimes(0)
@@ -152,13 +175,14 @@ describe('UsdPricesUpdater', () => {
   it('Should fallback to Defillama API when BFF is down', async () => {
     const price = FractionUtils.fromNumber(7.22)
 
+    mockFetchCurrencyUsdPrice.mockRestore()
     mockGetBffUsdPrice.mockImplementation(() => Promise.reject(new Error('Server error')))
     mockGetDefillamaUsdPrice.mockImplementation(() => Promise.resolve(price))
 
     const state = await performTest()
 
-    expect(state[usdcAddress].price).toBe(price)
-    expect(state[cowAddress].price).toBe(price)
+    expect(state[usdcKey].price).toBe(price)
+    expect(state[cowKey].price).toBe(price)
 
     expect(mockGetDefillamaUsdPrice).toHaveBeenCalledTimes(2)
     expect(mockGetCowProtocolUsdPrice).toHaveBeenCalledTimes(0)
@@ -167,14 +191,15 @@ describe('UsdPricesUpdater', () => {
   it('Should fallback to CoW Protocol API when Coingecko and Defillama are down', async () => {
     const price = FractionUtils.fromNumber(7.22)
 
+    mockFetchCurrencyUsdPrice.mockRestore()
     mockGetBffUsdPrice.mockImplementation(() => Promise.reject(new Error('Server error')))
     mockGetDefillamaUsdPrice.mockImplementation(() => Promise.reject(new Error('Server error')))
     mockGetCowProtocolUsdPrice.mockImplementation(() => Promise.resolve(price))
 
     const state = await performTest()
 
-    expect(state[usdcAddress].price).toBe(price)
-    expect(state[cowAddress].price).toBe(price)
+    expect(state[usdcKey].price).toBe(price)
+    expect(state[cowKey].price).toBe(price)
 
     expect(mockGetCowProtocolUsdPrice).toHaveBeenCalledTimes(2)
   })

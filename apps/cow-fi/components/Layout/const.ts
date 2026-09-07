@@ -1,17 +1,43 @@
-import { MenuItem, ProductVariant } from '@cowprotocol/ui'
-import { clickOnNavigation } from 'modules/analytics'
+import { initGtm } from '@cowprotocol/analytics'
+import { MenuItem, ProductVariant, UI } from '@cowprotocol/ui'
+
+import { CowFiCategory } from 'src/common/analytics/types'
+
+import { COW_SWAP_CTA } from '@/const/cta'
+
+const analytics = initGtm()
 
 export const PAGE_MAX_WIDTH = 1760
-export const THEME_MODE = 'dark'
+export const THEME_MODE = 'light'
 export const PRODUCT_VARIANT = ProductVariant.CowDao
 
-export const NAV_ITEMS: MenuItem[] = [
-  {
+const LEARN_NAV_ITEM: MenuItem = {
+  label: 'Learn',
+  children: [
+    {
+      href: '/learn',
+      label: 'Knowledge Base',
+    },
+    {
+      href: 'https://docs.cow.fi/',
+      label: 'Docs',
+      external: true,
+      utmContent: 'menubar-nav-item-docs',
+    },
+  ],
+}
+
+export function getNavItems(isSolversEnabled: boolean): MenuItem[] {
+  return [getAboutNavItem(), getProductsNavItem(isSolversEnabled), LEARN_NAV_ITEM]
+}
+
+function getAboutNavItem(): MenuItem {
+  return {
     label: 'About',
     children: [
       {
         label: 'Stats',
-        href: 'https://dune.com/cowprotocol/cowswap',
+        href: 'https://dune.com/cowprotocol/cow-swap-home',
         external: true,
       },
       {
@@ -26,25 +52,20 @@ export const NAV_ITEMS: MenuItem[] = [
       },
       { label: 'Careers', href: '/careers' },
     ],
-  },
-  {
+  }
+}
+
+function getProductsNavItem(isSolversEnabled: boolean): MenuItem {
+  return {
     label: 'Products',
     children: [
       {
-        label: 'Chameleon swap',
+        label: 'CoW Swap',
         href: '/cow-swap',
       },
       {
         label: 'CoW Protocol',
         href: '/cow-protocol',
-      },
-      {
-        label: 'CoW AMM',
-        href: '/cow-amm',
-      },
-      {
-        label: 'MEV Blocker',
-        href: '/mev-blocker',
       },
       {
         label: 'More',
@@ -59,55 +80,36 @@ export const NAV_ITEMS: MenuItem[] = [
             external: true,
             utmContent: 'menubar-nav-item-cow-explorer',
           },
+          ...(isSolversEnabled
+            ? [
+                {
+                  label: 'Solvers',
+                  href: 'https://explorer.cow.fi/solvers',
+                  external: true,
+                  utmContent: 'menubar-nav-item-solvers',
+                },
+              ]
+            : []),
         ],
       },
     ],
-  },
-  {
-    label: 'Learn',
-    children: [
-      {
-        href: '/learn',
-        label: 'Knowledge Base',
-      },
-      {
-        href: 'https://docs.chameleon.exchange/',
-        label: 'Docs',
-        external: true,
-        utmContent: 'menubar-nav-item-docs',
-      },
-    ],
-  },
-]
+  }
+}
 
 export const NAV_ADDITIONAL_BUTTONS = [
-  // {
-  //   label: 'Use MEV Blocker',
-  //   href: 'https://cow.fi/mev-blocker',
-  //   utmContent: 'menubar-nav-button-use-mev-blocker',
-  //   external: true,
-  //   isButton: true,
-  //   bgColor: '#EC4612',
-  //   color: '#FEE7CF',
-  // },
   {
-    label: 'LP on CoW AMM',
-    href: 'https://balancer.fi/pools/cow',
-    utmContent: 'menubar-nav-button-lp-on-cow-amm',
-    onClick: () => clickOnNavigation('click-lp-on-cow-amm'),
-    external: true,
-    isButton: true,
-    bgColor: '#194D05',
-    color: '#BCEC79',
-  },
-  {
-    label: 'Trade on Chameleon swap',
-    href: 'https://chameleon.exchange/#/1/swap/USDC/COW',
+    label: COW_SWAP_CTA.text,
+    href: COW_SWAP_CTA.deeplinkHref,
     utmContent: 'menubar-nav-button-trade-on-cow-swap',
-    onClick: () => clickOnNavigation('click-trade-on-cow-swap'),
+    onClick: () =>
+      analytics.sendEvent({
+        category: CowFiCategory.NAVIGATION,
+        action: 'Click Trade on CoW Swap',
+        label: 'menubar-nav-button',
+      }),
     external: true,
     isButton: true,
-    bgColor: '#ff65ff',
-    color: '#012F7A',
+    bgColor: `var(${UI.COLOR_BLUE_300_PRIMARY})`,
+    color: `var(${UI.COLOR_BLUE_900_PRIMARY})`,
   },
 ]

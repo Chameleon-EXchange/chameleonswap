@@ -1,37 +1,39 @@
-import { atom, useAtom, useAtomValue } from 'jotai'
-import { useEffect } from 'react'
+import { useAtom } from 'jotai'
+import { ReactNode, useEffect } from 'react'
 
 import { useWalletInfo } from '@cowprotocol/wallet'
 
-import { useTradePriceImpact } from 'modules/trade'
-import { TradeWarning, TradeWarningType } from 'modules/trade/pure/TradeWarning'
-import { TradeFormValidation, useGetTradeFormValidation } from 'modules/tradeFormValidation'
+import { Trans } from '@lingui/react/macro'
+
+import { TradeWarning } from 'modules/trade/pure/TradeWarning'
+import { TradeWarningType } from 'modules/trade/pure/TradeWarning/constants'
+import { ACTIVE_VALIDATION_CASES, useGetTradeFormValidation } from 'modules/tradeFormValidation'
 import { useTradeQuote } from 'modules/tradeQuote'
 
-const noImpactWarningAcceptedAtom = atom(false)
+import { noImpactWarningAcceptedAtom } from './useIsNoImpactWarningAccepted'
+
+import { useTradePriceImpact } from '../../hooks/useTradePriceImpact'
 
 const NoImpactWarningMessage = (
   <div>
     <small>
-      We are unable to calculate the price impact for this order.
-      <br />
-      <br />
-      You may still move forward but{' '}
-      <strong>please review carefully that the receive amounts are what you expect.</strong>
+      <Trans>
+        We are unable to calculate the price impact for this order.
+        <br />
+        <br />
+        You may still move forward but{' '}
+        <strong>please review carefully that the receive amounts are what you expect.</strong>
+      </Trans>
     </small>
   </div>
 )
-
-export function useIsNoImpactWarningAccepted() {
-  return useAtomValue(noImpactWarningAcceptedAtom)
-}
 
 export interface NoImpactWarningProps {
   withoutAccepting?: boolean
   className?: string
 }
 
-export function NoImpactWarning(props: NoImpactWarningProps) {
+export function NoImpactWarning(props: NoImpactWarningProps): ReactNode {
   const { withoutAccepting, className } = props
 
   const [isAccepted, setIsAccepted] = useAtom(noImpactWarningAcceptedAtom)
@@ -41,13 +43,13 @@ export function NoImpactWarning(props: NoImpactWarningProps) {
   const primaryFormValidation = useGetTradeFormValidation()
   const tradeQuote = useTradeQuote()
 
-  const canTrade =
-    (primaryFormValidation === null || primaryFormValidation === TradeFormValidation.ApproveAndSwap) &&
-    !tradeQuote.error
+  const showPriceImpactWarning =
+    !!account &&
+    !tradeQuote.error &&
+    (primaryFormValidation === null || ACTIVE_VALIDATION_CASES.includes(primaryFormValidation)) &&
+    (priceImpactParams.loading || !priceImpactParams.priceImpact)
 
-  const showPriceImpactWarning = canTrade && !!account && !priceImpactParams.loading && !priceImpactParams.priceImpact
-
-  const acceptCallback = () => setIsAccepted((state) => !state)
+  const acceptCallback = (accepted: boolean): void => setIsAccepted(accepted)
 
   useEffect(() => {
     setIsAccepted(!showPriceImpactWarning)
@@ -65,7 +67,9 @@ export function NoImpactWarning(props: NoImpactWarningProps) {
       acceptCallback={acceptCallback}
       text={
         <span>
-          Price impact <strong>unknown</strong> - trade carefully
+          <Trans>
+            Price impact <strong>unknown</strong> - trade carefully
+          </Trans>
         </span>
       }
     />

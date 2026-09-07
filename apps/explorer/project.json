@@ -12,8 +12,11 @@
         "outputPath": "build/explorer"
       },
       "configurations": {
-        "development": {
-          "mode": "development"
+        "dev": {
+          "mode": "dev"
+        },
+        "staging": {
+          "mode": "staging"
         },
         "production": {
           "mode": "production"
@@ -22,13 +25,17 @@
     },
     "serve": {
       "executor": "@nx/vite:dev-server",
-      "defaultConfiguration": "development",
+      "defaultConfiguration": "dev",
       "options": {
         "buildTarget": "explorer:build"
       },
       "configurations": {
-        "development": {
-          "buildTarget": "explorer:build:development",
+        "dev": {
+          "buildTarget": "explorer:build:dev",
+          "hmr": true
+        },
+        "staging": {
+          "buildTarget": "explorer:build:staging",
           "hmr": true
         },
         "production": {
@@ -39,13 +46,16 @@
     },
     "preview": {
       "executor": "@nx/vite:preview-server",
-      "defaultConfiguration": "development",
+      "defaultConfiguration": "dev",
       "options": {
         "buildTarget": "explorer:build"
       },
       "configurations": {
-        "development": {
-          "buildTarget": "explorer:build:development"
+        "dev": {
+          "buildTarget": "explorer:build:dev"
+        },
+        "staging": {
+          "buildTarget": "explorer:build:staging"
         },
         "production": {
           "buildTarget": "explorer:build:production"
@@ -60,7 +70,7 @@
       }
     },
     "lint": {
-      "executor": "@nx/linter:eslint",
+      "executor": "@nx/eslint:lint",
       "outputs": ["{options.outputFile}"],
       "options": {
         "lintFilePatterns": ["apps/explorer/**/*.{ts,tsx,js,jsx}"]
@@ -70,6 +80,39 @@
       "executor": "@nx/web:file-server",
       "options": {
         "buildTarget": "explorer:build"
+      }
+    },
+    "cosmos": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          {
+            "command": "cosmos"
+          }
+        ],
+        "cwd": "apps/explorer"
+      }
+    },
+    "cosmos:run": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          {
+            "command": "cosmos -p 5002"
+          }
+        ],
+        "cwd": "apps/explorer"
+      }
+    },
+    "build:cosmos": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          {
+            "command": "cosmos-export"
+          }
+        ],
+        "cwd": "apps/explorer"
       }
     }
   },
