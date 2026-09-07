@@ -107,6 +107,8 @@ export function RoutesApp() {
         <Route path="/:chainId/refer" element={<Navigate to={RoutesEnum.REWARD} />} />
         <Route path="/rewards" element={<Navigate to={RoutesEnum.REWARD} />} />
         <Route path="/:chainId/rewards" element={<Navigate to={RoutesEnum.REWARD} />} />
+        <Route path="/defi" element={<ExternalRedirect url="https://defi.chameleon.exchange" />} />
+        <Route path="/:chainId/defi" element={<ExternalRedirect url="https://defi.chameleon.exchange" />} />
         <Route path={RoutesEnum.SWAP} element={<SwapPage />} />
         <Route path={RoutesEnum.HOOKS} element={<HooksPage />} />
         <Route path={RoutesEnum.COW_SHED} element={<CowShed />} />

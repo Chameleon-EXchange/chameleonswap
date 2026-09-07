@@ -43,11 +43,20 @@ const RoutesApp = lazy(() => import('./RoutesApp').then((module) => ({ default: 
 
 const GlobalStyles = GlobalCoWDAOStyles(CoWDAOFonts, 'transparent')
 
-const LinkComponent = ({ href, children }: PropsWithChildren<{ href: string }>) => {
-  const external = href.startsWith('http')
+const LinkComponent = ({ href, children, ...rest }: PropsWithChildren<{ href: string; [key: string]: any }>) => {
+  const isDefi = href.includes('defi.chameleon.exchange')
+  const external = href.startsWith('http') && !isDefi
+
+  if (isDefi) {
+    return (
+      <a href={href} target="_self" {...rest}>
+        {children}
+      </a>
+    )
+  }
 
   return (
-    <NavLink to={href} target={external ? '_blank' : '_self'} rel={external ? 'noopener noreferrer' : undefined}>
+    <NavLink to={href} target={external ? '_blank' : '_self'} rel={external ? 'noopener noreferrer' : undefined} {...rest}>
       {children}
     </NavLink>
   )

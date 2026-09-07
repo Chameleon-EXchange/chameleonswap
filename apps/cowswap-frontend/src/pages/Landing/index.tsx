@@ -1129,8 +1129,7 @@ export function LandingPage(): JSX.Element {
           {/* Module 2: Prediction Arena (Magenta Theme) */}
           <EcosystemModuleStrip
             href="https://defi.chameleon.exchange/arena"
-            target="_blank"
-            rel="noopener noreferrer"
+            target="_self"
             accentColor="#ff65ff"
           >
             <div className="module-info">
@@ -1163,8 +1162,7 @@ export function LandingPage(): JSX.Element {
           {/* Module 3: Lending & Yield (Emerald Theme) */}
           <EcosystemModuleStrip
             href="https://defi.chameleon.exchange/lending"
-            target="_blank"
-            rel="noopener noreferrer"
+            target="_self"
             accentColor="#00ff87"
           >
             <div className="module-info">
@@ -1198,8 +1196,7 @@ export function LandingPage(): JSX.Element {
           {/* Module 4: Staking & Revenue Share (Gold Theme) */}
           <EcosystemModuleStrip
             href="https://defi.chameleon.exchange/staking"
-            target="_blank"
-            rel="noopener noreferrer"
+            target="_self"
             accentColor="#FFB800"
           >
             <div className="module-info">
