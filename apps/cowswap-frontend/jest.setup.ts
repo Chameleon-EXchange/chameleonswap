@@ -2,6 +2,19 @@ jest.mock('react-markdown', () => () => null)
 
 jest.mock('lottie-react', () => () => null)
 
+jest.mock('modules/swap/services/transactionService', () => ({
+  TransactionService: {
+    sendTransactionData: jest.fn(),
+  },
+}))
+
+jest.mock('modules/referral/services/ReferralService', () => ({
+  ReferralService: {
+    getReferralCode: jest.fn(),
+    registerReferral: jest.fn(),
+  },
+}))
+
 jest.mock('@marsidev/react-turnstile', () => ({
   __esModule: true,
   Turnstile: () => null,

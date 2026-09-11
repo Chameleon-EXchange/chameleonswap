@@ -147,23 +147,57 @@ export function CurrencyInputPanel(props: CurrencyInputPanelProps): ReactNode {
     [onUserInput, field, convertUsdToTokenValue, isUsdValuesMode, currency?.decimals],
   )
 
-  const handleMaxInput = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handlePercentInput = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>, percentage: number) => {
       e.preventDefault()
       e.stopPropagation()
 
-      if (!maxBalance) {
+      const spendable = maxBalance ?? balance
+      if (!spendable || spendable.quotient <= 0n) {
         return
       }
 
-      const value = isUsdValuesMode ? maxBalanceUsdAmount : maxBalance
+      if (percentage === 100) {
+        const value = isUsdValuesMode ? maxBalanceUsdAmount : spendable
+        if (value) {
+          onUserInputDispatch(value.toExact(), isUsdValuesMode ? spendable.toExact() : undefined)
+        }
+        return
+      }
 
-      if (value) {
-        onUserInputDispatch(value.toExact(), isUsdValuesMode ? maxBalance.toExact() : undefined)
+      const tokenQuotient = (spendable.quotient * BigInt(percentage)) / 100n
+      const tokenAmount = CurrencyAmount.fromRawAmount(spendable.currency, tokenQuotient)
+
+      if (isUsdValuesMode && maxBalanceUsdAmount) {
+        const usdQuotient = (maxBalanceUsdAmount.quotient * BigInt(percentage)) / 100n
+        const usdAmount = CurrencyAmount.fromRawAmount(maxBalanceUsdAmount.currency, usdQuotient)
+        onUserInputDispatch(usdAmount.toExact(), tokenAmount.toExact())
+      } else {
+        onUserInputDispatch(tokenAmount.toExact())
       }
     },
-    [maxBalance, onUserInputDispatch, isUsdValuesMode, maxBalanceUsdAmount],
+    [maxBalance, balance, onUserInputDispatch, isUsdValuesMode, maxBalanceUsdAmount],
   )
+
+  const activePercentage = useMemo(() => {
+    const spendable = maxBalance ?? balance
+    if (!spendable || spendable.quotient <= 0n || !amount || amount.quotient <= 0n) {
+      return null
+    }
+
+    if (amount.equalTo(spendable)) {
+      return 100
+    }
+
+    for (const pct of [75, 50, 25] as const) {
+      const pctQuotient = (spendable.quotient * BigInt(pct)) / 100n
+      if (pctQuotient > 0n && amount.quotient === pctQuotient) {
+        return pct
+      }
+    }
+
+    return null
+  }, [maxBalance, balance, amount])
 
   useEffect(() => {
     // Compare the actual string values to preserve trailing decimals
@@ -201,7 +235,7 @@ export function CurrencyInputPanel(props: CurrencyInputPanelProps): ReactNode {
   )
 
   const balanceView = (
-    <div>
+    <styledEl.BalanceContainer>
       {balance && !disabled && (
         <styledEl.BalanceText data-testid={TEST_IDS.currencyBalanceText}>
           {isUsdValuesMode ? (
@@ -209,20 +243,32 @@ export function CurrencyInputPanel(props: CurrencyInputPanelProps): ReactNode {
           ) : (
             <TokenAmount amount={balance} defaultValue="0" tokenSymbol={currency} />
           )}
-          {showSetMax && balance.greaterThan(0) && (
-            <styledEl.SetMaxBtn
-              data-click-event={toCowSwapGtmEvent({
-                category: CowSwapAnalyticsCategory.TRADE,
-                action: 'Set Maximum Sell Tokens',
-              })}
-              onClick={handleMaxInput}
-            >
-              <Trans>Max</Trans>
-            </styledEl.SetMaxBtn>
-          )}
         </styledEl.BalanceText>
       )}
-    </div>
+      {showSetMax && balance && balance.greaterThan(0) && !disabled && (
+        <styledEl.PercentButtonGroup role="group" aria-label="Amount shortcuts">
+          {([25, 50, 75, 100] as const).map((pct) => {
+            const isActive = activePercentage === pct
+            return (
+              <styledEl.PercentBtn
+                key={pct}
+                type="button"
+                $isActive={isActive}
+                aria-pressed={isActive}
+                data-testid={`percent-${pct}-button`}
+                data-click-event={toCowSwapGtmEvent({
+                  category: CowSwapAnalyticsCategory.TRADE,
+                  action: pct === 100 ? 'Set Maximum Sell Tokens' : `Set ${pct}% Sell Tokens`,
+                })}
+                onClick={(e) => handlePercentInput(e, pct)}
+              >
+                {pct === 100 ? <Trans>Max</Trans> : `${pct}%`}
+              </styledEl.PercentBtn>
+            )
+          })}
+        </styledEl.PercentButtonGroup>
+      )}
+    </styledEl.BalanceContainer>
   )
 
   const priceImpactParams: typeof _priceImpactParams = useMemo(() => {

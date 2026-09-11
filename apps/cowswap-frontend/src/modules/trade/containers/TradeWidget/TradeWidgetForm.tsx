@@ -154,7 +154,7 @@ export function TradeWidgetForm(props: TradeWidgetProps): ReactNode {
 
   const withRecipient = useIsWithRecipient(showRecipient)
   const maxBalance = maxAmountSpend(inputCurrencyInfo.balance || undefined, isSafeWallet)
-  const showSetMax = maxBalance?.greaterThan(0) && !inputCurrencyInfo.amount?.equalTo(maxBalance)
+  const showSetMax = Boolean(maxBalance?.greaterThan(0))
 
   const disablePriceImpact =
     !!params.disablePriceImpact ||

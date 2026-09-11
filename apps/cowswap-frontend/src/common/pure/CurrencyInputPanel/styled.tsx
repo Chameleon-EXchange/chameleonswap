@@ -131,11 +131,19 @@ export const TokenAmountStyled = styled(TokenAmount)`
   }
 `
 
+export const BalanceContainer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+`
+
 export const BalanceText = styled.span`
   font-weight: inherit;
   font-size: 13px;
   gap: 5px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   opacity: 0.7;
   transition: opacity var(${UI.ANIMATION_DURATION}) ease-in-out;
@@ -143,6 +151,53 @@ export const BalanceText = styled.span`
 
   &:hover {
     opacity: 1;
+  }
+`
+
+export const PercentButtonGroup = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+`
+
+export const PercentBtn = styled.button<{ $isActive?: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 11px;
+  line-height: 1;
+  background: ${({ $isActive }) => ($isActive ? `var(${UI.COLOR_PRIMARY})` : `var(${UI.COLOR_PAPER})`)};
+  color: ${({ $isActive }) => ($isActive ? `var(${UI.COLOR_BUTTON_TEXT})` : `inherit`)};
+  border-radius: 6px;
+  padding: 4px 6px;
+  min-height: 22px;
+  min-width: 32px;
+  border: 0;
+  outline: none;
+  cursor: pointer;
+  white-space: nowrap;
+  text-transform: uppercase;
+  user-select: none;
+  transition:
+    background var(${UI.ANIMATION_DURATION}) ease-in-out,
+    color var(${UI.ANIMATION_DURATION}) ease-in-out,
+    transform var(${UI.ANIMATION_DURATION}) ease-in-out;
+
+  &:hover {
+    background: var(${UI.COLOR_PRIMARY});
+    color: var(${UI.COLOR_BUTTON_TEXT});
+  }
+
+  &:active {
+    transform: scale(0.96);
+  }
+
+  ${Media.upToSmall()} {
+    padding: 3px 5px;
+    font-size: 10px;
+    min-height: 20px;
+    min-width: 28px;
   }
 `
 
@@ -158,21 +213,4 @@ export const FiatAmountText = styled.span`
   }
 `
 
-export const SetMaxBtn = styled.button`
-  display: inline-block;
-  font-weight: 600;
-  font-size: 11px;
-  background: var(${UI.COLOR_PAPER});
-  border-radius: 6px;
-  padding: 3px 4px;
-  text-transform: uppercase;
-  white-space: nowrap;
-  transition:
-    background var(${UI.ANIMATION_DURATION}) ease-in-out,
-    color var(${UI.ANIMATION_DURATION}) ease-in-out;
-
-  &:hover {
-    background: var(${UI.COLOR_PRIMARY});
-    color: var(${UI.COLOR_BUTTON_TEXT});
-  }
-`
+export const SetMaxBtn = PercentBtn
