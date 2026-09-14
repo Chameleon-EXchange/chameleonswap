@@ -38,6 +38,7 @@ export function baseTheme<T extends CowProtocolTheme>(theme: CowSwapTheme): CowP
  * 2. Static colors from Color enum
  * 3. Gradient definitions
  */
+// eslint-disable-next-line complexity
 function colors(darkMode: boolean): Colors {
   const themeColors = getThemeColors(darkMode)
 
@@ -95,6 +96,8 @@ function colors(darkMode: boolean): Colors {
     // ****** other ******
     blue1: '#B640FF',
     blue2: darkMode ? '#D0A4FF' : '#9A0BC1',
+    purple: '#577EFF',
+    yellow: '#fff6dc',
     orange: '#FF784A',
     blueShade: '#0f2644',
     blueShade3: darkMode ? '#581C70' : '#DABDE2',

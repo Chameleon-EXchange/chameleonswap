@@ -69,7 +69,7 @@ describe('soundMiddleware', () => {
     })
   })
   describe('pending order action', () => {
-    it('should play a sound when order is not hidden', () => {
+    it('should not play a sound when order is not hidden', () => {
       when(actionMock.payload).thenReturn({ chainId: 1, order: { isHidden: false } })
       when(actionMock.type).thenReturn('order/addPendingOrder')
 
@@ -77,7 +77,8 @@ describe('soundMiddleware', () => {
 
       expect(getCowSoundSuccess).toHaveBeenCalledTimes(0)
       expect(getCowSoundError).toHaveBeenCalledTimes(0)
-      expect(getCowSoundSend).toHaveBeenCalledTimes(1)
+      expect(getCowSoundSend).toHaveBeenCalledTimes(0)
+      expect(nextMock).toHaveBeenCalledTimes(1)
     })
 
     it('should not play a sound when order is hidden', () => {
@@ -89,22 +90,24 @@ describe('soundMiddleware', () => {
       expect(getCowSoundSuccess).toHaveBeenCalledTimes(0)
       expect(getCowSoundError).toHaveBeenCalledTimes(0)
       expect(getCowSoundSend).toHaveBeenCalledTimes(0)
+      expect(nextMock).toHaveBeenCalledTimes(1)
     })
   })
   describe('fulfill order action', () => {
-    it('should play a sound', () => {
+    it('should not play a sound', () => {
       when(actionMock.payload).thenReturn({ chainId: 1, orders: ['some data'] })
       when(actionMock.type).thenReturn('order/fullfillOrdersBatch')
 
       soundMiddleware(instance(mockStore))(nextMock)(instance(actionMock))
 
-      expect(getCowSoundSuccess).toHaveBeenCalledTimes(1)
+      expect(getCowSoundSuccess).toHaveBeenCalledTimes(0)
       expect(getCowSoundError).toHaveBeenCalledTimes(0)
       expect(getCowSoundSend).toHaveBeenCalledTimes(0)
+      expect(nextMock).toHaveBeenCalledTimes(1)
     })
   })
   describe('batch expire order action', () => {
-    it('should play a sound when order is not hidden', () => {
+    it('should not play a sound when order is not hidden', () => {
       when(actionMock.payload).thenReturn({ chainId: 1, ids: ['0x1'] })
       when(actionMock.type).thenReturn('order/expireOrdersBatch')
       when(mockStore.getState()).thenReturn({
@@ -120,15 +123,15 @@ describe('soundMiddleware', () => {
             },
           },
         },
-        // TODO: Replace any with proper type definitions
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any)
 
       soundMiddleware(instance(mockStore))(nextMock)(instance(actionMock))
 
       expect(getCowSoundSuccess).toHaveBeenCalledTimes(0)
-      expect(getCowSoundError).toHaveBeenCalledTimes(1)
+      expect(getCowSoundError).toHaveBeenCalledTimes(0)
       expect(getCowSoundSend).toHaveBeenCalledTimes(0)
+      expect(nextMock).toHaveBeenCalledTimes(1)
     })
 
     it('should not play a sound when order is hidden', () => {
@@ -147,7 +150,6 @@ describe('soundMiddleware', () => {
             },
           },
         },
-        // TODO: Replace any with proper type definitions
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any)
 
@@ -156,26 +158,36 @@ describe('soundMiddleware', () => {
       expect(getCowSoundSuccess).toHaveBeenCalledTimes(0)
       expect(getCowSoundError).toHaveBeenCalledTimes(0)
       expect(getCowSoundSend).toHaveBeenCalledTimes(0)
+      expect(nextMock).toHaveBeenCalledTimes(1)
     })
   })
   describe('batch cancel order action', () => {
-    it('should play a sound when order is not hidden', () => {
+    it('should not play a sound when order is not hidden', () => {
       when(actionMock.payload).thenReturn({ chainId: 1, ids: ['0x1'] })
       when(actionMock.type).thenReturn('order/cancelOrdersBatch')
 
       soundMiddleware(instance(mockStore))(nextMock)(instance(actionMock))
 
       expect(getCowSoundSuccess).toHaveBeenCalledTimes(0)
-      expect(getCowSoundError).toHaveBeenCalledTimes(1)
+      expect(getCowSoundError).toHaveBeenCalledTimes(0)
       expect(getCowSoundSend).toHaveBeenCalledTimes(0)
+      expect(nextMock).toHaveBeenCalledTimes(1)
     })
 
     it('should not play a sound when order is hidden', () => {
       when(actionMock.payload).thenReturn({ chainId: 1, ids: ['0x1'] })
+      when(actionMock.type).thenReturn('order/cancelOrdersBatch')
+
+      soundMiddleware(instance(mockStore))(nextMock)(instance(actionMock))
+
+      expect(getCowSoundSuccess).toHaveBeenCalledTimes(0)
+      expect(getCowSoundError).toHaveBeenCalledTimes(0)
+      expect(getCowSoundSend).toHaveBeenCalledTimes(0)
+      expect(nextMock).toHaveBeenCalledTimes(1)
     })
   })
   describe('update order action', () => {
-    it('should play a sound when order is not hidden', () => {
+    it('should not play a sound when order is not hidden', () => {
       when(actionMock.payload).thenReturn({ order: { isHidden: false } })
       when(actionMock.type).thenReturn('order/updateOrder')
 
@@ -183,7 +195,8 @@ describe('soundMiddleware', () => {
 
       expect(getCowSoundSuccess).toHaveBeenCalledTimes(0)
       expect(getCowSoundError).toHaveBeenCalledTimes(0)
-      expect(getCowSoundSend).toHaveBeenCalledTimes(1)
+      expect(getCowSoundSend).toHaveBeenCalledTimes(0)
+      expect(nextMock).toHaveBeenCalledTimes(1)
     })
 
     it('should not play a sound when order is hidden', () => {
@@ -195,6 +208,7 @@ describe('soundMiddleware', () => {
       expect(getCowSoundSuccess).toHaveBeenCalledTimes(0)
       expect(getCowSoundError).toHaveBeenCalledTimes(0)
       expect(getCowSoundSend).toHaveBeenCalledTimes(0)
+      expect(nextMock).toHaveBeenCalledTimes(1)
     })
   })
 })

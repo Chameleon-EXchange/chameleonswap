@@ -1089,8 +1089,8 @@ msgstr "Connect your wallet to activate it and start earning rewards when you tr
 #~ msgstr "You're switching between EVM and non-EVM networks. This requires connecting a different wallet. Your current wallet will be disconnected."
 
 #: apps/cowswap-frontend/src/modules/application/containers/App/menuConsts.tsx
-msgid "CoW Runner"
-msgstr "CoW Runner"
+#~ msgid "CoW Runner"
+#~ msgstr "CoW Runner"
 
 #: apps/cowswap-frontend/src/modules/governance/pure/GovernanceList/index.tsx
 msgid "Proposal 2"
@@ -1409,8 +1409,8 @@ msgid "any token into CoW AMM pools to start benefiting from attractive APRs."
 msgstr "any token into CoW AMM pools to start benefiting from attractive APRs."
 
 #: apps/cowswap-frontend/src/modules/application/containers/App/menuConsts.tsx
-msgid "Solvers"
-msgstr "Solvers"
+#~ msgid "Solvers"
+#~ msgstr "Solvers"
 
 #: apps/cowswap-frontend/src/modules/twap/utils/parseTwapError.ts
 msgid "The wallet request timed out. Please try again and complete signing in your wallet before the session expires."
@@ -1692,8 +1692,8 @@ msgid "All orders"
 msgstr "All orders"
 
 #: apps/cowswap-frontend/src/modules/application/containers/App/menuConsts.tsx
-msgid "Cookie Policy"
-msgstr "Cookie Policy"
+#~ msgid "Cookie Policy"
+#~ msgstr "Cookie Policy"
 
 #: apps/cowswap-frontend/src/modules/injectedWidget/utils/validatePartnerFee.ts
 msgid "Partner fee can not be more than {PARTNER_FEE_MAX_BPS} BPS!"
@@ -2579,8 +2579,8 @@ msgstr "Replaced"
 #~ msgstr "Pick something memorable or let us generate one for you. Once saved, your code is permanently linked to your wallet, so choose wisely. Your code never reveals your wallet address."
 
 #: apps/cowswap-frontend/src/modules/application/containers/App/menuConsts.tsx
-msgid "MEV Slicer"
-msgstr "MEV Slicer"
+#~ msgid "MEV Slicer"
+#~ msgstr "MEV Slicer"
 
 #: apps/cowswap-frontend/src/common/pure/ReceiveAmount/index.tsx
 msgid "From (incl. fees)"
@@ -3022,7 +3022,6 @@ msgstr "modified"
 msgid "Preparing deposit"
 msgstr "Preparing deposit"
 
-#: apps/cowswap-frontend/src/modules/application/containers/App/menuConsts.tsx
 #: apps/cowswap-frontend/src/modules/bridge/pure/ProtocolIcons/StackedProtocolIcons.tsx
 msgid "CoW Protocol"
 msgstr "CoW Protocol"
@@ -3210,8 +3209,8 @@ msgid "Return to Swap"
 msgstr "Return to Swap"
 
 #: apps/cowswap-frontend/src/modules/application/containers/App/menuConsts.tsx
-msgid "Privacy Policy"
-msgstr "Privacy Policy"
+#~ msgid "Privacy Policy"
+#~ msgstr "Privacy Policy"
 
 #: apps/cowswap-frontend/src/common/utils/tradeSettingsTooltips.tsx
 msgid "Native currency"
@@ -4297,8 +4296,8 @@ msgid "Claimable"
 msgstr "Claimable"
 
 #: apps/cowswap-frontend/src/modules/application/containers/App/menuConsts.tsx
-msgid "Docs"
-msgstr "Docs"
+#~ msgid "Docs"
+#~ msgstr "Docs"
 
 #: apps/cowswap-frontend/src/common/containers/OrderHooksDetails/HookItem/index.tsx
 msgid "Simulation:"
@@ -4452,8 +4451,8 @@ msgstr " or <0/>"
 #~ msgstr "ENS recipient not supported for Swap and Bridge — use address instead."
 
 #: apps/cowswap-frontend/src/modules/application/containers/App/menuConsts.tsx
-msgid "Careers"
-msgstr "Careers"
+#~ msgid "Careers"
+#~ msgstr "Careers"
 
 #: apps/cowswap-frontend/src/modules/swap/containers/SwapWidget/index.tsx
 msgid "Expected sell amount"
@@ -4892,7 +4891,6 @@ msgstr "2 stops"
 msgid "Please enter the base URL of your dapp, not the direct manifest.json path"
 msgstr "Please enter the base URL of your dapp, not the direct manifest.json path"
 
-#: apps/cowswap-frontend/src/modules/application/containers/App/menuConsts.tsx
 #: apps/cowswap-frontend/src/pages/Account/Menu.tsx
 msgid "Affiliate"
 msgstr "Affiliate"
@@ -5234,8 +5232,8 @@ msgid "The price of this pool is within your selected range. Your position is cu
 msgstr "The price of this pool is within your selected range. Your position is currently earning fees."
 
 #: apps/cowswap-frontend/src/modules/application/containers/App/menuConsts.tsx
-msgid "FAQs"
-msgstr "FAQs"
+#~ msgid "FAQs"
+#~ msgstr "FAQs"
 
 #: apps/cowswap-frontend/src/modules/account/containers/Transaction/ActivityDetails.tsx
 msgid "more signatures are"
@@ -6424,8 +6422,6 @@ msgstr "Volume referred"
 
 #: apps/cowswap-frontend/src/common/constants/routes.ts
 #: apps/cowswap-frontend/src/modules/account/containers/AccountDetails/index.tsx
-#: apps/cowswap-frontend/src/modules/application/containers/App/menuConsts.tsx
-#: apps/cowswap-frontend/src/modules/application/containers/App/menuConsts.tsx
 msgid "New"
 msgstr "New"
 
@@ -6857,8 +6853,8 @@ msgid "Loading hook..."
 msgstr "Loading hook..."
 
 #: apps/cowswap-frontend/src/modules/application/containers/App/menuConsts.tsx
-msgid "Terms and Conditions"
-msgstr "Terms and Conditions"
+#~ msgid "Terms and Conditions"
+#~ msgstr "Terms and Conditions"
 
 #: apps/cowswap-frontend/src/modules/limitOrders/pure/ProtocolFeeInfoBanner/index.tsx
 msgid "From {PROTOCOL_FEE_START_DATETIME_UTC}, and pursuant to <0>CIP-74</0>, a <1>protocol fee</1> will apply to all executed orders, including any limit and TWAP orders executed after this time, even if they were created earlier."
@@ -7001,7 +6997,6 @@ msgstr "{solversLength} out of {totalSolvers} solvers"
 msgid "Issued by {issuedByIssuer}"
 msgstr "Issued by {issuedByIssuer}"
 
-#: apps/cowswap-frontend/src/modules/application/containers/App/menuConsts.tsx
 #: apps/cowswap-frontend/src/pages/Account/Menu.tsx
 msgid "My Rewards"
 msgstr "My Rewards"
@@ -7234,8 +7229,8 @@ msgid "Confirm {orderTypeLabel}"
 msgstr "Confirm {orderTypeLabel}"
 
 #: apps/cowswap-frontend/src/modules/application/containers/App/menuConsts.tsx
-msgid "About CoW Swap"
-msgstr "About CoW Swap"
+#~ msgid "About CoW Swap"
+#~ msgstr "About CoW Swap"
 
 #: apps/cowswap-frontend/src/modules/orderProgressBar/pure/steps/ExpiredStep.tsx
 msgid "Unlike on other exchanges, you won't be charged for this! Feel free to"
@@ -7444,8 +7439,8 @@ msgid "There was an error trying to load claimable tokens"
 msgstr "There was an error trying to load claimable tokens"
 
 #: apps/cowswap-frontend/src/modules/application/containers/App/menuConsts.tsx
-msgid "Learn"
-msgstr "Learn"
+#~ msgid "Learn"
+#~ msgstr "Learn"
 
 #: apps/cowswap-frontend/src/common/pure/AddressInputPanel/hooks/useReceiverPlaceholder.ts
 #~ msgid "{networkLabel} address"
@@ -7725,6 +7720,10 @@ msgstr "Your order was created on this date & time. It will remain open until it
 msgid "Confirm Swap"
 msgstr "Confirm Swap"
 
+#: apps/cowswap-frontend/src/modules/application/containers/App/menuConsts.tsx
+msgid "MEV Blocker"
+msgstr "MEV Blocker"
+
 #: apps/cowswap-frontend/src/modules/affiliate/pure/TraderReferralCodeModal/TraderReferralCodeForm.tsx
 #: apps/cowswap-frontend/src/modules/affiliate/pure/TraderReferralCodeModal/TraderReferralCodeForm.tsx
 #~ msgid "Save"
@@ -7918,8 +7917,8 @@ msgid "Min. to deposit"
 msgstr "Min. to deposit"
 
 #: apps/cowswap-frontend/src/modules/application/containers/AppMenu/index.tsx
-msgid "Reward"
-msgstr "Reward"
+#~ msgid "Reward"
+#~ msgstr "Reward"
 
 #: apps/cowswap-frontend/src/pages/games/CowRunner/index.tsx
 msgid "MEV is lethal these days!"
@@ -7953,8 +7952,8 @@ msgid "Enough signatures"
 msgstr "Enough signatures"
 
 #: apps/cowswap-frontend/src/modules/application/containers/App/menuConsts.tsx
-msgid "Legal"
-msgstr "Legal"
+#~ msgid "Legal"
+#~ msgstr "Legal"
 
 #: apps/cowswap-frontend/src/modules/ethFlow/pure/EthFlowBanner/index.tsx
 msgid "You will be prompted to <0>wrap your {nativeSymbol} to {wrappedSymbol}</0> before placing your order."

@@ -51,23 +51,19 @@ jest.mock('common/constants/routes', () => ({
   },
 }))
 
-function getMoreItemHrefs(isSolversEnabled: boolean): string[] {
-  const navItems = NAV_ITEMS(SupportedChainId.MAINNET, isSolversEnabled)
-  const moreItem = navItems[navItems.length - 1]
-
-  if (!moreItem?.children) {
-    throw new Error('Missing More menu item')
-  }
-
-  return moreItem.children.map((child) => child.href).filter((href): href is string => href !== undefined)
-}
-
 describe('NAV_ITEMS', () => {
-  it('hides solvers menu item when the solvers flag is disabled', () => {
-    expect(getMoreItemHrefs(false)).not.toContain('https://explorer.cow.fi/solvers')
-  })
+  it('returns Chameleon Swap navigation items', () => {
+    const navItems = NAV_ITEMS(SupportedChainId.MAINNET)
+    expect(navItems).toHaveLength(2)
 
-  it('shows solvers menu item when the solvers flag is enabled', () => {
-    expect(getMoreItemHrefs(true)).toContain('https://explorer.cow.fi/solvers')
+    const accountItem = navItems[0]
+    expect(accountItem.children?.map((c) => c.href)).toEqual([
+      '/account',
+      '/account/tokens',
+      '/1/account/account-proxy',
+    ])
+
+    const moreItem = navItems[1]
+    expect(moreItem.children?.map((c) => c.href)).toEqual(['https://mevblocker.io/'])
   })
 })

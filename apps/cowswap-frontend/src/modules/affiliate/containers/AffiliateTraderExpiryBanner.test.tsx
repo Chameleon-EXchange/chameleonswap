@@ -114,7 +114,7 @@ describe('AffiliateTraderExpiryBanner', () => {
       },
     })
 
-    expect(screen.getByText('Your referral code expired on Apr 01, 2026.')).toBeTruthy()
+    expect(screen.getByText(/Your referral code expired on (Apr 01|01 Apr),? 2026\./)).toBeTruthy()
   })
 
   it('does not track the expired-code event for a non-expired banner state', () => {
@@ -151,6 +151,6 @@ describe('AffiliateTraderExpiryBanner', () => {
         rewardsEnd,
       },
     })
-    expect(screen.getByText('Your referral code expired on Apr 10, 2026.')).toBeTruthy()
+    expect(screen.getByText(/Your referral code expired on (Apr 10|10 Apr),? 2026\./)).toBeTruthy()
   })
 })

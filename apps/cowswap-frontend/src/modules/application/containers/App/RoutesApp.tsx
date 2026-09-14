@@ -33,12 +33,10 @@ import { HooksPage } from 'pages/Hooks'
 import { LandingPage } from 'pages/Landing'
 import { LimitOrdersPage } from 'pages/LimitOrders/LimitOrders.page'
 import ReferralConfirmation from 'pages/ReferralConfirmation'
-import { RewardPage } from 'pages/Reward'
 import { SwapPage } from 'pages/Swap'
 import YieldPage from 'pages/Yield'
 
 // Async routes
-const NotFound = lazy(() => import(/* webpackChunkName: "not_found" */ 'pages/error/NotFound'))
 const CowRunner = lazy(() => import(/* webpackChunkName: "cow_runner" */ 'pages/games/CowRunner'))
 const MevSlicer = lazy(() => import(/* webpackChunkName: "mev_slicer" */ 'pages/games/MevSlicer'))
 
@@ -69,7 +67,6 @@ function LazyRoute({ route, element, key }: LazyRouteProps): ReactNode {
 
 const lazyRoutes: LazyRouteProps[] = [
   { route: RoutesEnum.LANDING, element: <LandingPage /> },
-  { route: RoutesEnum.REWARD, element: <RewardPage /> },
   { route: RoutesEnum.BUY, element: <BuyPage /> },
   { route: RoutesEnum.ADMIN, element: <AdminPage /> },
   { route: RoutesEnum.YIELD, element: <YieldPage /> },
@@ -99,12 +96,12 @@ export function RoutesApp(): ReactNode {
       {/* Chameleon Custom Routes */}
       <Route path={RoutesEnum.ADMIN} element={<AdminPage />} />
       <Route path={RoutesEnum.BUY} element={<BuyPage />} />
-      <Route path={RoutesEnum.REWARD} element={<RewardPage />} />
-      <Route path="/:chainId/rewardpage" element={<RewardPage />} />
-      <Route path="/refer" element={<Navigate to={RoutesEnum.REWARD} />} />
-      <Route path="/:chainId/refer" element={<Navigate to={RoutesEnum.REWARD} />} />
-      <Route path="/rewards" element={<Navigate to={RoutesEnum.REWARD} />} />
-      <Route path="/:chainId/rewards" element={<Navigate to={RoutesEnum.REWARD} />} />
+      <Route path={RoutesEnum.REWARD} element={<Navigate to={RoutesEnum.HOME} replace />} />
+      <Route path="/:chainId/rewardpage" element={<Navigate to={RoutesEnum.HOME} replace />} />
+      <Route path="/refer" element={<Navigate to={RoutesEnum.HOME} replace />} />
+      <Route path="/:chainId/refer" element={<Navigate to={RoutesEnum.HOME} replace />} />
+      <Route path="/rewards" element={<Navigate to={RoutesEnum.HOME} replace />} />
+      <Route path="/:chainId/rewards" element={<Navigate to={RoutesEnum.HOME} replace />} />
       <Route path="/defi" element={<ExternalRedirect url="https://defi.chameleon.exchange" />} />
       <Route path="/:chainId/defi" element={<ExternalRedirect url="https://defi.chameleon.exchange" />} />
 

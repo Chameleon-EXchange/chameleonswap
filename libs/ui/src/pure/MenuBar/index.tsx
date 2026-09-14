@@ -53,7 +53,6 @@ import {
 } from './styled'
 
 import { Media } from '../../consts'
-import { UI } from '../../enum'
 import { BadgeType } from '../../types'
 import { Badge } from '../Badge'
 import { ProductLogo, ProductVariant } from '../ProductLogo'
@@ -62,29 +61,12 @@ import type { CowSwapTheme } from '../../types'
 
 const DAO_NAV_ITEMS: MenuItem[] = [
   {
-    href: 'https://cow.fi/',
-    productVariant: ProductVariant.CowDao,
-    hasDivider: true,
-    hoverColor: `var(${UI.COLOR_NEUTRAL_100})`,
-    hoverBgColor: `var(${UI.COLOR_NEUTRAL_20})`,
+    href: 'https://chameleon.exchange/',
+    productVariant: ProductVariant.ChameleonSwap,
+    hoverColor: '#ff65ff',
+    hoverBgColor: '#012F7A',
     external: true,
-    utmContent: 'menubar-dao-nav-cowdao',
-  },
-  {
-    href: 'https://swap.cow.fi/',
-    productVariant: ProductVariant.CowSwap,
-    hoverColor: `var(${UI.COLOR_BLUE_300_PRIMARY})`,
-    hoverBgColor: `var(${UI.COLOR_BLUE_900_PRIMARY})`,
-    external: true,
-    utmContent: 'menubar-dao-nav-cowswap',
-  },
-  {
-    href: 'https://cow.fi/cow-protocol',
-    productVariant: ProductVariant.CowProtocol,
-    hoverColor: '#FCCAF2',
-    hoverBgColor: '#AD02C6',
-    external: true,
-    utmContent: 'menubar-dao-nav-cowprotocol',
+    utmContent: 'menubar-dao-nav-chameleonswap',
   },
 ]
 

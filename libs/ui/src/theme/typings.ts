@@ -33,6 +33,8 @@ export interface Colors {
   disabled: ColorValue
   alert: ColorValue
   alert2: ColorValue
+  purple?: ColorValue
+  yellow?: ColorValue
   blueDark2: ColorValue
   paperCustom: ColorValue
   paperDarkerCustom: ColorValue

@@ -12,35 +12,35 @@ type NavItemChildrenProps = NonNullable<NavItemProps['children']>[number]
 
 export const SOCIAL_LINKS = [
   {
-    href: 'https://x.com/CoWSwap',
+    href: 'https://x.com/ChameleonSwap',
     label: 'Twitter/X',
     icon: iconSocialXSrc,
     external: true,
     utmContent: 'social-twitter',
   },
   {
-    href: 'https://discord.com/invite/cowprotocol',
+    href: 'https://discord.com/invite/#',
     label: 'Discord',
     icon: iconSocialDiscordSrc,
     external: true,
     utmContent: 'social-discord',
   },
   {
-    href: 'https://github.com/cowprotocol',
+    href: 'https://github.com/#',
     label: 'GitHub',
     icon: iconSocialGithubSrc,
     external: true,
     utmContent: 'social-github',
   },
   {
-    href: 'https://forum.cow.fi/',
+    href: '#',
     label: 'Forum',
     icon: iconSocialForumSrc,
     external: true,
     utmContent: 'social-forum',
   },
   {
-    href: 'https://snapshot.org/#/cow.eth',
+    href: '#',
     label: 'Snapshot',
     icon: iconSocialSnapshotSrc,
     external: true,
@@ -50,51 +50,31 @@ export const SOCIAL_LINKS = [
 
 export const PRODUCT_LOGO_LINKS = [
   {
-    href: 'https://swap.cow.fi/',
-    label: 'CoW Swap',
-    productVariant: ProductVariant.CowSwap,
+    href: 'https://chameleon.exchange/',
+    label: 'Chameleon Swap',
+    productVariant: ProductVariant.ChameleonSwap,
     external: true,
-    utmContent: 'product-cow-swap',
-  },
-  {
-    href: 'https://cow.fi/',
-    label: 'CoW Protocol',
-    productVariant: ProductVariant.CowProtocol,
-    external: true,
-    utmContent: 'product-cow-protocol',
+    utmContent: 'product-chameleon-swap',
   },
 ] as const satisfies NavItemChildrenProps[]
 
 export const GLOBAL_FOOTER_DESCRIPTION =
-  'CoW DAO is an open collective of developers, market makers, and community contributors on a mission to protect users from the dangers of DeFi.'
+  'Chameleon Swap is an open collective of developers, market makers, and community contributors on a mission to protect users from the dangers of DeFi.'
 
 const FOOTER_NAV_GROUP_PRODUCTS = {
   label: 'Products',
   children: [
     {
-      label: 'CoW Swap',
-      href: 'https://cow.fi/cow-swap',
+      label: 'Chameleon swap',
+      href: 'https://chameleon.exchange/',
       external: true,
       utmContent: 'footer-products-cow-swap',
     },
-    {
-      label: 'CoW Protocol',
-      href: 'https://cow.fi/cow-protocol',
-      external: true,
-      utmContent: 'footer-products-cow-protocol',
-    },
-    {
-      label: 'CoW Explorer',
-      href: 'https://explorer.cow.fi',
-      external: true,
-      utmContent: 'footer-products-cow-explorer',
-    },
-    {
-      label: 'CoW Widget',
-      href: 'https://cow.fi/widget',
-      external: true,
-      utmContent: 'footer-products-cow-widget',
-    },
+    { label: 'Chameleon Protocol', href: '#', external: true, utmContent: 'footer-products-chameleon-protocol' },
+    { label: 'Chameleon AMM', href: '#', external: true, utmContent: 'footer-products-cow-amm' },
+    { label: 'MEV Blocker', href: '#', external: true, utmContent: 'footer-products-mev-blocker' },
+    { label: 'Chameleon Explorer', href: '#', external: true, utmContent: 'footer-products-cow-explorer' },
+    { label: 'Chameleon Widget', href: '#', external: true, utmContent: 'footer-products-cow-widget' },
   ],
 } as const satisfies NavItemProps
 
@@ -104,13 +84,13 @@ const FOOTER_NAV_GROUP_HELP = {
     { label: 'Docs', href: 'https://docs.chameleon.exchange', external: true, utmContent: 'footer-help-docs' },
     {
       label: 'Knowledge Base',
-      href: 'https://cow.fi/learn',
+      href: '#',
       external: true,
       utmContent: 'footer-help-knowledge-base',
     },
     {
       label: 'Report Scams',
-      href: 'https://cow.fi/report-scam',
+      href: '#',
       external: true,
       utmContent: 'footer-help-report-scams',
     },
@@ -120,10 +100,10 @@ const FOOTER_NAV_GROUP_HELP = {
 const FOOTER_NAV_GROUP_MISC = {
   label: 'Misc.',
   children: [
-    { label: 'For DAOs', href: 'https://cow.fi/daos', external: true, utmContent: 'footer-misc-for-daos' },
+    { label: 'For DAOs', href: '#', external: true, utmContent: 'footer-misc-for-daos' },
     {
       label: 'Token Charts',
-      href: 'https://cow.fi/tokens',
+      href: '#',
       external: true,
       utmContent: 'footer-misc-token-charts',
     },
@@ -132,39 +112,12 @@ const FOOTER_NAV_GROUP_MISC = {
 
 export function getAboutFooterNavChildren(): NavItemChildrenProps[] {
   return [
-    {
-      href: 'https://docs.cow.fi/governance',
-      label: 'Governance',
-      external: true,
-      utmContent: 'footer-about-governance',
-    },
-    {
-      href: 'https://dune.com/cowprotocol/cow-revenue',
-      label: 'Revenue',
-      external: true,
-      utmContent: 'footer-about-revenue',
-    },
-    { href: 'https://grants.cow.fi/', label: 'Grants', external: true, utmContent: 'footer-about-grants' },
-    { href: 'https://cow.fi/careers', label: 'Careers', external: true, utmContent: 'footer-about-careers' },
-    {
-      href: 'https://cownation.notion.site/CoW-DAO-Brand-Kit-dad6212f182f49d38683e8410bfb37d2',
-      label: 'Brand Kit',
-      external: true,
-      utmContent: 'footer-about-brand-kit',
-    },
-    { href: 'https://cow.fi/legal', label: 'Legal', external: true, utmContent: 'footer-about-legal' },
-    {
-      label: 'Bug Bounty',
-      href: 'https://immunefi.com/bug-bounty/cowprotocol/information/',
-      external: true,
-      utmContent: 'footer-misc-bug-bounty',
-    },
-    {
-      label: 'Affiliate Program',
-      href: 'https://cow.fi/affiliate-program',
-      external: true,
-      utmContent: 'footer-about-affiliate-program',
-    },
+    { href: '#', label: 'Governance', external: true, utmContent: 'footer-about-governance' },
+    { href: '#', label: 'Revenue', external: true, utmContent: 'footer-about-revenue' },
+    { href: '#', label: 'Grants', external: true, utmContent: 'footer-about-grants' },
+    { href: '#', label: 'Careers', external: true, utmContent: 'footer-about-careers' },
+    { href: '#', label: 'Brand Kit', external: true, utmContent: 'footer-about-brand-kit' },
+    { href: '#', label: 'Legal', external: true, utmContent: 'footer-about-legal' },
   ]
 }
 

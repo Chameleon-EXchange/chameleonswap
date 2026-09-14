@@ -15,17 +15,21 @@ import { useDarkModeManager, useUserLocaleManager } from 'legacy/state/user/hook
 import { useGetTradeUrlParams } from 'modules/trade'
 
 import { APP_HEADER_ELEMENT_ID } from 'common/constants/common'
+import { Routes } from 'common/constants/routes'
 import { useIsInternationalizationEnabled } from 'common/hooks/featureFlags/useIsInternationalizationEnabled'
 import { useCustomTheme } from 'common/hooks/useCustomTheme'
 import { useMenuItems } from 'common/hooks/useMenuItems'
 import { parameterizeTradeRoute } from 'common/modules/tradeNavigation'
 
-import { Routes } from 'common/constants/routes'
 import { HideMobile, isMobileQuery } from './styled'
 
 import { NAV_ITEMS, PRODUCT_VARIANT } from '../App/menuConsts'
 
-const LinkComponent = ({ href, children, ...rest }: PropsWithChildren<{ href: string; [key: string]: any }>): ReactNode => {
+const LinkComponent = ({
+  href,
+  children,
+  ...rest
+}: PropsWithChildren<{ href: string; [key: string]: unknown }>): ReactNode => {
   const isDefi = href.includes('defi.chameleon.exchange')
   const external = href.startsWith('http') && !isDefi
 
@@ -38,7 +42,12 @@ const LinkComponent = ({ href, children, ...rest }: PropsWithChildren<{ href: st
   }
 
   return (
-    <NavLink to={href} target={external ? '_blank' : '_self'} rel={external ? 'noopener noreferrer' : undefined} {...rest}>
+    <NavLink
+      to={href}
+      target={external ? '_blank' : '_self'}
+      rel={external ? 'noopener noreferrer' : undefined}
+      {...rest}
+    >
       {children}
     </NavLink>
   )
@@ -110,10 +119,6 @@ export function AppMenu({ children, customTheme: overriddenCustomTheme }: AppMen
         }),
       },
       {
-        label: t`Reward`,
-        href: Routes.REWARD,
-      },
-      {
         label: t`Buy`,
         href: Routes.BUY,
       },
@@ -127,7 +132,7 @@ export function AppMenu({ children, customTheme: overriddenCustomTheme }: AppMen
   return (
     <MenuBar
       LinkComponent={LinkComponent}
-      activeBackgroundDark="#282854"
+      activeBackgroundDark="rgb(77, 40, 84)"
       activeFillDark="#DEE3E6"
       additionalContent={null} // On desktop renders inside the menu bar, on mobile renders inside the mobile menu
       bgColorDark={'rgb(222 227 230 / 7%)'}
@@ -136,7 +141,7 @@ export function AppMenu({ children, customTheme: overriddenCustomTheme }: AppMen
       colorDark={'#DEE3E6'}
       customTheme={customTheme}
       defaultFillDark="rgba(222, 227, 230, 0.4)"
-      hoverBackgroundDark={'#18193B'}
+      hoverBackgroundDark={'rgb(52, 24, 59)'}
       id={APP_HEADER_ELEMENT_ID}
       languageNavItems={languageNavItems}
       navItems={navItems}

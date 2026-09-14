@@ -4,13 +4,12 @@ import svgBackgroundCowswapChristmasDarkSrc from '@cowprotocol/assets/images/bac
 import svgBackgroundCowswapChristmasLightMediumSrc from '@cowprotocol/assets/images/background-cowswap-christmas-light-medium.svg'
 import svgBackgroundCowswapChristmasLightSmallSrc from '@cowprotocol/assets/images/background-cowswap-christmas-light-small.svg'
 import svgBackgroundCowswapChristmasLightSrc from '@cowprotocol/assets/images/background-cowswap-christmas-light.svg'
-import svgBackgroundCowswapDarkmodeNocowsSrc from '@cowprotocol/assets/images/background-cowswap-darkmode-nocows.svg'
-import svgBackgroundCowswapDarkmodeSrc from '@cowprotocol/assets/images/background-cowswap-darkmode.svg'
 import svgBackgroundCowswapHalloweenDarkMediumSrc from '@cowprotocol/assets/images/background-cowswap-halloween-dark-medium.svg'
+import svgBackgroundCowswapHalloweenDarkSmallSrc from '@cowprotocol/assets/images/background-cowswap-halloween-dark-small.svg'
 import svgBackgroundCowswapHalloweenDarkSrc from '@cowprotocol/assets/images/background-cowswap-halloween-dark.svg'
-import svgBackgroundCowswapLightmodeNocowsSrc from '@cowprotocol/assets/images/background-cowswap-lightmode-nocows.svg'
-import svgBackgroundCowswapLightmodeSrc from '@cowprotocol/assets/images/background-cowswap-lightmode.svg'
-import { CowSwapTheme, Media, UI } from '@cowprotocol/ui'
+import svgBackgroundChameleonDarkSrc from '@cowprotocol/assets/images/Chameleon dark.svg'
+import svgBackgroundChameleonLightSrc from '@cowprotocol/assets/images/Chameleon light.svg'
+import { CowSwapTheme, Media } from '@cowprotocol/ui'
 
 import * as CSS from 'csstype'
 import styled from 'styled-components/macro'
@@ -81,18 +80,14 @@ export const BodyWrapper = styled.div<{
   border-bottom-left-radius: ${({ theme }) => (theme.isWidget ? '0' : 'var(--marginBottomOffset)')};
   border-bottom-right-radius: ${({ theme }) => (theme.isWidget ? '0' : 'var(--marginBottomOffset)')};
   min-height: initial;
-  background: ${({ theme, customTheme, backgroundVariant }) => {
+  background: ${({ theme, customTheme }) => {
     if (theme.isWidget) {
       return 'transparent'
     } else {
-      const backgroundColor = theme.darkMode ? '#0E0F2D' : `var(${UI.COLOR_BLUE_300_PRIMARY})`
+      const backgroundColor = theme.darkMode ? '#280e2d' : '#ff65ff'
       let backgroundImage
 
-      if (backgroundVariant === 'nocows') {
-        backgroundImage = theme.darkMode
-          ? `url(${svgBackgroundCowswapDarkmodeNocowsSrc})`
-          : `url(${svgBackgroundCowswapLightmodeNocowsSrc})`
-      } else if (customTheme === 'darkHalloween') {
+      if (customTheme === 'darkHalloween') {
         backgroundImage = `url(${svgBackgroundCowswapHalloweenDarkSrc})`
       } else if (isChristmasTheme(customTheme)) {
         backgroundImage = theme.darkMode
@@ -100,8 +95,8 @@ export const BodyWrapper = styled.div<{
           : `url(${svgBackgroundCowswapChristmasLightSrc})`
       } else {
         backgroundImage = theme.darkMode
-          ? `url(${svgBackgroundCowswapDarkmodeSrc})`
-          : `url(${svgBackgroundCowswapLightmodeSrc})`
+          ? `url(${svgBackgroundChameleonDarkSrc})`
+          : `url(${svgBackgroundChameleonLightSrc})`
       }
 
       return `${backgroundColor} ${backgroundImage} no-repeat bottom -1px center / contain`
@@ -113,19 +108,15 @@ export const BodyWrapper = styled.div<{
       theme.isWidget ? '0 0 16px' : $hasActiveSpeechBubbleNotification ? '150px 16px 330px' : '150px 16px 150px'};
     flex: none;
     min-height: ${({ theme }) => (theme.isWidget ? 'initial' : 'calc(100vh - 200px)')};
-    background-size: ${({ customTheme }) =>
-      customTheme === 'darkHalloween' || isChristmasTheme(customTheme) ? 'contain' : 'auto'};
+    background-size: contain;
 
-    ${({ customTheme, backgroundVariant, theme }) =>
-      backgroundVariant !== 'nocows' &&
+    ${({ customTheme }) =>
       customTheme === 'darkHalloween' &&
-      !theme.isWidget &&
       `
         background-image: url(${svgBackgroundCowswapHalloweenDarkMediumSrc});
       `}
 
-    ${({ customTheme, theme, backgroundVariant }) =>
-      backgroundVariant !== 'nocows' &&
+    ${({ customTheme, theme }) =>
       isChristmasTheme(customTheme) &&
       !theme.isWidget &&
       `
@@ -137,19 +128,15 @@ export const BodyWrapper = styled.div<{
     padding: ${({ theme, $hasActiveSpeechBubbleNotification }) =>
       theme.isWidget ? '0 0 16px' : $hasActiveSpeechBubbleNotification ? '90px 16px 400px' : '90px 16px 200px'};
     min-height: ${({ theme }) => (theme.isWidget ? 'initial' : 'calc(100vh - 100px)')};
-    background-size: ${({ customTheme }) =>
-      customTheme === 'darkHalloween' || isChristmasTheme(customTheme) ? 'contain' : 'auto'};
+    background-size: contain;
 
-    ${({ customTheme, backgroundVariant, theme }) =>
-      backgroundVariant !== 'nocows' &&
+    ${({ customTheme }) =>
       customTheme === 'darkHalloween' &&
-      !theme.isWidget &&
       `
-        background-image: url(${svgBackgroundCowswapHalloweenDarkMediumSrc});
+        background-image: url(${svgBackgroundCowswapHalloweenDarkSmallSrc});
       `}
 
-    ${({ customTheme, theme, backgroundVariant }) =>
-      backgroundVariant !== 'nocows' &&
+    ${({ customTheme, theme }) =>
       isChristmasTheme(customTheme) &&
       !theme.isWidget &&
       `

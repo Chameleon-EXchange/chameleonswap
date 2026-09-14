@@ -65,8 +65,6 @@ import { WalletChainUrlSyncUpdater } from 'common/updaters/WalletChainUrlSyncUpd
 import { WalletSessionDurationUpdater } from 'common/updaters/WalletSessionDurationUpdater'
 import { WidgetTokensUpdater } from 'common/updaters/WidgetTokensUpdater'
 
-import { FaviconAnimationUpdater } from './FaviconAnimationUpdater'
-
 export function Updaters(): ReactNode {
   useAtomValue(eoaTwapOrdersEffectAtom)
 
@@ -116,7 +114,6 @@ export function Updaters(): ReactNode {
       <AnnouncementsUpdater />
       <SurplusInvalidationListenerUpdater />
       <BridgingEnabledUpdater />
-      <FaviconAnimationUpdater />
       <ProviderNetworkSupportedUpdater />
       <TradeOrdersPermitUpdater />
       <ReferralUpdater />
