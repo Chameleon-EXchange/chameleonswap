@@ -1,17 +1,15 @@
 import { useCallback } from 'react'
 
-import svgCowTokenSrc from '@cowprotocol/assets/cow-swap/cow_token.svg'
-import svgDelegateCowSrc from '@cowprotocol/assets/cow-swap/delegate-cow.svg'
+import ChamImage from '@cowprotocol/assets/images/Chameleon-2.png'
 import { ClosableBanner, ButtonPrimary } from '@cowprotocol/ui'
 
 import { t } from '@lingui/core/macro'
 import { Trans } from '@lingui/react/macro'
-import SVG from 'react-inlinesvg'
 
 import { BANNER_IDS } from 'common/constants/banners'
 
 import { DELEGATE_URL } from './constants'
-import { BannerCard, BannerCardIcon, BannerCardContent, BannerCardTitle, CloseButton } from './styled'
+import { BannerCard, BannerCardContent, BannerCardTitle, CloseButton } from './styled'
 
 interface DelegateProps {
   dismissable?: boolean
@@ -27,9 +25,6 @@ export default function Delegate({ dismissable = false, rowOnMobile }: DelegateP
     (close?: () => void) => (
       <BannerCard rowOnMobile={rowOnMobile}>
         {dismissable && close && <CloseButton onClick={close} />}
-        <BannerCardIcon width={159}>
-          <SVG src={svgDelegateCowSrc} title={t`Delegate`} />
-        </BannerCardIcon>
         <BannerCardContent>
           <BannerCardTitle>
             <Trans>
@@ -38,8 +33,7 @@ export default function Delegate({ dismissable = false, rowOnMobile }: DelegateP
             </Trans>
           </BannerCardTitle>
           <small>
-            <Trans>Delegate your</Trans>
-            <img src={svgCowTokenSrc} alt={t`Cow Balance`} height="16" width="16" /> (v)COW
+            <Trans>Delegate your</Trans> <img src={ChamImage} alt={t`CHM Balance`} height="24" width="24" /> (v)CHM
           </small>
           <ButtonPrimary as="a" href={DELEGATE_URL} target="_blank" rel="noopener nofollow">
             <Trans>Delegate Now</Trans> ↗

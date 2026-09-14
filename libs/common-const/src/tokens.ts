@@ -1,6 +1,6 @@
 import { AdditionalTargetChainId, mapSupportedNetworks, SupportedChainId, TargetChainId } from '@cowprotocol/cow-sdk'
 
-import { COW_CONTRACT_ADDRESS, V_COW_CONTRACT_ADDRESS } from './common'
+import { CHAM_CONTRACT_ADDRESS, COW_CONTRACT_ADDRESS, V_COW_CONTRACT_ADDRESS } from './common'
 import { cowprotocolTokenLogoUrl } from './cowprotocolTokenLogoUrl'
 import { NATIVE_CURRENCIES, WRAPPED_NATIVE_CURRENCIES } from './nativeAndWrappedTokens'
 import { TokenWithLogo } from './types'
@@ -782,3 +782,24 @@ export const TOKEN_DISTRO_CONTRACT_ADDRESSES: Record<SupportedChainId, string> =
   [SupportedChainId.MAINNET]: '0x68FFAaC7A431f276fe73604C127Bd78E49070c92',
   [SupportedChainId.GNOSIS_CHAIN]: '0x3d610e917130f9D036e85A030596807f57e11093',
 }
+
+/**
+ * Cham token
+ */
+const CHAM_TOKEN_SYMBOL = 'CHAM'
+const CHAM_TOKEN_NAME = 'Cham Token'
+const CHAM_TOKEN_DECIMALS = 18
+const CHAM_LOGO_URI = undefined // TODO: Update with CHAM logo URI
+
+function getChamTokenForChain(chain: SupportedChainId): TokenWithLogo {
+  const address = CHAM_CONTRACT_ADDRESS[chain]
+  return new TokenWithLogo(CHAM_LOGO_URI, chain, address, CHAM_TOKEN_DECIMALS, CHAM_TOKEN_SYMBOL, CHAM_TOKEN_NAME)
+}
+
+export const CHAM_TOKEN_MAINNET = getChamTokenForChain(SupportedChainId.MAINNET)
+export const CHAM_TOKEN_XDAI = getChamTokenForChain(SupportedChainId.GNOSIS_CHAIN)
+export const CHAM_TOKEN_ARBITRUM = getChamTokenForChain(SupportedChainId.ARBITRUM_ONE)
+export const CHAM_TOKEN_BASE = getChamTokenForChain(SupportedChainId.BASE)
+export const CHAM_TOKEN_SEPOLIA = getChamTokenForChain(SupportedChainId.SEPOLIA)
+
+export const CHAM: Record<SupportedChainId, TokenWithLogo> = mapSupportedNetworks(getChamTokenForChain)

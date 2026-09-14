@@ -55,7 +55,7 @@ export function ProxyRecipient({
     <Wrapper>
       {bridgeReceiverOverride ? (
         <InfoTooltip
-          content={t`This bridge provider uses special receiver address to bridge funds. This address is deterministic for a quote and has been verified by CoW Swap.`}
+          content={t`This bridge provider uses special receiver address to bridge funds. This address is deterministic for a quote and has been verified by Chameleon Swap.`}
         />
       ) : (
         <Pocket size={size} />

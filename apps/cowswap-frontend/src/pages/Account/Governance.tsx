@@ -10,20 +10,20 @@ export default function Governance() {
     <BannerCard>
       <BannerCardContent fontSize="14px">
         <BannerCardTitle fontSize={24}>
-          <Trans>CoW DAO Governance</Trans>
+          <Trans>Chameleon DAO Governance</Trans>
         </BannerCardTitle>
         <small>
-          <Trans>Use your (v)COW balance to vote on important proposals or participate in forum discussions.</Trans>
+          <Trans>Use your (v)CHM balance to vote on important proposals or participate in forum discussions.</Trans>
         </small>
         <CardActions content="flex-start">
           <ExtLink href={'https://snapshot.org/#/cow.eth'}>
             <Trans>View proposals</Trans> ↗
           </ExtLink>
           <ExtLink href={'https://forum.cow.fi/'}>
-            <Trans>CoW forum</Trans> ↗
+            <Trans>Chameleon forum</Trans> ↗
           </ExtLink>
           <ExtLink href={DELEGATE_URL}>
-            <Trans>Delegate (v)COW</Trans> ↗
+            <Trans>Delegate (v)CHM</Trans> ↗
           </ExtLink>
         </CardActions>
       </BannerCardContent>

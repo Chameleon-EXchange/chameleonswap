@@ -52,8 +52,8 @@ msgid "years"
 msgstr "years"
 
 #: apps/cowswap-frontend/src/modules/account/containers/AccountDetails/SurplusCard.tsx
-msgid "Learn about surplus on CoW Swap"
-msgstr "Learn about surplus on CoW Swap"
+#~ msgid "Learn about surplus on CoW Swap"
+#~ msgstr "Learn about surplus on CoW Swap"
 
 #: libs/hook-dapp-lib/src/hookDappsRegistry.ts
 #~ msgid "Retrieve COW tokens before or after a swap."
@@ -472,8 +472,8 @@ msgid "This is the current market price, including the fee."
 msgstr "This is the current market price, including the fee."
 
 #: apps/cowswap-frontend/src/pages/Account/Balances.tsx
-msgid "Convert to COW <0/>"
-msgstr "Convert to COW <0/>"
+#~ msgid "Convert to COW <0/>"
+#~ msgstr "Convert to COW <0/>"
 
 #: apps/cowswap-frontend/src/modules/swap/containers/DeprecatedNetworkBanner/DeprecatedNetworkBanner.container.tsx
 msgid "You can see your past transactions in Explorer"
@@ -558,8 +558,8 @@ msgid "Bridging failed. Refund started..."
 msgstr "Bridging failed. Refund started..."
 
 #: apps/cowswap-frontend/src/pages/Account/Balances.tsx
-msgid "Buy COW"
-msgstr "Buy COW"
+#~ msgid "Buy COW"
+#~ msgstr "Buy COW"
 
 #: apps/cowswap-frontend/src/legacy/hooks/useWrapCallback.ts
 #: apps/cowswap-frontend/src/legacy/hooks/useWrapCallback.ts
@@ -583,12 +583,16 @@ msgid "{sellTokenPart} for at least {buyTokenPart}"
 msgstr "{sellTokenPart} for at least {buyTokenPart}"
 
 #: apps/cowswap-frontend/src/pages/Account/Balances.tsx
-msgid "Converting vCOW..."
-msgstr "Converting vCOW..."
+#~ msgid "Converting vCOW..."
+#~ msgstr "Converting vCOW..."
 
 #: apps/cowswap-frontend/src/modules/hooksStore/pure/AppliedHookItem/index.tsx
 msgid "Run a simulation"
 msgstr "Run a simulation"
+
+#: apps/cowswap-frontend/src/modules/account/containers/AccountDetails/SurplusCard.tsx
+msgid "Learn about surplus on Chameleon Swap"
+msgstr "Learn about surplus on Chameleon Swap"
 
 #: apps/cowswap-frontend/src/pages/games/MevSlicer/index.tsx
 msgid "This CoW doesn't run away any more! Not from MEV!"
@@ -753,6 +757,10 @@ msgstr "h"
 #~ msgid "When selling {aNativeCurrency}, the minimum slippage tolerance is set to {minimumETHFlowSlippage}% or higher to ensure a high likelihood of order matching, even in volatile market conditions."
 #~ msgstr "When selling {aNativeCurrency}, the minimum slippage tolerance is set to {minimumETHFlowSlippage}% or higher to ensure a high likelihood of order matching, even in volatile market conditions."
 
+#: apps/cowswap-frontend/src/pages/Account/Balances.tsx
+msgid "Converting vCHM to CHM"
+msgstr "Converting vCHM to CHM"
+
 #: apps/cowswap-frontend/src/modules/rwa/pure/RwaConsentModal/index.tsx
 #~ msgid "A U.S. Person or resident of the United States."
 #~ msgstr "A U.S. Person or resident of the United States."
@@ -870,12 +878,12 @@ msgid "The connection attempt failed. Please click try again and follow the step
 msgstr "The connection attempt failed. Please click try again and follow the steps to connect in your wallet."
 
 #: apps/cowswap-frontend/src/modules/accountProxy/containers/InvalidCoWShedSetup/InvalidCoWShedSetup.container.tsx
-msgid "CoW Shed setup is invalid!"
-msgstr "CoW Shed setup is invalid!"
+#~ msgid "CoW Shed setup is invalid!"
+#~ msgstr "CoW Shed setup is invalid!"
 
 #: apps/cowswap-frontend/src/pages/Account/Balances.tsx
-msgid "COW token is not available on this network"
-msgstr "COW token is not available on this network"
+#~ msgid "COW token is not available on this network"
+#~ msgstr "COW token is not available on this network"
 
 #: apps/cowswap-frontend/src/modules/tokensList/containers/LpTokenListsWidget/index.tsx
 msgid "CoW AMM only"
@@ -907,8 +915,8 @@ msgid "Cancelling order"
 msgstr "Cancelling order"
 
 #: apps/cowswap-frontend/src/pages/Account/Balances.tsx
-msgid "<0><1>Vested vCOW</1> is the portion of your vCOW token balance, which is fully available to convert to COW token.</0><2>This includes any vCOW received through an <3>airdrop.</3></2><4>When converting your vested vCOW balance to COW, your entire vested balance will be converted.</4>"
-msgstr "<0><1>Vested vCOW</1> is the portion of your vCOW token balance, which is fully available to convert to COW token.</0><2>This includes any vCOW received through an <3>airdrop.</3></2><4>When converting your vested vCOW balance to COW, your entire vested balance will be converted.</4>"
+#~ msgid "<0><1>Vested vCOW</1> is the portion of your vCOW token balance, which is fully available to convert to COW token.</0><2>This includes any vCOW received through an <3>airdrop.</3></2><4>When converting your vested vCOW balance to COW, your entire vested balance will be converted.</4>"
+#~ msgstr "<0><1>Vested vCOW</1> is the portion of your vCOW token balance, which is fully available to convert to COW token.</0><2>This includes any vCOW received through an <3>airdrop.</3></2><4>When converting your vested vCOW balance to COW, your entire vested balance will be converted.</4>"
 
 #: apps/cowswap-frontend/src/common/pure/AddressInputPanel/ReceiverPanelHeader.container.tsx
 msgid "View ↗"
@@ -940,8 +948,8 @@ msgid "Order receipt"
 msgstr "Order receipt"
 
 #: apps/cowswap-frontend/src/pages/Account/Governance.tsx
-msgid "CoW forum"
-msgstr "CoW forum"
+#~ msgid "CoW forum"
+#~ msgstr "CoW forum"
 
 #: apps/cowswap-frontend/src/modules/account/containers/Transaction/StatusDetails.tsx
 #: apps/cowswap-frontend/src/modules/affiliate/pure/AffiliatePartner/AffiliatePartnerCodeForm.tsx
@@ -1185,8 +1193,8 @@ msgid "months"
 msgstr "months"
 
 #: apps/cowswap-frontend/src/pages/Account/Governance.tsx
-msgid "Delegate (v)COW"
-msgstr "Delegate (v)COW"
+#~ msgid "Delegate (v)COW"
+#~ msgstr "Delegate (v)COW"
 
 #: apps/cowswap-frontend/src/modules/orderProgressBar/constants.ts
 msgid "On CoW Swap, you can set limit orders for balances you don't have yet."
@@ -1223,8 +1231,8 @@ msgid "warning"
 msgstr "warning"
 
 #: apps/cowswap-frontend/src/pages/Account/Balances.tsx
-msgid "Available COW balance"
-msgstr "Available COW balance"
+#~ msgid "Available COW balance"
+#~ msgstr "Available COW balance"
 
 #: apps/cowswap-frontend/src/modules/bridge/pure/BridgeTransactionLink/index.tsx
 msgid "Bridge explorer"
@@ -1278,6 +1286,10 @@ msgstr "Bridging to destination..."
 msgid "Refer"
 msgstr "Refer"
 
+#: apps/cowswap-frontend/src/pages/Account/Governance.tsx
+msgid "Chameleon DAO Governance"
+msgstr "Chameleon DAO Governance"
+
 #: libs/common-utils/src/swapErrorToUserReadableMessage.tsx
 #~ msgid "The transaction could not be sent because the deadline has passed. Please check that your transaction deadline is not too low."
 #~ msgstr "The transaction could not be sent because the deadline has passed. Please check that your transaction deadline is not too low."
@@ -1318,8 +1330,8 @@ msgid "Confirm"
 msgstr "Confirm"
 
 #: apps/cowswap-frontend/src/pages/Account/Balances.tsx
-msgid "Total vCOW balance"
-msgstr "Total vCOW balance"
+#~ msgid "Total vCOW balance"
+#~ msgstr "Total vCOW balance"
 
 #: apps/cowswap-frontend/src/pages/AdvancedOrders/AdvancedOrders.page.tsx
 msgid "TWAP orders"
@@ -1521,6 +1533,10 @@ msgstr "Place limit order"
 msgid "<0>New!</0> Get Telegram notifications about your order status! <1>Get started</1>"
 msgstr "<0>New!</0> Get Telegram notifications about your order status! <1>Get started</1>"
 
+#: apps/cowswap-frontend/src/pages/Account/Balances.tsx
+msgid "Convert to CHM <0/>"
+msgstr "Convert to CHM <0/>"
+
 #: apps/cowswap-frontend/src/modules/affiliate/containers/AffiliatePartnerOnboard.tsx
 msgid "Become an affiliate"
 msgstr "Become an affiliate"
@@ -1666,8 +1682,8 @@ msgid "No route found for this token"
 msgstr "No route found for this token"
 
 #: apps/cowswap-frontend/src/modules/accountProxy/containers/ProxyRecipient/ProxyRecipient.container.tsx
-msgid "This bridge provider uses special receiver address to bridge funds. This address is deterministic for a quote and has been verified by CoW Swap."
-msgstr "This bridge provider uses special receiver address to bridge funds. This address is deterministic for a quote and has been verified by CoW Swap."
+#~ msgid "This bridge provider uses special receiver address to bridge funds. This address is deterministic for a quote and has been verified by CoW Swap."
+#~ msgstr "This bridge provider uses special receiver address to bridge funds. This address is deterministic for a quote and has been verified by CoW Swap."
 
 #: apps/cowswap-frontend/src/modules/account/containers/AccountModal/AccountModal.container.tsx
 #: apps/cowswap-frontend/src/modules/application/containers/App/menuConsts.tsx
@@ -1746,8 +1762,8 @@ msgstr "Order Cancelled"
 #~ msgstr "Swap once to activate."
 
 #: apps/cowswap-frontend/src/modules/accountProxy/containers/InvalidCoWShedSetup/InvalidCoWShedSetup.container.tsx
-msgid "Please contact CoW Swap support!"
-msgstr "Please contact CoW Swap support!"
+#~ msgid "Please contact CoW Swap support!"
+#~ msgstr "Please contact CoW Swap support!"
 
 #: apps/cowswap-frontend/src/common/containers/CoWAmmBanner/index.tsx
 msgid "CoW AMM"
@@ -2069,6 +2085,10 @@ msgstr "Recoverable balance"
 #: apps/cowswap-frontend/src/modules/limitOrders/pure/RateImpactWarning/index.tsx
 msgid "Your limit price is {absoluteRateImpact}% lower than current market price. You could be selling your <0/> at a loss (although CoW Swap will always try to give you the best price regardless)."
 msgstr "Your limit price is {absoluteRateImpact}% lower than current market price. You could be selling your <0/> at a loss (although CoW Swap will always try to give you the best price regardless)."
+
+#: apps/cowswap-frontend/src/modules/accountProxy/containers/InvalidCoWShedSetup/InvalidCoWShedSetup.container.tsx
+msgid "Please contact Chameleon Swap support!"
+msgstr "Please contact Chameleon Swap support!"
 
 #: apps/cowswap-frontend/src/modules/tradeFlow/services/solanaFlow/index.ts
 msgid "Swap {sellSymbol} for {buySymbol}"
@@ -2611,8 +2631,8 @@ msgid "Expired before creation"
 msgstr "Expired before creation"
 
 #: apps/cowswap-frontend/src/pages/Account/Governance.tsx
-msgid "Use your (v)COW balance to vote on important proposals or participate in forum discussions."
-msgstr "Use your (v)COW balance to vote on important proposals or participate in forum discussions."
+#~ msgid "Use your (v)COW balance to vote on important proposals or participate in forum discussions."
+#~ msgstr "Use your (v)COW balance to vote on important proposals or participate in forum discussions."
 
 #: apps/cowswap-frontend/src/modules/orderProgressBar/pure/steps/FinishedStep.tsx
 msgid "Collapse"
@@ -4099,6 +4119,10 @@ msgstr "Read how to prevent losing funds"
 #~ msgid "No open orders found. You can try again by clicking the \"Load More\" button."
 #~ msgstr "No open orders found. You can try again by clicking the \"Load More\" button."
 
+#: apps/cowswap-frontend/src/modules/accountProxy/containers/InvalidCoWShedSetup/InvalidCoWShedSetup.container.tsx
+msgid "Account Proxy setup is invalid!"
+msgstr "Account Proxy setup is invalid!"
+
 #: apps/cowswap-frontend/src/modules/twap/containers/TwapConfirmModal/TwapConfirmDetails.tsx
 msgid "The time each part of your TWAP order will remain active."
 msgstr "The time each part of your TWAP order will remain active."
@@ -4263,8 +4287,8 @@ msgstr "Source transaction"
 
 #: apps/cowswap-frontend/src/pages/Account/Balances.tsx
 #: apps/cowswap-frontend/src/pages/Account/Delegate.tsx
-msgid "Cow Balance"
-msgstr "Cow Balance"
+#~ msgid "Cow Balance"
+#~ msgstr "Cow Balance"
 
 #: apps/cowswap-frontend/src/common/pure/CancellationModal/ModalTopContent.tsx
 msgid "Keep in mind a solver might already have included the order in a solution even if this cancellation is successful."
@@ -4348,6 +4372,10 @@ msgstr ""
 #: apps/cowswap-frontend/src/modules/orderProgressBar/pure/TransactionSubmittedContent/SurplusModal.tsx
 msgid "saved"
 msgstr "saved"
+
+#: apps/cowswap-frontend/src/pages/Account/Balances.tsx
+msgid "CHAM token is not available on this network"
+msgstr "CHAM token is not available on this network"
 
 #: apps/cowswap-frontend/src/modules/hooksStore/containers/HookRegistryList/index.tsx
 msgid "Hook Store"
@@ -4558,6 +4586,10 @@ msgstr "Verifying approval"
 msgid "and saved "
 msgstr "and saved "
 
+#: apps/cowswap-frontend/src/pages/Account/Balances.tsx
+msgid "Converting vCHM..."
+msgstr "Converting vCHM..."
+
 #: libs/common-utils/src/swapErrorToUserReadableMessage.tsx
 #~ msgid "This transaction will not succeed due to price movement. Try increasing your slippage tolerance. Note: fee on transfer and rebase tokens are incompatible with Uniswap V3."
 #~ msgstr "This transaction will not succeed due to price movement. Try increasing your slippage tolerance. Note: fee on transfer and rebase tokens are incompatible with Uniswap V3."
@@ -4761,9 +4793,17 @@ msgstr "Rewards activated"
 msgid "Scan QR code"
 msgstr "Scan QR code"
 
+#: apps/cowswap-frontend/src/pages/Account/Balances.tsx
+msgid "CHAM Balance"
+msgstr "CHAM Balance"
+
 #: apps/cowswap-frontend/src/modules/account/containers/Transaction/ActivityDetails.tsx
 msgid "No signatures yet"
 msgstr "No signatures yet"
+
+#: apps/cowswap-frontend/src/pages/Account/Governance.tsx
+msgid "Delegate (v)CHM"
+msgstr "Delegate (v)CHM"
 
 #: apps/cowswap-frontend/src/modules/twap/containers/EoaTwapSigningPendingContent/EoaTwapSigningPendingContent.tsx
 #: apps/cowswap-frontend/src/modules/twap/utils/buildEoaTwapConfirmationPendingSteps.tsx
@@ -4803,8 +4843,8 @@ msgid "Not available in your region"
 msgstr "Not available in your region"
 
 #: apps/cowswap-frontend/src/pages/Account/Delegate.tsx
-msgid "Delegate"
-msgstr "Delegate"
+#~ msgid "Delegate"
+#~ msgstr "Delegate"
 
 #: apps/cowswap-frontend/src/modules/orderProgressBar/pure/steps/SolvingStep.tsx
 msgid "cancel the order"
@@ -4892,8 +4932,8 @@ msgid "Please enter the base URL of your dapp, not the direct manifest.json path
 msgstr "Please enter the base URL of your dapp, not the direct manifest.json path"
 
 #: apps/cowswap-frontend/src/pages/Account/Menu.tsx
-msgid "Affiliate"
-msgstr "Affiliate"
+#~ msgid "Affiliate"
+#~ msgstr "Affiliate"
 
 #: apps/cowswap-frontend/src/modules/orders/pure/PendingOrderNotification/index.tsx
 #~ msgid "submitted"
@@ -5036,8 +5076,8 @@ msgstr "Execution time"
 #~ msgstr "Code already taken or wallet already linked."
 
 #: apps/cowswap-frontend/src/pages/Account/Balances.tsx
-msgid "vCOW token"
-msgstr "vCOW token"
+#~ msgid "vCOW token"
+#~ msgstr "vCOW token"
 
 #: apps/cowswap-frontend/src/modules/tradeWidgetAddons/containers/TransactionSlippageInput/TransactionSlippageInput.container.tsx
 #~ msgid "High slippage amount selected"
@@ -5092,6 +5132,10 @@ msgstr "Search network"
 #: apps/cowswap-frontend/src/modules/affiliate/pure/MetricsCard.tsx
 #~ msgid "Updates daily at 02:00 UTC"
 #~ msgstr "Updates daily at 02:00 UTC"
+
+#: apps/cowswap-frontend/src/pages/Account/Balances.tsx
+msgid "vCHM conversion"
+msgstr "vCHM conversion"
 
 #: apps/cowswap-frontend/src/legacy/components/ErrorBoundary/ChunkLoadError.tsx
 msgid "CowSwap no connection"
@@ -5345,8 +5389,8 @@ msgid "buy"
 msgstr "buy"
 
 #: apps/cowswap-frontend/src/pages/Account/Balances.tsx
-msgid "Converting vCOW to COW"
-msgstr "Converting vCOW to COW"
+#~ msgid "Converting vCOW to COW"
+#~ msgstr "Converting vCOW to COW"
 
 #: apps/cowswap-frontend/src/modules/swap/containers/SwapConfirmModal/useLabelsAndTooltips.tsx
 msgid "Maximum sent"
@@ -5514,8 +5558,8 @@ msgstr "Enter valid token address"
 #~ msgstr "Confirm and continue"
 
 #: apps/cowswap-frontend/src/pages/Account/Balances.tsx
-msgid "vCOW conversion"
-msgstr "vCOW conversion"
+#~ msgid "vCOW conversion"
+#~ msgstr "vCOW conversion"
 
 #: apps/cowswap-frontend/src/legacy/components/ErrorBoundary/ChunkLoadError.tsx
 msgid "Sorry, we were unable to load the requested page."
@@ -5710,6 +5754,10 @@ msgstr "before that time."
 msgid "View transaction"
 msgstr "View transaction"
 
+#: apps/cowswap-frontend/src/pages/Account/Balances.tsx
+msgid "<0><1>Vested vCHM</1> is the portion of your vCHM token balance, which is fully available to convert to CHM token.</0><2>This includes any vCHM received through an <3>airdrop.</3></2><4>When converting your vested vCHM balance to CHM, your entire vested balance will be converted.</4>"
+msgstr "<0><1>Vested vCHM</1> is the portion of your vCHM token balance, which is fully available to convert to CHM token.</0><2>This includes any vCHM received through an <3>airdrop.</3></2><4>When converting your vested vCHM balance to CHM, your entire vested balance will be converted.</4>"
+
 #: apps/cowswap-frontend/src/modules/notifications/containers/ConnectTelegram/ConnectTelegramModal.tsx
 msgid "Preparing your connect link…"
 msgstr "Preparing your connect link…"
@@ -5859,6 +5907,10 @@ msgstr "Unwrapping"
 #: apps/cowswap-frontend/src/modules/tradeFormValidation/pure/QuoteErrorsButton/QuoteErrorsButton.pure.tsx
 msgid "Unknown quote error"
 msgstr "Unknown quote error"
+
+#: apps/cowswap-frontend/src/modules/account/containers/AccountDetails/SurplusCard.tsx
+msgid "The total surplus Chameleon Swap has generated for you in {nativeSymbol} across all your trades since {startDate}"
+msgstr "The total surplus Chameleon Swap has generated for you in {nativeSymbol} across all your trades since {startDate}"
 
 #: apps/cowswap-frontend/src/modules/trade/pure/CompatibilityIssuesWarning/index.tsx
 msgid "Read more about unsupported wallets"
@@ -6113,8 +6165,8 @@ msgid "Receive surplus of your order"
 msgstr "Receive surplus of your order"
 
 #: apps/cowswap-frontend/src/pages/Account/Governance.tsx
-msgid "CoW DAO Governance"
-msgstr "CoW DAO Governance"
+#~ msgid "CoW DAO Governance"
+#~ msgstr "CoW DAO Governance"
 
 #: apps/cowswap-frontend/src/modules/wallet/pure/WatchAssetInWallet/index.tsx
 msgid "Add <0/> to {walletName}"
@@ -6808,6 +6860,10 @@ msgstr "Confirm with your wallet"
 #~ msgid "applied!"
 #~ msgstr "applied!"
 
+#: apps/cowswap-frontend/src/modules/accountProxy/containers/ProxyRecipient/ProxyRecipient.container.tsx
+msgid "This bridge provider uses special receiver address to bridge funds. This address is deterministic for a quote and has been verified by Chameleon Swap."
+msgstr "This bridge provider uses special receiver address to bridge funds. This address is deterministic for a quote and has been verified by Chameleon Swap."
+
 #: apps/cowswap-frontend/src/modules/affiliate/containers/AffiliateTraderOnboard.tsx
 #~ msgid "Use a referral code to earn a flat fee for<0/>the eligible volume done through the app.<1/><2/>New wallets only."
 #~ msgstr "Use a referral code to earn a flat fee for<0/>the eligible volume done through the app.<1/><2/>New wallets only."
@@ -6843,6 +6899,10 @@ msgstr "Avg. execution price"
 #: apps/cowswap-frontend/src/modules/hooksStore/pure/AddCustomHookForm/constants.tsx
 msgid "Hook position mismatch:"
 msgstr "Hook position mismatch:"
+
+#: apps/cowswap-frontend/src/pages/Account/Balances.tsx
+msgid "Total vCHM balance"
+msgstr "Total vCHM balance"
 
 #: apps/cowswap-frontend/src/common/pure/OrderSubmittedContent/TrackOrderBanner.pure.tsx
 msgid "Track this order"
@@ -6935,6 +6995,10 @@ msgstr "Get trade alerts"
 #~ msgid "Aave Collateral Swap Flashloan"
 #~ msgstr "Aave Collateral Swap Flashloan"
 
+#: apps/cowswap-frontend/src/pages/Account/Balances.tsx
+msgid "Convert vCHM to CHM"
+msgstr "Convert vCHM to CHM"
+
 #: apps/cowswap-frontend/src/modules/limitOrders/pure/LimitOrdersDetails/index.tsx
 msgid "order executes at"
 msgstr "order executes at"
@@ -6948,8 +7012,8 @@ msgstr "Information"
 #~ msgstr "Your limit price is {percent}% lower than current market price. You could be selling your <0/> at a loss (although CoW Swap will always try to give you the best price regardless)."
 
 #: apps/cowswap-frontend/src/modules/account/containers/AccountDetails/SurplusCard.tsx
-msgid "The total surplus CoW Swap has generated for you in {nativeSymbol} across all your trades since {startDate}"
-msgstr "The total surplus CoW Swap has generated for you in {nativeSymbol} across all your trades since {startDate}"
+#~ msgid "The total surplus CoW Swap has generated for you in {nativeSymbol} across all your trades since {startDate}"
+#~ msgstr "The total surplus CoW Swap has generated for you in {nativeSymbol} across all your trades since {startDate}"
 
 #: apps/cowswap-frontend/src/pages/Account/Affiliate.tsx
 #~ msgid "Type or generate a code (subject to availability). Saving locks this code to your wallet and can't be changed. Links/codes don't reveal your wallet."
@@ -6998,8 +7062,8 @@ msgid "Issued by {issuedByIssuer}"
 msgstr "Issued by {issuedByIssuer}"
 
 #: apps/cowswap-frontend/src/pages/Account/Menu.tsx
-msgid "My Rewards"
-msgstr "My Rewards"
+#~ msgid "My Rewards"
+#~ msgstr "My Rewards"
 
 #: apps/cowswap-frontend/src/modules/affiliate/containers/AffiliateTraderExpiryBanner.tsx
 msgid "Your referral code expired on {rewardsEndLabel}."
@@ -7088,6 +7152,10 @@ msgstr "yield"
 #: apps/cowswap-frontend/src/modules/tradeWidgetAddons/containers/RowQuoteId/QuoteVerificationIndicator.tsx
 msgid "Quote not yet verified by CoW Protocol simulation"
 msgstr "Quote not yet verified by CoW Protocol simulation"
+
+#: apps/cowswap-frontend/src/pages/Account/Balances.tsx
+msgid "Buy CHAM"
+msgstr "Buy CHAM"
 
 #: apps/cowswap-frontend/src/modules/tokensList/containers/SelectTokenWidget/hooks/useWidgetMetadata.ts
 msgid "Buy token"
@@ -7701,6 +7769,10 @@ msgstr "Recover funds"
 msgid "Your referral code"
 msgstr "Your referral code"
 
+#: apps/cowswap-frontend/src/pages/Account/Balances.tsx
+msgid "vCHM token"
+msgstr "vCHM token"
+
 #: apps/cowswap-frontend/src/modules/affiliate/pure/TraderReferralCodeModal/TraderReferralCodeModalContent.tsx
 #~ msgid "The code <0>{rejectionCode}</0> from your link wasn’t applied."
 #~ msgstr "The code <0>{rejectionCode}</0> from your link wasn’t applied."
@@ -7752,6 +7824,10 @@ msgstr "CoW Swap <0>is back online</0>"
 #: apps/cowswap-frontend/src/modules/affiliate/pure/TraderReferralCodeModal/TraderReferralCodeModalContent.tsx
 #~ msgid "This wallet isn't eligible for that code."
 #~ msgstr "This wallet isn't eligible for that code."
+
+#: apps/cowswap-frontend/src/pages/Account/Governance.tsx
+msgid "Chameleon forum"
+msgstr "Chameleon forum"
 
 #: apps/cowswap-frontend/src/common/pure/OrderSubmittedContent/index.tsx
 #~ msgid "Get notified when your order fills"
@@ -8081,6 +8157,10 @@ msgstr "Delegate Now"
 msgid "Try new limit orders now"
 msgstr "Try new limit orders now"
 
+#: apps/cowswap-frontend/src/pages/Account/Delegate.tsx
+msgid "CHM Balance"
+msgstr "CHM Balance"
+
 #: apps/cowswap-frontend/src/pages/Account/Affiliate.tsx
 #~ msgid "Affiliate code created."
 #~ msgstr "Affiliate code created."
@@ -8149,6 +8229,10 @@ msgstr "(also known as CoW Shed)"
 msgid "Loading bridge data <0/>"
 msgstr "Loading bridge data <0/>"
 
+#: apps/cowswap-frontend/src/pages/Account/Governance.tsx
+msgid "Use your (v)CHM balance to vote on important proposals or participate in forum discussions."
+msgstr "Use your (v)CHM balance to vote on important proposals or participate in forum discussions."
+
 #: apps/cowswap-frontend/src/common/pure/OrderSummary/summaryTemplates.tsx
 #: apps/cowswap-frontend/src/modules/limitOrders/containers/LimitOrdersWidget/index.tsx
 #: apps/cowswap-frontend/src/modules/orders/containers/BridgingSuccessNotification/index.tsx
@@ -8203,8 +8287,8 @@ msgid "Invalid proxy address"
 msgstr "Invalid proxy address"
 
 #: apps/cowswap-frontend/src/pages/Account/Balances.tsx
-msgid "Convert vCOW to COW"
-msgstr "Convert vCOW to COW"
+#~ msgid "Convert vCOW to COW"
+#~ msgstr "Convert vCOW to COW"
 
 #: apps/cowswap-frontend/src/modules/account/containers/Transaction/ActivityDetails.tsx
 #: apps/cowswap-frontend/src/modules/bridge/pure/contents/SwapResultContent/contents.tsx
@@ -8540,6 +8624,10 @@ msgstr "pool"
 #: apps/cowswap-frontend/src/modules/hooksStore/pure/AddCustomHookForm/constants.tsx
 msgid "Invalid URL: Path contains consecutive forward slashes"
 msgstr "Invalid URL: Path contains consecutive forward slashes"
+
+#: apps/cowswap-frontend/src/pages/Account/Balances.tsx
+msgid "Available CHAM balance"
+msgstr "Available CHAM balance"
 
 #: apps/cowswap-frontend/src/modules/affiliate/pure/AffiliatePartner/AffiliatePartnerCodeForm.tsx
 #~ msgid "Generate"

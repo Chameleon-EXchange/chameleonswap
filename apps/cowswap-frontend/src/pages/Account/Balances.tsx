@@ -1,15 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import svgArrowSrc from '@cowprotocol/assets/cow-swap/arrow.svg'
-import svgCowTokenSrc from '@cowprotocol/assets/cow-swap/cow_token.svg'
+import ChamImage from '@cowprotocol/assets/images/Chameleon-2.png'
 import svgVCowSrc from '@cowprotocol/assets/images/vCOW.svg'
 import { useCurrencyAmountBalance, useTokensBalances } from '@cowprotocol/balances-and-allowances'
-import {
-  COW_TOKEN_TO_CHAIN,
-  COW_CONTRACT_ADDRESS,
-  V_COW,
-  WRAPPED_NATIVE_CURRENCIES as WETH,
-} from '@cowprotocol/common-const'
+import { CHAM, CHAM_CONTRACT_ADDRESS, V_COW } from '@cowprotocol/common-const'
 import { usePrevious } from '@cowprotocol/common-hooks'
 import { getBlockExplorerUrl, getProviderErrorMessage } from '@cowprotocol/common-utils'
 import { CurrencyAmount } from '@cowprotocol/currency'
@@ -60,8 +55,7 @@ export default function Profile() {
   const { account, chainId } = useWalletInfo()
   const previousAccount = usePrevious(account)
 
-  const cowContractAddress = COW_CONTRACT_ADDRESS[chainId]
-  const nativeWrappedToken = WETH[chainId]
+  const chamContractAddress = CHAM_CONTRACT_ADDRESS[chainId]
   const isProviderNetworkUnsupported = useIsProviderNetworkUnsupported()
   const isProviderNetworkDeprecated = useIsProviderNetworkDeprecated()
   const blockNumber = useBlockNumber()
@@ -74,12 +68,12 @@ export default function Profile() {
   // Locked GNO balance
   const { loading: isLockedGnoLoading, ...lockedGnoBalances } = useCowFromLockedGnoBalances()
 
-  const cowToken = COW_TOKEN_TO_CHAIN[chainId]
+  const chamToken = CHAM[chainId]
   const vCowToken = V_COW[chainId]
-  // Cow balance
-  const cowBalance =
-    useCurrencyAmountBalance(chainId ? cowToken : undefined) ||
-    (cowToken ? CurrencyAmount.fromRawAmount(cowToken, 0) : undefined)
+  // Cham balance
+  const chamBalance =
+    useCurrencyAmountBalance(chainId ? chamToken : undefined) ||
+    (chamToken ? CurrencyAmount.fromRawAmount(chamToken, 0) : undefined)
 
   // vCow balance values
   const { unvested, vested, total, isLoading: isVCowLoading } = useVCowData()
@@ -155,13 +149,13 @@ export default function Profile() {
       <div>
         <Trans>
           <p>
-            <strong>Vested vCOW</strong> is the portion of your vCOW token balance, which is fully available to convert
-            to COW token.
+            <strong>Vested vCHM</strong> is the portion of your vCHM token balance, which is fully available to convert
+            to CHM token.
           </p>
           <p>
-            This includes any vCOW received through an <strong>airdrop.</strong>
+            This includes any vCHM received through an <strong>airdrop.</strong>
           </p>
-          <p>When converting your vested vCOW balance to COW, your entire vested balance will be converted.</p>
+          <p>When converting your vested vCHM balance to CHM, your entire vested balance will be converted.</p>
         </Trans>
       </div>
     ),
@@ -173,7 +167,7 @@ export default function Profile() {
     if (isSwapPending) {
       content = (
         <span>
-          <Trans>Converting vCOW...</Trans>
+          <Trans>Converting vCHM...</Trans>
         </span>
       )
     } else if (isSwapConfirmed) {
@@ -185,7 +179,7 @@ export default function Profile() {
     } else {
       content = (
         <Trans>
-          Convert to COW <SVG src={svgArrowSrc} />
+          Convert to CHM <SVG src={svgArrowSrc} />
         </Trans>
       )
     }
@@ -225,9 +219,9 @@ export default function Profile() {
         <ConfirmationPendingContent
           modalMode
           onDismiss={closeModal}
-          title={t`Convert vCOW to COW`}
-          description={t`Converting vCOW to COW`}
-          operationLabel={t`vCOW conversion`}
+          title={t`Convert vCHM to CHM`}
+          description={t`Converting vCHM to CHM`}
+          operationLabel={t`vCHM conversion`}
         />
       </CowModal>
 
@@ -236,10 +230,10 @@ export default function Profile() {
       {hasVCowBalance && vCowToken && (
         <Card showLoader={isVCowLoading || isSwapPending}>
           <BalanceDisplay hAlign="left">
-            <SVG src={svgVCowSrc} title={t`vCOW token`} width="56" height="56" />
+            <SVG src={svgVCowSrc} title={t`vCHM token`} width="56" height="56" />
             <span>
               <i>
-                <Trans>Total vCOW balance</Trans>
+                <Trans>Total vCHM balance</Trans>
               </i>
               <b>
                 <TokenAmount amount={total} defaultValue="0" tokenSymbol={vCowToken} />{' '}
@@ -279,31 +273,31 @@ export default function Profile() {
         </Card>
       )}
 
-      {cowContractAddress && (
+      {chamContractAddress && (
         <Card showLoader={isCowBalanceLoading}>
           <BalanceDisplay titleSize={26}>
-            <img src={svgCowTokenSrc} alt={t`Cow Balance`} height="80" width="80" />
+            <img src={ChamImage} alt={t`CHAM Balance`} height="80" width="80" />
             <span>
               <i>
-                <Trans>Available COW balance</Trans>
+                <Trans>Available CHAM balance</Trans>
               </i>
               <b>
                 {!isProviderNetworkUnsupported && !isProviderNetworkDeprecated && (
-                  <TokenAmount amount={cowBalance} defaultValue="0" tokenSymbol={cowToken} />
+                  <TokenAmount amount={chamBalance} defaultValue="0" tokenSymbol={chamToken} />
                 )}
               </b>
             </span>
           </BalanceDisplay>
           <CardActions>
-            <ExtLink title={t`View contract`} href={getBlockExplorerUrl(chainId, 'token', cowContractAddress)}>
+            <ExtLink title={t`View contract`} href={getBlockExplorerUrl(chainId, 'token', chamContractAddress)}>
               <Trans>View contract</Trans> ↗
             </ExtLink>
 
             <StyledWatchAssetInWallet
               shortLabel
-              currency={cowToken}
+              currency={chamToken}
               fallback={
-                <CopyHelper toCopy={cowContractAddress}>
+                <CopyHelper toCopy={chamContractAddress}>
                   <div title={t`Click to copy token contract address`}>
                     <Trans>Copy contract</Trans>
                   </div>
@@ -311,18 +305,18 @@ export default function Profile() {
               }
             />
 
-            <Link to={`/${chainId}/swap/${nativeWrappedToken.address}/${COW_CONTRACT_ADDRESS[chainId]}`}>
-              <Trans>Buy COW</Trans>
+            <Link to={`/swap?outputCurrency=${chamContractAddress}`}>
+              <Trans>Buy CHAM</Trans>
             </Link>
           </CardActions>
         </Card>
       )}
 
-      {!cowContractAddress && (
+      {!chamContractAddress && (
         <BannerCard>
           <BannerCardContent justifyContent="center">
             <BannerCardTitle fontSize={24}>
-              <Trans>COW token is not available on this network</Trans>
+              <Trans>CHAM token is not available on this network</Trans>
             </BannerCardTitle>
           </BannerCardContent>
         </BannerCard>

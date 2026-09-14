@@ -1,8 +1,7 @@
 import { useEffect, useRef } from 'react'
 
-import svgFlyingWinkCowDarkModeSrc from '@cowprotocol/assets/images/flying-wink-cow-dark-mode.svg'
+import CHAMELEON_DARK from '@cowprotocol/assets/images/Chameleon-black.png'
 
-import SVG from 'react-inlinesvg'
 import styled, { keyframes } from 'styled-components/macro'
 
 import { UI } from '../../enum'
@@ -19,7 +18,7 @@ const scrollHorizontal = keyframes`
 const FooterAnimationContainer = styled.div`
   --height: 112px;
   --fontSize: 156px;
-  --animationSpeed: 10s;
+  --animationSpeed: 14s;
 
   display: flex;
   justify-content: flex-start;
@@ -63,11 +62,15 @@ const ScrollingContentWrapper = styled.div`
     color: inherit;
   }
 
-  > svg {
+  > svg,
+  > img {
     height: var(--height);
     width: auto;
     object-fit: contain;
     padding: 0 0 20px;
+  }
+
+  > svg {
     border-bottom: 4px solid var(--color);
   }
 `
@@ -95,12 +98,16 @@ export const FooterAnimation = () => {
     <FooterAnimationContainer ref={containerRef}>
       <ScrollingContent ref={contentRef}>
         <ScrollingContentWrapper>
-          <b>MOOOOOOOOOOOOOOOOOO</b>
-          <SVG src={svgFlyingWinkCowDarkModeSrc} />
+          <b>CHAMELEON CHAMELEON</b>
+          <img src={CHAMELEON_DARK} width={120} height={120} alt="Chameleon" />
         </ScrollingContentWrapper>
         <ScrollingContentWrapper>
-          <b>MOOOOOOOOOOOOOOOOOO</b>
-          <SVG src={svgFlyingWinkCowDarkModeSrc} />
+          <b>CHAMELEON CHAMELEON</b>
+          <img src={CHAMELEON_DARK} width={120} height={120} alt="Chameleon" />
+        </ScrollingContentWrapper>
+        <ScrollingContentWrapper>
+          <b>CHAMELEON CHAMELEON</b>
+          <img src={CHAMELEON_DARK} width={120} height={120} alt="Chameleon" />
         </ScrollingContentWrapper>
       </ScrollingContent>
     </FooterAnimationContainer>

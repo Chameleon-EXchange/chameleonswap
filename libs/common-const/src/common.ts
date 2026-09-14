@@ -82,6 +82,18 @@ export const COW_CONTRACT_ADDRESS: Record<SupportedChainId, string | null> = {
   [SupportedChainId.SOLANA]: null,
 }
 
+const CHAM_ADDRESS_OVERRIDES: Partial<Record<SupportedChainId, string>> = {
+  [SupportedChainId.MAINNET]: '0x0000000000000000000000000000000000000001', // Update with real CHAM address
+  [SupportedChainId.GNOSIS_CHAIN]: '0x0000000000000000000000000000000000000002', // Update with real CHAM address
+  [SupportedChainId.ARBITRUM_ONE]: '0x0000000000000000000000000000000000000003', // Update with real CHAM address
+  [SupportedChainId.BASE]: '0x0000000000000000000000000000000000000004', // Update with real CHAM address
+  [SupportedChainId.SEPOLIA]: '0x0000000000000000000000000000000000000005', // Update with real CHAM address
+}
+
+export const CHAM_CONTRACT_ADDRESS: Record<SupportedChainId, string> = mapSupportedNetworks(
+  (chainId) => CHAM_ADDRESS_OVERRIDES[chainId] ?? '0x0000000000000000000000000000000000000000',
+)
+
 // Explorer (TODO: reuse the CowSwap msg`` strings below when the explorer is localized)
 export const RECEIVED_LABEL_EXPLORER = 'Received'
 export const ACCOUNT_PROXY_LABEL_EXPLORER = 'Account Proxy'

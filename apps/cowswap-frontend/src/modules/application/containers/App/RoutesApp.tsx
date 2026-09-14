@@ -45,10 +45,6 @@ const LegalExternal = <ExternalRedirect url={COWDAO_LEGAL_LINK} />
 
 // Account
 const AccountTokensOverview = lazy(() => import(/* webpackChunkName: "tokens_overview" */ 'pages/Account/Tokens'))
-const AccountAffiliatePartner = lazy(() => import(/* webpackChunkName: "affiliate" */ 'pages/Account/AffiliatePartner'))
-const AccountAffiliateTrader = lazy(
-  () => import(/* webpackChunkName: "affiliate_trader" */ 'pages/Account/AffiliateTrader'),
-)
 const AccountNotFound = lazy(() => import(/* webpackChunkName: "not_found" */ 'pages/error/NotFound'))
 
 type LazyRouteProps = { route: RoutesValues; element: ReactNode; key?: number }
@@ -109,8 +105,8 @@ export function RoutesApp(): ReactNode {
       <Route path={RoutesEnum.ACCOUNT} element={<Account />}>
         <Route path={RoutesEnum.ACCOUNT} element={<AccountOverview />} />
         <Route path={RoutesEnum.ACCOUNT_TOKENS} element={<AccountTokensOverview />} />
-        <Route path={RoutesEnum.ACCOUNT_AFFILIATE_PARTNER} element={<AccountAffiliatePartner />} />
-        <Route path={RoutesEnum.ACCOUNT_AFFILIATE_TRADER} element={<AccountAffiliateTrader />} />
+        <Route path={RoutesEnum.ACCOUNT_AFFILIATE_PARTNER} element={<Navigate to={RoutesEnum.ACCOUNT} replace />} />
+        <Route path={RoutesEnum.ACCOUNT_AFFILIATE_TRADER} element={<Navigate to={RoutesEnum.ACCOUNT} replace />} />
         <Route path="*" element={<AccountNotFound />} />
       </Route>
 

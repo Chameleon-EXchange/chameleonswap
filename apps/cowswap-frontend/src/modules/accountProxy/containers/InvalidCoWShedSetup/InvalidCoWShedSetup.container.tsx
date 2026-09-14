@@ -37,11 +37,11 @@ export function InvalidCoWShedSetup(): ReactNode {
       <InlineBanner bannerType={StatusColorVariant.Danger}>
         <div>
           <div>
-            <Trans>CoW Shed setup is invalid!</Trans>
+            <Trans>Account Proxy setup is invalid!</Trans>
           </div>
           <div>
             <ExternalLink href={DISCORD_LINK}>
-              <Trans>Please contact CoW Swap support!</Trans>
+              <Trans>Please contact Chameleon Swap support!</Trans>
             </ExternalLink>
           </div>
         </div>
