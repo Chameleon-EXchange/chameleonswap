@@ -307,6 +307,7 @@ export default defineConfig(({ mode, isPreview }) => {
     },
 
     build: {
+      outDir: '../../build/cowswap',
       manifest: true,
       assetsInlineLimit: 0, // prevent inlining assets
       assetsDir: 'static', // All assets go to /static/ directory

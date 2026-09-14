@@ -7,8 +7,8 @@
   "author": "",
   "license": "ISC",
   "scripts": {
-    "start": "vite preview",
-    "preview": "vite preview",
+    "start": "vite preview --outDir ../../build/cowswap",
+    "preview": "vite preview --outDir ../../build/cowswap",
     "patch-package": "npx patch-package",
     "cosmos:clear": "rm -rf ./public/cosmos",
     "cosmos:run": "pnpm run _cosmos:run",
