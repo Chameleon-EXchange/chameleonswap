@@ -22,6 +22,7 @@ interface MenuItem {
 const ACCOUNT_MENU_LINKS = (chainId: SupportedChainId): MenuItem[] => {
   return [
     { title: msg`Overview`, url: '/account' },
+    { title: msg`Referral`, url: '/account/referral' },
     { title: msg`Tokens`, url: '/account/tokens' },
     ...(isEvmChain(chainId) ? [{ title: ACCOUNT_PROXY_LABEL, url: getProxyAccountUrl(chainId) }] : []),
   ]

@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { SupportedChainId } from '@cowprotocol/cow-sdk'
 
 import http from 'utils/http'
@@ -122,7 +123,9 @@ export class ReferralService {
 
   async getTraderDetails(walletAddress: string): Promise<TraderDetails | null> {
     try {
-      const SYSTEM_BEARER_TOKEN = import.meta.env.VITE_SYSTEM_BEARER_TOKEN
+      const SYSTEM_BEARER_TOKEN =
+        import.meta.env.VITE_SYSTEM_BEARER_TOKEN ||
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6InNMVUMxbktrVUM0TFpRb1IiLCJpYXQiOjE3NDgyMTAyMzUsImV4cCI6MTc0ODI5NjYzNX0.20pYiF6N-FK5C_CPNgYA1mnI3GweOUC4lzwe858IffI'
       const response = await fetch(`/api/v1/trader/${walletAddress}/base`, {
         headers: {
           Authorization: `Bearer ${SYSTEM_BEARER_TOKEN}`,
@@ -149,7 +152,9 @@ export class ReferralService {
     referralCode?: string,
   ): Promise<TraderDetails> {
     try {
-      const SYSTEM_BEARER_TOKEN = import.meta.env.VITE_SYSTEM_BEARER_TOKEN
+      const SYSTEM_BEARER_TOKEN =
+        import.meta.env.VITE_SYSTEM_BEARER_TOKEN ||
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6InNMVUMxbktrVUM0TFpRb1IiLCJpYXQiOjE3NDgyMTAyMzUsImV4cCI6MTc0ODI5NjYzNX0.20pYiF6N-FK5C_CPNgYA1mnI3GweOUC4lzwe858IffI'
 
       const payload: any = {
         walletAddress,

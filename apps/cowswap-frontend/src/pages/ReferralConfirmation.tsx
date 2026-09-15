@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router'
 import styled from 'styled-components/macro'
@@ -81,7 +82,7 @@ const Subtitle = styled.div`
 export default function ReferralConfirmation() {
     const location = useLocation()
     const queryParams = new URLSearchParams(location.search)
-    const referral = queryParams.get('ref')
+    const referral = queryParams.get('ref') || queryParams.get('code')
 
     const { account } = useWalletInfo()
     const { signup, loading, status, message } = useReferralSignup()

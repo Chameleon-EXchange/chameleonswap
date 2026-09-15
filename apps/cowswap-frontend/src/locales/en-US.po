@@ -6155,6 +6155,10 @@ msgstr "funds"
 msgid "Pool details"
 msgstr "Pool details"
 
+#: apps/cowswap-frontend/src/pages/Account/index.tsx
+msgid "Rewards hub - Referral"
+msgstr "Rewards hub - Referral"
+
 #: apps/cowswap-frontend/src/modules/tradeSlippage/containers/HighSuggestedSlippageWarning/index.tsx
 msgid "Slippage adjusted to {slippageBpsPercentage}% to ensure quick execution"
 msgstr "Slippage adjusted to {slippageBpsPercentage}% to ensure quick execution"
@@ -6586,8 +6590,8 @@ msgid "Linked"
 msgstr "Linked"
 
 #: apps/cowswap-frontend/src/pages/Account/index.tsx
-msgid "Rewards hub - Affiliate"
-msgstr "Rewards hub - Affiliate"
+#~ msgid "Rewards hub - Affiliate"
+#~ msgstr "Rewards hub - Affiliate"
 
 #: apps/cowswap-frontend/src/modules/tokensList/pure/TokenSearchContent/index.tsx
 msgid "No tokens found"
@@ -8009,6 +8013,11 @@ msgstr "FREE"
 #: apps/cowswap-frontend/src/modules/twap/const.ts
 msgid "1 Week"
 msgstr "1 Week"
+
+#: apps/cowswap-frontend/src/modules/application/containers/App/menuConsts.tsx
+#: apps/cowswap-frontend/src/pages/Account/Menu.tsx
+msgid "Referral"
+msgstr "Referral"
 
 #: apps/cowswap-frontend/src/modules/tradeFlow/hooks/useHandleSwap.ts
 #~ msgid "Eth flow context is not ready"

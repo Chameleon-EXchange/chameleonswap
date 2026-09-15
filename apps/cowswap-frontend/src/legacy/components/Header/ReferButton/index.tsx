@@ -1,8 +1,10 @@
-import { useCallback } from 'react'
+import { ReactNode, useCallback } from 'react'
+
 import { UserPlus } from 'react-feather'
-import { useNavigate, useLocation } from 'react-router'
+import { useLocation } from 'react-router'
 import styled from 'styled-components/macro'
-import { useWalletInfo } from '@cowprotocol/wallet'
+
+import { useNavigate } from 'common/hooks/useNavigate'
 
 const StyledReferButton = styled.button<{ $isActive?: boolean }>`
   display: flex;
@@ -46,15 +48,17 @@ const StyledReferButton = styled.button<{ $isActive?: boolean }>`
   }
 `
 
-export function ReferButton() {
+export function ReferButton(): ReactNode {
   const navigate = useNavigate()
   const location = useLocation()
-  const { chainId } = useWalletInfo()
-  const isActive = location.pathname.includes('/reward') || location.pathname.includes('/refer')
+  const isActive =
+    location.pathname.includes('/refer') ||
+    location.pathname.includes('/reward') ||
+    location.pathname.includes('/affiliate')
 
   const handleClick = useCallback(() => {
-    navigate(chainId ? `/${chainId}/rewardpage` : '/rewardpage')
-  }, [navigate, chainId])
+    navigate('/account/referral')
+  }, [navigate])
 
   return (
     <StyledReferButton onClick={handleClick} $isActive={isActive} title="Refer traders & earn rewards">

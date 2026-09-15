@@ -32,7 +32,11 @@ interface TitleWithFeedbackProps {
 }
 
 function AccountTitle({ id, name, pathname }: AccountTitleProps): ReactNode {
-  if (pathname === RoutesEnum.ACCOUNT_AFFILIATE_PARTNER || pathname === RoutesEnum.ACCOUNT_AFFILIATE_TRADER) {
+  if (
+    pathname === '/account/referral' ||
+    pathname === RoutesEnum.ACCOUNT_AFFILIATE_PARTNER ||
+    pathname === RoutesEnum.ACCOUNT_AFFILIATE_TRADER
+  ) {
     return <TitleWithFeedback id={id} name={name} />
   }
 
@@ -56,8 +60,9 @@ function getPropsFromRoute(route: string): string[] {
       return ['account-governance', t`Governance`]
     case RoutesEnum.ACCOUNT_TOKENS:
       return ['account-tokens', t`Tokens overview`]
+    case '/account/referral':
     case RoutesEnum.ACCOUNT_AFFILIATE_PARTNER:
-      return ['account-affiliate', t`Rewards hub - Affiliate`]
+      return ['account-affiliate', t`Rewards hub - Referral`]
     case RoutesEnum.ACCOUNT_AFFILIATE_TRADER:
       return ['account-my-rewards', t`Rewards hub - My Rewards`]
     default:

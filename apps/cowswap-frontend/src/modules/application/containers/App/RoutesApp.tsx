@@ -25,6 +25,7 @@ import {
 
 import { Routes as RoutesEnum, RoutesValues } from 'common/constants/routes'
 import Account, { AccountOverview } from 'pages/Account'
+import AccountReferral from 'pages/Account/AccountReferral'
 import AdminPage from 'pages/Admin'
 import { AdvancedOrdersPage } from 'pages/AdvancedOrders/AdvancedOrders.page'
 import { BuyPage } from 'pages/Buy'
@@ -33,6 +34,7 @@ import { HooksPage } from 'pages/Hooks'
 import { LandingPage } from 'pages/Landing'
 import { LimitOrdersPage } from 'pages/LimitOrders/LimitOrders.page'
 import ReferralConfirmation from 'pages/ReferralConfirmation'
+import { RewardPage } from 'pages/Reward'
 import { SwapPage } from 'pages/Swap'
 import YieldPage from 'pages/Yield'
 
@@ -92,12 +94,12 @@ export function RoutesApp(): ReactNode {
       {/* Chameleon Custom Routes */}
       <Route path={RoutesEnum.ADMIN} element={<AdminPage />} />
       <Route path={RoutesEnum.BUY} element={<BuyPage />} />
-      <Route path={RoutesEnum.REWARD} element={<Navigate to={RoutesEnum.HOME} replace />} />
-      <Route path="/:chainId/rewardpage" element={<Navigate to={RoutesEnum.HOME} replace />} />
-      <Route path="/refer" element={<Navigate to={RoutesEnum.HOME} replace />} />
-      <Route path="/:chainId/refer" element={<Navigate to={RoutesEnum.HOME} replace />} />
-      <Route path="/rewards" element={<Navigate to={RoutesEnum.HOME} replace />} />
-      <Route path="/:chainId/rewards" element={<Navigate to={RoutesEnum.HOME} replace />} />
+      <Route path={RoutesEnum.REWARD} element={<RewardPage />} />
+      <Route path="/:chainId/rewardpage" element={<RewardPage />} />
+      <Route path="/refer" element={<Navigate to="/account/referral" replace />} />
+      <Route path="/:chainId/refer" element={<Navigate to="/account/referral" replace />} />
+      <Route path="/rewards" element={<Navigate to="/account/referral" replace />} />
+      <Route path="/:chainId/rewards" element={<Navigate to="/account/referral" replace />} />
       <Route path="/defi" element={<ExternalRedirect url="https://defi.chameleon.exchange" />} />
       <Route path="/:chainId/defi" element={<ExternalRedirect url="https://defi.chameleon.exchange" />} />
 
@@ -105,8 +107,9 @@ export function RoutesApp(): ReactNode {
       <Route path={RoutesEnum.ACCOUNT} element={<Account />}>
         <Route path={RoutesEnum.ACCOUNT} element={<AccountOverview />} />
         <Route path={RoutesEnum.ACCOUNT_TOKENS} element={<AccountTokensOverview />} />
-        <Route path={RoutesEnum.ACCOUNT_AFFILIATE_PARTNER} element={<Navigate to={RoutesEnum.ACCOUNT} replace />} />
-        <Route path={RoutesEnum.ACCOUNT_AFFILIATE_TRADER} element={<Navigate to={RoutesEnum.ACCOUNT} replace />} />
+        <Route path="referral" element={<AccountReferral />} />
+        <Route path={RoutesEnum.ACCOUNT_AFFILIATE_PARTNER} element={<AccountReferral />} />
+        <Route path={RoutesEnum.ACCOUNT_AFFILIATE_TRADER} element={<AccountReferral />} />
         <Route path="*" element={<AccountNotFound />} />
       </Route>
 
