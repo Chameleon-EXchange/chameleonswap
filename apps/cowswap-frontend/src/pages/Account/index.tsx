@@ -62,7 +62,7 @@ function getPropsFromRoute(route: string): string[] {
       return ['account-tokens', t`Tokens overview`]
     case '/account/referral':
     case RoutesEnum.ACCOUNT_AFFILIATE_PARTNER:
-      return ['account-affiliate', t`Rewards hub - Referral`]
+      return ['account-affiliate', t`Rewards hub - Affiliate`]
     case RoutesEnum.ACCOUNT_AFFILIATE_TRADER:
       return ['account-my-rewards', t`Rewards hub - My Rewards`]
     default:

@@ -59,7 +59,8 @@ describe('NAV_ITEMS', () => {
     const accountItem = navItems[0]
     expect(accountItem.children?.map((c) => c.href)).toEqual([
       '/account',
-      '/account/referral',
+      '/account/affiliate',
+      '/account/my-rewards',
       '/account/tokens',
       '/1/account/account-proxy',
     ])

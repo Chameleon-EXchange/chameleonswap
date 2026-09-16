@@ -1,8 +1,6 @@
 import { ReactNode, useCallback, useMemo, useRef, useState } from 'react'
 
-import iconCowCircleAccentSrc from '@cowprotocol/assets/images/logo-icon-cow-circle-accent.svg'
-import iconCowCircleBlackSrc from '@cowprotocol/assets/images/logo-icon-cow-circle-black.svg'
-import iconCowCircleWhiteSrc from '@cowprotocol/assets/images/logo-icon-cow-circle-white.svg'
+import iconChameleonLogoSrc from '@cowprotocol/assets/images/logo_icon_chameleonswap.svg'
 import { ButtonOutlined, ModalHeader, UI } from '@cowprotocol/ui'
 
 import { t } from '@lingui/core/macro'
@@ -23,13 +21,13 @@ type QrColor = 'black' | 'white' | 'accent'
 const QR_COLORS: Record<QrColor, { fg: string; bg: string }> = {
   black: { fg: '#111111', bg: '#FFFFFF' },
   white: { fg: '#FFFFFF', bg: '#111111' },
-  accent: { fg: '#1f5bd6', bg: '#FFFFFF' },
+  accent: { fg: '#760093', bg: '#FFFFFF' },
 }
 
 const QR_LOGOS: Record<QrColor, string> = {
-  black: iconCowCircleBlackSrc,
-  white: iconCowCircleWhiteSrc,
-  accent: iconCowCircleAccentSrc,
+  black: iconChameleonLogoSrc,
+  white: iconChameleonLogoSrc,
+  accent: iconChameleonLogoSrc,
 }
 
 interface AffiliatePartnerQrModalProps {
@@ -48,7 +46,7 @@ export function AffiliatePartnerQrModal({
 
   const onDownload = useCallback((fileType: DownloadQrFileType) => {
     if (!qrCodeRef.current) return
-    qrCodeRef.current.download(fileType, 'cow-referral')
+    qrCodeRef.current.download(fileType, 'chameleon-referral')
   }, [])
 
   const [qrColor, setQrColor] = useState<QrColor>('accent')

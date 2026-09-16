@@ -2162,10 +2162,6 @@ msgstr "All Hooks ({allHooksCount})"
 msgid "Approving <0/> <1><2/></1> for trading"
 msgstr "Approving <0/> <1><2/></1> for trading"
 
-#: apps/cowswap-frontend/src/modules/affiliate/pure/TraderIneligible.tsx
-msgid "This wallet has already traded on CoW Swap."
-msgstr "This wallet has already traded on CoW Swap."
-
 #: libs/hook-dapp-lib/src/hookDappsRegistry.ts
 #~ msgid "Reduce or withdraw liquidity from a pool before a token swap integrating the process directly into the transaction flow. By adjusting your liquidity ahead of time, you gain more control over your assets without any extra steps. Optimize your position in a pool, all in one seamless action — no need for multiple transactions or added complexity."
 #~ msgstr "Reduce or withdraw liquidity from a pool before a token swap integrating the process directly into the transaction flow. By adjusting your liquidity ahead of time, you gain more control over your assets without any extra steps. Optimize your position in a pool, all in one seamless action — no need for multiple transactions or added complexity."
@@ -3129,6 +3125,10 @@ msgstr "dialog content"
 #: apps/cowswap-frontend/src/modules/tokensList/pure/SelectTokenModal/index.tsx
 #~ msgid "Cross chain swap"
 #~ msgstr "Cross chain swap"
+
+#: apps/cowswap-frontend/src/modules/affiliate/pure/AffiliateTraderModal/CodeLinkingStatusSection.tsx
+msgid "We weren't able to check your eligibility. Feel free to continue, but you won't receive rewards if you traded on Chameleon Swap before."
+msgstr "We weren't able to check your eligibility. Feel free to continue, but you won't receive rewards if you traded on Chameleon Swap before."
 
 #: apps/cowswap-frontend/src/modules/accountProxy/pure/FAQContent/FAQContent.pure.tsx
 msgid "Since {accountProxyLabelString} is not an upgradeable smart-contract, it can be versioned and there are"
@@ -4931,9 +4931,10 @@ msgstr "2 stops"
 msgid "Please enter the base URL of your dapp, not the direct manifest.json path"
 msgstr "Please enter the base URL of your dapp, not the direct manifest.json path"
 
+#: apps/cowswap-frontend/src/modules/application/containers/App/menuConsts.tsx
 #: apps/cowswap-frontend/src/pages/Account/Menu.tsx
-#~ msgid "Affiliate"
-#~ msgstr "Affiliate"
+msgid "Affiliate"
+msgstr "Affiliate"
 
 #: apps/cowswap-frontend/src/modules/orders/pure/PendingOrderNotification/index.tsx
 #~ msgid "submitted"
@@ -6156,8 +6157,8 @@ msgid "Pool details"
 msgstr "Pool details"
 
 #: apps/cowswap-frontend/src/pages/Account/index.tsx
-msgid "Rewards hub - Referral"
-msgstr "Rewards hub - Referral"
+#~ msgid "Rewards hub - Referral"
+#~ msgstr "Rewards hub - Referral"
 
 #: apps/cowswap-frontend/src/modules/tradeSlippage/containers/HighSuggestedSlippageWarning/index.tsx
 msgid "Slippage adjusted to {slippageBpsPercentage}% to ensure quick execution"
@@ -6590,8 +6591,8 @@ msgid "Linked"
 msgstr "Linked"
 
 #: apps/cowswap-frontend/src/pages/Account/index.tsx
-#~ msgid "Rewards hub - Affiliate"
-#~ msgstr "Rewards hub - Affiliate"
+msgid "Rewards hub - Affiliate"
+msgstr "Rewards hub - Affiliate"
 
 #: apps/cowswap-frontend/src/modules/tokensList/pure/TokenSearchContent/index.tsx
 msgid "No tokens found"
@@ -7065,9 +7066,10 @@ msgstr "{solversLength} out of {totalSolvers} solvers"
 msgid "Issued by {issuedByIssuer}"
 msgstr "Issued by {issuedByIssuer}"
 
+#: apps/cowswap-frontend/src/modules/application/containers/App/menuConsts.tsx
 #: apps/cowswap-frontend/src/pages/Account/Menu.tsx
-#~ msgid "My Rewards"
-#~ msgstr "My Rewards"
+msgid "My Rewards"
+msgstr "My Rewards"
 
 #: apps/cowswap-frontend/src/modules/affiliate/containers/AffiliateTraderExpiryBanner.tsx
 msgid "Your referral code expired on {rewardsEndLabel}."
@@ -7378,6 +7380,10 @@ msgstr "Try Again"
 #: apps/cowswap-frontend/src/modules/ordersTable/pure/OrdersTable/Row/WarningTooltip/WarningTooltip.pure.tsx
 msgid "The order remains open. Execution requires adequate allowance for"
 msgstr "The order remains open. Execution requires adequate allowance for"
+
+#: apps/cowswap-frontend/src/modules/affiliate/pure/TraderIneligible.tsx
+msgid "This wallet has already traded on Chameleon Swap."
+msgstr "This wallet has already traded on Chameleon Swap."
 
 #: apps/cowswap-frontend/src/modules/orderProgressBar/pure/steps/ExpiredStep.tsx
 msgid "Your order expired"
@@ -8016,8 +8022,8 @@ msgstr "1 Week"
 
 #: apps/cowswap-frontend/src/modules/application/containers/App/menuConsts.tsx
 #: apps/cowswap-frontend/src/pages/Account/Menu.tsx
-msgid "Referral"
-msgstr "Referral"
+#~ msgid "Referral"
+#~ msgstr "Referral"
 
 #: apps/cowswap-frontend/src/modules/tradeFlow/hooks/useHandleSwap.ts
 #~ msgid "Eth flow context is not ready"
@@ -8141,10 +8147,6 @@ msgstr "Manage"
 #: apps/cowswap-frontend/src/modules/affiliate/pure/MetricsCard.tsx
 #~ msgid "Rewards data updates every 6 hours at 00:00, 06:00, 12:00, 18:00 (UTC) and take about one hour to appear here."
 #~ msgstr "Rewards data updates every 6 hours at 00:00, 06:00, 12:00, 18:00 (UTC) and take about one hour to appear here."
-
-#: apps/cowswap-frontend/src/modules/affiliate/pure/AffiliateTraderModal/CodeLinkingStatusSection.tsx
-msgid "We weren't able to check your eligibility. Feel free to continue, but you won't receive rewards if you traded on CoW Swap before."
-msgstr "We weren't able to check your eligibility. Feel free to continue, but you won't receive rewards if you traded on CoW Swap before."
 
 #: apps/cowswap-frontend/src/modules/hooksStore/pure/HookDappIframeReview/HookRequestDetails.pure.tsx
 msgid "Source"

@@ -25,7 +25,6 @@ import {
 
 import { Routes as RoutesEnum, RoutesValues } from 'common/constants/routes'
 import Account, { AccountOverview } from 'pages/Account'
-import AccountReferral from 'pages/Account/AccountReferral'
 import AdminPage from 'pages/Admin'
 import { AdvancedOrdersPage } from 'pages/AdvancedOrders/AdvancedOrders.page'
 import { BuyPage } from 'pages/Buy'
@@ -47,6 +46,10 @@ const LegalExternal = <ExternalRedirect url={COWDAO_LEGAL_LINK} />
 
 // Account
 const AccountTokensOverview = lazy(() => import(/* webpackChunkName: "tokens_overview" */ 'pages/Account/Tokens'))
+const AccountAffiliatePartner = lazy(() => import(/* webpackChunkName: "affiliate" */ 'pages/Account/AffiliatePartner'))
+const AccountAffiliateTrader = lazy(
+  () => import(/* webpackChunkName: "affiliate_trader" */ 'pages/Account/AffiliateTrader'),
+)
 const AccountNotFound = lazy(() => import(/* webpackChunkName: "not_found" */ 'pages/error/NotFound'))
 
 type LazyRouteProps = { route: RoutesValues; element: ReactNode; key?: number }
@@ -96,10 +99,10 @@ export function RoutesApp(): ReactNode {
       <Route path={RoutesEnum.BUY} element={<BuyPage />} />
       <Route path={RoutesEnum.REWARD} element={<RewardPage />} />
       <Route path="/:chainId/rewardpage" element={<RewardPage />} />
-      <Route path="/refer" element={<Navigate to="/account/referral" replace />} />
-      <Route path="/:chainId/refer" element={<Navigate to="/account/referral" replace />} />
-      <Route path="/rewards" element={<Navigate to="/account/referral" replace />} />
-      <Route path="/:chainId/rewards" element={<Navigate to="/account/referral" replace />} />
+      <Route path="/refer" element={<Navigate to={RoutesEnum.ACCOUNT_AFFILIATE_PARTNER} replace />} />
+      <Route path="/:chainId/refer" element={<Navigate to={RoutesEnum.ACCOUNT_AFFILIATE_PARTNER} replace />} />
+      <Route path="/rewards" element={<Navigate to={RoutesEnum.ACCOUNT_AFFILIATE_TRADER} replace />} />
+      <Route path="/:chainId/rewards" element={<Navigate to={RoutesEnum.ACCOUNT_AFFILIATE_TRADER} replace />} />
       <Route path="/defi" element={<ExternalRedirect url="https://defi.chameleon.exchange" />} />
       <Route path="/:chainId/defi" element={<ExternalRedirect url="https://defi.chameleon.exchange" />} />
 
@@ -107,9 +110,9 @@ export function RoutesApp(): ReactNode {
       <Route path={RoutesEnum.ACCOUNT} element={<Account />}>
         <Route path={RoutesEnum.ACCOUNT} element={<AccountOverview />} />
         <Route path={RoutesEnum.ACCOUNT_TOKENS} element={<AccountTokensOverview />} />
-        <Route path="referral" element={<AccountReferral />} />
-        <Route path={RoutesEnum.ACCOUNT_AFFILIATE_PARTNER} element={<AccountReferral />} />
-        <Route path={RoutesEnum.ACCOUNT_AFFILIATE_TRADER} element={<AccountReferral />} />
+        <Route path="referral" element={<Navigate to={RoutesEnum.ACCOUNT_AFFILIATE_PARTNER} replace />} />
+        <Route path={RoutesEnum.ACCOUNT_AFFILIATE_PARTNER} element={<AccountAffiliatePartner />} />
+        <Route path={RoutesEnum.ACCOUNT_AFFILIATE_TRADER} element={<AccountAffiliateTrader />} />
         <Route path="*" element={<AccountNotFound />} />
       </Route>
 

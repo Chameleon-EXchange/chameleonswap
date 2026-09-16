@@ -31,8 +31,12 @@ const ACCOUNT_ITEM = (chainId: SupportedChainId): UntranslatedMenuItem => ({
       label: msg`Overview`,
     },
     {
-      href: '/account/referral',
-      label: msg`Referral`,
+      href: '/account/affiliate',
+      label: msg`Affiliate`,
+    },
+    {
+      href: '/account/my-rewards',
+      label: msg`My Rewards`,
     },
     {
       href: '/account/tokens',

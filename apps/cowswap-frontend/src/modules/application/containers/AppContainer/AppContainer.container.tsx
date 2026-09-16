@@ -12,6 +12,7 @@ import { URLWarning } from 'legacy/components/Header/URLWarning'
 import { useDarkModeManager } from 'legacy/state/user/hooks'
 
 import { AccountModal } from 'modules/account'
+import { AffiliateTraderModal } from 'modules/affiliate'
 import { useInjectedWidgetMetaData } from 'modules/injectedWidget'
 import { useInitializeUtm } from 'modules/utm'
 
@@ -104,6 +105,7 @@ export function AppContainer({ children }: AppContainerProps): ReactNode {
 
         {/* Render MobileHeaderControls outside of MenuBar on mobile */}
         {isMobile && !isInjectedWidgetMode && networkAndAccountControls}
+        <AffiliateTraderModal />
       </styledEl.AppWrapper>
     </PageBackgroundContext.Provider>
   )
